@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>EF Core infrastructure: DbContext base with domain event dispatch, generic repository, unit of work and transactional outbox.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks.Kernel.Domain\BuildingBlocks.Kernel.Domain.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.CQRS\BuildingBlocks.CQRS.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.EventBus\BuildingBlocks.EventBus.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>DDD tactical building blocks: entities, aggregates, value objects, domain events, results and business rules.</Description>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.CQRS/BuildingBlocks.CQRS.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.EventBus.RabbitMQ/BuildingBlocks.EventBus.RabbitMQ.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.EventBus/BuildingBlocks.EventBus.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Kernel.Domain/BuildingBlocks.Kernel.Domain.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Kernel.Infrastructure/BuildingBlocks.Kernel.Infrastructure.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Logger/BuildingBlocks.Logger.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
+  </Folder>
+  <Project Path="OroQuizClash.AppHost/OroQuizClash.AppHost.csproj" />
+</Solution>
