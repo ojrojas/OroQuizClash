@@ -1,6 +1,9 @@
 using BuildingBlocks.CQRS.Behaviors;
 using BuildingBlocks.CQRS.DependencyInjection;
+using BuildingBlocks.EventBus.Abstractions;
+using BuildingBlocks.Kernel.Domain.Repositories;
 using BuildingBlocks.Kernel.Infrastructure.DependencyInjection;
+using BuildingBlocks.Kernel.Infrastructure.Persistence;
 using BuildingBlocks.ServiceDefaults;
 using BuildingBlocks.ServiceDefaults.Endpoints;
 using BuildingBlocks.ServiceDefaults.Middleware;
@@ -9,12 +12,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
-using BuildingBlocks.EventBus.Abstractions;
-using BuildingBlocks.Kernel.Domain.Repositories;
-using BuildingBlocks.Kernel.Infrastructure.Persistence;
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Infrastructure.Categories;
+using OroQuizClash.Infrastructure.Counters;
 using OroQuizClash.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,8 @@ builder.Services.AddOutbox<OroQuizClashDbContext>();
 builder.Services.AddSingleton<IEventBus, NullEventBus>();
 builder.Services.AddScoped<IRepository<Game, GameId>>(sp => new EfRepository<Game, GameId>(sp.GetRequiredService<OroQuizClashDbContext>()));
 builder.Services.AddScoped<ICategoryValidator, CategoryValidatorStub>();
+builder.Services.AddScoped<IRepository<Category, CategoryId>>(sp => new EfRepository<Category, CategoryId>(sp.GetRequiredService<OroQuizClashDbContext>()));
+builder.Services.AddScoped<IQuestionCounter, InMemoryQuestionCounter>();
 
 builder.Services.AddEndpoints(typeof(OroQuizClash.Application.Features.Games.CreateGameEndpoint).Assembly);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

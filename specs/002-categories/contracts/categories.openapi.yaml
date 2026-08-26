@@ -1,0 +1,164 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Categories
+  version: 1.0.0
+  description: |
+    Vertical Slices `Create/Update/Activate/Deactivate/Publish/Archive` + `GetCategories`.
+    Requiere JWT bearer de OroIdentityServer (ADMIN/GAME_MANAGER) para escritura; lectura autenticada.
+    Gate `PublishCategory` exige ≥5 preguntas válidas (4 opciones/1 correcta/activa/alineada).
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/categories:
+    post:
+      operationId: createCategory
+      summary: Crear categoría (DRAFT)
+      tags: [Categories]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCategoryRequest' }
+            examples:
+              valid:
+                value: { name: "Historia Universal", description: "Desde prehistoria", knowledgeArea: "Humanidades", academicLevel: "Secundaria", ageMin: 13, ageMax: 17, difficultyLevel: 3, tags: ["historia","secundaria"], publishConfiguration: { requiresModeration: false } }
+      responses:
+        '201': { description: Creada, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/CategoryResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      operationId: getCategories
+      summary: Listar categorías con filtros y paginación
+      tags: [Categories]
+      parameters:
+        - { name: knowledgeArea, in: query, schema: { type: string } }
+        - { name: academicLevel, in: query, schema: { type: string } }
+        - { name: difficultyLevel, in: query, schema: { type: integer, minimum: 1, maximum: 5 } }
+        - { name: state, in: query, schema: { type: string, enum: [DRAFT, ACTIVE, INACTIVE, ARCHIVED] } }
+        - { name: tag, in: query, schema: { type: string } }
+        - { name: ageMin, in: query, schema: { type: integer } }
+        - { name: ageMax, in: query, schema: { type: integer } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: Paginado, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedCategories' } } } }
+
+  /api/categories/{id}:
+    get:
+      operationId: getCategoryById
+      summary: Detalle de categoría con validQuestionsCount
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CategoryResponse' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: updateCategory
+      summary: Actualizar categoría (solo DRAFT/INACTIVE)
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UpdateCategoryRequest' } } } }
+      responses:
+        '200': { description: Actualizada, content: { application/json: { schema: { $ref: '#/components/schemas/CategoryResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/categories/{id}/activate:
+    post:
+      operationId: activateCategory
+      summary: DRAFT/INACTIVE → ACTIVE
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Activada }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/categories/{id}/deactivate:
+    post:
+      operationId: deactivateCategory
+      summary: ACTIVE → INACTIVE
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Desactivada }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/categories/{id}/publish:
+    post:
+      operationId: publishCategory
+      summary: Publish (gate ≥5 válidas) DRAFT/INACTIVE → ACTIVE
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Publicada, content: { application/json: { schema: { $ref: '#/components/schemas/CategoryResponse' } } } }
+        '400': { description: No publicable (<5), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' }, examples: { notPublishable: { value: { type: "https://oroclash.dev/errors/category-not-publishable", title: "CategoryNotPublishable", status: 400, code: "CategoryNotPublishable", detail: "Requires ≥5 valid questions" } } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/categories/{id}/archive:
+    post:
+      operationId: archiveCategory
+      summary: INACTIVE/ACTIVE → ARCHIVED (terminal)
+      tags: [Categories]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Archivada }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+components:
+  securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: "JWT OroIdentityServer OpenIddict 8, discovery http://identity:5080/.well-known/openid-configuration" } }
+  schemas:
+    CreateCategoryRequest:
+      type: object
+      required: [name, knowledgeArea, academicLevel, ageMin, ageMax, difficultyLevel]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 100, example: Historia Universal }
+        description: { type: string, maxLength: 500, example: "Desde prehistoria" }
+        knowledgeArea: { type: string, minLength: 2, maxLength: 100, example: Humanidades }
+        academicLevel: { type: string, minLength: 2, maxLength: 100, example: Secundaria }
+        ageMin: { type: integer, minimum: 0, maximum: 120, example: 13 }
+        ageMax: { type: integer, minimum: 0, maximum: 120, example: 17 }
+        difficultyLevel: { type: integer, minimum: 1, maximum: 5, example: 3 }
+        tags: { type: array, items: { type: string, minLength: 2, maxLength: 30 }, maxItems: 10, example: [historia, secundaria] }
+        publishConfiguration: { $ref: '#/components/schemas/PublishConfiguration' }
+    UpdateCategoryRequest: { allOf: [{ $ref: '#/components/schemas/CreateCategoryRequest' }] }
+    PublishConfiguration: { type: object, properties: { requiresModeration: { type: boolean, default: false } } }
+    CategoryResponse:
+      type: object
+      required: [id, name, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        knowledgeArea: { type: string }
+        academicLevel: { type: string }
+        ageMin: { type: integer }
+        ageMax: { type: integer }
+        difficultyLevel: { type: integer }
+        tags: { type: array, items: { type: string } }
+        status: { type: string, enum: [DRAFT, ACTIVE, INACTIVE, ARCHIVED] }
+        validQuestionsCount: { type: integer, description: "Derivado vía IQuestionCounter, no persistido" }
+        rowVersion: { type: string, description: "Base64 rowversion para If-Match / concurrencia" }
+    PaginatedCategories:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/CategoryResponse' } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string, example: "CategoryNotPublishable" }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    BadRequest: { description: Validación, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Conflict: { description: Conflicto rowversion/estado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Unauthorized: { description: No autenticado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Forbidden: { description: No autorizado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }

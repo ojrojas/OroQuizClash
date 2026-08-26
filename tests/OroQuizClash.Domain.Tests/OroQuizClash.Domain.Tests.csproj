@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OroQuizClash.Domain\OroQuizClash.Domain.csproj" />
+    <ProjectReference Include="..\..\src\OroQuizClash.Infrastructure\OroQuizClash.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

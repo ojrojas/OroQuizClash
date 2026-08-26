@@ -5,6 +5,7 @@
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.CQRS\BuildingBlocks.CQRS.csproj" />
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.Kernel.Domain\BuildingBlocks.Kernel.Domain.csproj" />
     <ProjectReference Include="..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\OroQuizClash.Infrastructure\OroQuizClash.Infrastructure.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

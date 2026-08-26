@@ -32,6 +32,12 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 Title = "Domain rule violated",
                 Detail = domainException.Message
             },
+            Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException concurrencyException => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "ConcurrencyConflict",
+                Detail = concurrencyException.Message
+            },
             _ => new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,

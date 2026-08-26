@@ -7,7 +7,7 @@ namespace OroQuizClash.Api.Tests;
 public class RunAppHostTest(AppHostIntegrationTests app) : IClassFixture<AppHostIntegrationTests>, IAsyncLifetime
 {
 
-    private DistributedApplication _app = null!;
+    private readonly DistributedApplication _app = null!;
 
     [Fact]
     public void AppHost_Model_IsValid()
@@ -21,7 +21,7 @@ public class RunAppHostTest(AppHostIntegrationTests app) : IClassFixture<AppHost
 
     public async Task DisposeAsync()
     {
-        if(_app is not null) await _app.DisposeAsync();
+        if (_app is not null) await _app.DisposeAsync();
     }
 
     public async Task InitializeAsync()

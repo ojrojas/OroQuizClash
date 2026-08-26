@@ -81,7 +81,12 @@ public sealed class CreateGameValidator : IValidator<CreateGameCommand>
     }
 }
 
-public sealed class CreateGameHandler(IRepository<Game, GameId> games, ICategoryValidator categoryValidator, IUnitOfWork unitOfWork)
+public sealed class CreateGameHandler(
+    IRepository<Game, GameId> games,
+    ICategoryValidator categoryValidator,
+    IUnitOfWork unitOfWork,
+    IRepository<Category, CategoryId>? categoryRepository = null,
+    IQuestionCounter? questionCounter = null)
     : ICommandHandler<CreateGameCommand, Result<CreateGameResponse>>
 {
     public async Task<Result<CreateGameResponse>> HandleAsync(CreateGameCommand command, CancellationToken ct)
@@ -89,8 +94,31 @@ public sealed class CreateGameHandler(IRepository<Game, GameId> games, ICategory
         var categoryId = new CategoryId(command.CategoryId);
         var exists = await categoryValidator.ExistsAsync(categoryId, ct);
         if (!exists) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotFound);
-        var published = await categoryValidator.IsPublishedAsync(categoryId, ct);
-        if (!published) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotReady);
+
+        // Integration guard 002→001: ensure Category Status == ACTIVE and >=5 valid questions.
+        // If IRepository<Category> is available, use it for precise Status check + IQuestionCounter count.
+        if (categoryRepository is not null)
+        {
+            var category = await categoryRepository.GetByIdAsync(categoryId, ct);
+            if (category is null) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotFound);
+            if (category.Status != CategoryStatus.Active)
+                return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotReady);
+            if (questionCounter is not null)
+            {
+                var validCount = await questionCounter.CountValidAsync(categoryId, ct);
+                if (validCount < 5) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotReady);
+            }
+            else
+            {
+                var published = await categoryValidator.IsPublishedAsync(categoryId, ct);
+                if (!published) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotReady);
+            }
+        }
+        else
+        {
+            var published = await categoryValidator.IsPublishedAsync(categoryId, ct);
+            if (!published) return Result.Failure<CreateGameResponse>(GameErrors.CategoryNotReady);
+        }
 
         var difficultyStrategy = DifficultyProgressionStrategy.FromName(command.DifficultyStrategy);
         var scoring = ScoringSystem.FromName(command.ScoringSystem);
