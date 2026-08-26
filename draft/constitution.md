@@ -1,8 +1,8 @@
-# QuizArena Constitution
+# OroQuizClash Constitution
 
 **Version:** 1.0.0
 **Status:** Active
-**Project:** QuizArena
+**Project:** OroQuizClash
 **Architecture:** Modular Monolith / Clean Architecture / DDD / CQRS
 **Backend:** .NET / C#
 **Frontend:** Web
@@ -17,7 +17,7 @@
 
 ## 1. Purpose
 
-QuizArena is a configurable multiplayer question-and-answer game platform designed to demonstrate enterprise-grade software engineering capabilities using modern .NET and web technologies.
+OroQuizClash is a configurable multiplayer question-and-answer game platform designed to demonstrate enterprise-grade software engineering capabilities using modern .NET and web technologies.
 
 The platform allows administrators to configure categories, questions, difficulty levels, academic levels, age ranges, game rules and rewards.
 
@@ -842,7 +842,7 @@ The initial architecture SHOULD be a modular monolith unless a clear requirement
 
 # 37. Technical Evaluation Objective
 
-Because QuizArena is also a technical assessment project, the implementation SHOULD demonstrate the following competencies:
+Because OroQuizClash is also a technical assessment project, the implementation SHOULD demonstrate the following competencies:
 
 ### Architecture
 
@@ -927,7 +927,7 @@ Poorly Tested
 
 # 39. Final Architectural Principle
 
-The most important principle of QuizArena is:
+The most important principle of OroQuizClash is:
 
 > **The game is a domain engine, not a collection of HTTP endpoints.**
 
@@ -949,6 +949,6 @@ Tests prove that the rules remain correct.
 
 ---
 
-**Constitution Status:** Accepted as the architectural baseline for QuizArena.
+**Constitution Status:** Accepted as the architectural baseline for OroQuizClash.
 
 **Next step:** Specifications MUST be created from this constitution before implementation.
