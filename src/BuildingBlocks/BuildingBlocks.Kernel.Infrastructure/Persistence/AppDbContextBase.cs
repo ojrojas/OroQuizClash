@@ -2,6 +2,7 @@ using BuildingBlocks.CQRS.Abstractions;
 using BuildingBlocks.Kernel.Domain.Entities;
 using BuildingBlocks.Kernel.Domain.Events;
 using BuildingBlocks.Kernel.Domain.Repositories;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Kernel.Infrastructure.Persistence;

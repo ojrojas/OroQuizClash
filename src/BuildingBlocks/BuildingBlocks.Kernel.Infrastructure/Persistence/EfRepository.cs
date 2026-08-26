@@ -1,6 +1,7 @@
 using BuildingBlocks.Kernel.Domain.Entities;
 using BuildingBlocks.Kernel.Domain.Repositories;
 using BuildingBlocks.Kernel.Domain.Specifications;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Kernel.Infrastructure.Persistence;

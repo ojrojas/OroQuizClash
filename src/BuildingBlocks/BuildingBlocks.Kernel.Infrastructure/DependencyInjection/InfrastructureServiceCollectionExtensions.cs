@@ -1,6 +1,7 @@
 using BuildingBlocks.Kernel.Domain.Repositories;
 using BuildingBlocks.Kernel.Infrastructure.Outbox;
 using BuildingBlocks.Kernel.Infrastructure.Persistence;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

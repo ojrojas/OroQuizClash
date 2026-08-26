@@ -1,5 +1,7 @@
 using System.Text.Json;
+
 using BuildingBlocks.EventBus.Abstractions;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Kernel.Infrastructure.Outbox;

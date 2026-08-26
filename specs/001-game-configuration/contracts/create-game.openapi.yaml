@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Game Configuration
+  version: 1.0.0
+  description: |
+    Vertical Slice `CreateGame` — creación de agregado Game con configuración válida.
+    Requiere JWT bearer de OroIdentityServer (Authority `http://identity:5080`, descubrimiento `/.well-known/openid-configuration`).
+    Roles requeridos: `ADMIN` o `GAME_MANAGER` (claims `roles`).
+    Constitución: I-VI, Additional Constraints A/C/E/F/H, FR-012.
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/games:
+    post:
+      operationId: createGame
+      summary: Crear juego con configuración válida
+      description: Crea un agregado Game en estado DRAFT/READY. Valida CFG-001..007. Configuración inmutable tras StartGame (CFG-003).
+      tags: [Games]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+            examples:
+              valid:
+                summary: Ejemplo válido
+                value:
+                  name: "Quiz Clash Masters"
+                  categoryId: "11111111-1111-1111-1111-111111111111"
+                  minRounds: 5
+                  maxRounds: 10
+                  initialDifficulty: 1
+                  difficultyStrategy: "Linear"
+                  timeLimitPerQuestionSeconds: 30
+                  scoringSystem: "Standard"
+                  lossPolicy: "LOSE_UNSECURED_POINTS"
+                  withdrawalPolicy: "KEEP_SECURED_SCORE"
+                  consolationPolicy: "FixedPoints"
+                  rewardRules:
+                    type: "Points"
+                    threshold: 1000
+                  minPlayers: 2
+                  maxPlayers: 10
+              invalidMinRounds:
+                summary: Inválido — minRondas <5
+                value:
+                  name: "Bad Game"
+                  categoryId: "11111111-1111-1111-1111-111111111111"
+                  minRounds: 3
+                  maxRounds: 10
+                  initialDifficulty: 1
+                  difficultyStrategy: "Linear"
+                  timeLimitPerQuestionSeconds: 30
+                  scoringSystem: "Standard"
+                  lossPolicy: "LOSE_ALL"
+                  withdrawalPolicy: "KEEP_CURRENT_SCORE"
+                  consolationPolicy: "None"
+                  rewardRules:
+                    type: "Points"
+                    threshold: 500
+                  minPlayers: 2
+                  maxPlayers: 10
+      responses:
+        '201':
+          description: Juego creado
+          headers:
+            Location:
+              schema:
+                type: string
+                example: /api/games/22222222-2222-2222-2222-222222222222
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGameResponse'
+        '400':
+          description: Configuración inválida (CFG-001..007, rangos, políticas)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              examples:
+                minRoundsTooLow:
+                  summary: CFG-002
+                  value:
+                    type: https://oroclash.dev/errors/invalid-game-configuration
+                    title: Invalid game configuration
+                    status: 400
+                    detail: "MinRounds must be ≥ 5"
+                    code: "InvalidGameConfiguration.MinRoundsTooLow"
+                categoryNotReady:
+                  summary: CFG-004
+                  value:
+                    type: https://oroclash.dev/errors/category-not-ready
+                    title: Category not ready
+                    status: 400
+                    detail: "Category is not published or has fewer than 5 valid questions"
+                    code: "CategoryNotReady"
+                invalidTimeLimit:
+                  summary: CFG-006
+                  value:
+                    type: https://oroclash.dev/errors/invalid-game-configuration
+                    title: Invalid game configuration
+                    status: 400
+                    detail: "TimeLimitPerQuestion must be between 5 and 300 seconds"
+                    code: "InvalidGameConfiguration.InvalidTimeLimit"
+        '401':
+          description: No autenticado (JWT faltante/inválido, discovery jwks_uri falló)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: No autorizado (rol ≠ ADMIN/GAME_MANAGER, is_master_admin insuficiente)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflicto de concurrencia (rowversion) — solo si aplica retry de creación simultánea
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT emitido por OroIdentityServer (OpenIddict 8). Descubrimiento `GET http://identity:5080/.well-known/openid-configuration`.
+
+  schemas:
+    CreateGameRequest:
+      type: object
+      required:
+        - name
+        - categoryId
+        - minRounds
+        - maxRounds
+        - initialDifficulty
+        - difficultyStrategy
+        - timeLimitPerQuestionSeconds
+        - scoringSystem
+        - lossPolicy
+        - withdrawalPolicy
+        - consolationPolicy
+        - rewardRules
+        - minPlayers
+        - maxPlayers
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+          example: "Quiz Clash Masters"
+          description: Nombre del juego, no vacío.
+        categoryId:
+          type: string
+          format: uuid
+          description: Referencia a categoría publicada (SPEC-002/003). Debe existir y estar Published.
+        minRounds:
+          type: integer
+          minimum: 5
+          example: 5
+          description: CFG-002 — mínimo ≥5.
+        maxRounds:
+          type: integer
+          minimum: 5
+          example: 10
+          description: Debe ser ≥ minRounds.
+        initialDifficulty:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 1
+          description: Pertenece al conjunto de dificultades; coherente con estrategia.
+        difficultyStrategy:
+          type: string
+          enum: [Linear, Progressive, Adaptive, CategorySpecific]
+          example: Linear
+          description: CFG-005 — estrategia de incremento requerida.
+        timeLimitPerQuestionSeconds:
+          type: integer
+          minimum: 5
+          maximum: 300
+          example: 30
+          description: CFG-006 — segundos por pregunta, 5–300.
+        scoringSystem:
+          type: string
+          enum: [Standard, ProgressiveBonus]
+          example: Standard
+        lossPolicy:
+          type: string
+          enum: [LOSE_ALL, LOSE_CURRENT_ROUND, LOSE_UNSECURED_POINTS, FALLBACK_TO_CHECKPOINT]
+          example: LOSE_UNSECURED_POINTS
+          description: CFG-007.
+        withdrawalPolicy:
+          type: string
+          enum: [LOSE_ALL, KEEP_CURRENT_SCORE, KEEP_SECURED_SCORE, KEEP_CHECKPOINT_SCORE]
+          example: KEEP_SECURED_SCORE
+          description: CFG-007.
+        consolationPolicy:
+          type: string
+          enum: [None, FixedPoints, Badge]
+          example: FixedPoints
+        rewardRules:
+          $ref: '#/components/schemas/RewardRules'
+        minPlayers:
+          type: integer
+          minimum: 1
+          example: 2
+        maxPlayers:
+          type: integer
+          minimum: 1
+          example: 10
+
+    RewardRules:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [Points, Badge, Coupon]
+          example: Points
+        threshold:
+          type: integer
+          example: 1000
+          description: Puntos o condición para premio.
+
+    CreateGameResponse:
+      type: object
+      required: [gameId, status]
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          example: "22222222-2222-2222-2222-222222222222"
+        status:
+          type: string
+          enum: [DRAFT, READY]
+          example: DRAFT
+        configuration:
+          $ref: '#/components/schemas/CreateGameRequest'
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+          example: "InvalidGameConfiguration.MinRoundsTooLow"
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

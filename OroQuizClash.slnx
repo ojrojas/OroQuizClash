@@ -1,5 +1,10 @@
 <Solution>
-  <Folder Name="/src/" />
+  <Folder Name="/src/">
+    <Project Path="src/OroQuizClash.Api/OroQuizClash.Api.csproj" />
+    <Project Path="src/OroQuizClash.Application/OroQuizClash.Application.csproj" />
+    <Project Path="src/OroQuizClash.Domain/OroQuizClash.Domain.csproj" />
+    <Project Path="src/OroQuizClash.Infrastructure/OroQuizClash.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.CQRS/BuildingBlocks.CQRS.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.EventBus.RabbitMQ/BuildingBlocks.EventBus.RabbitMQ.csproj" />
@@ -8,6 +13,13 @@
     <Project Path="src/BuildingBlocks/BuildingBlocks.Kernel.Infrastructure/BuildingBlocks.Kernel.Infrastructure.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.Logger/BuildingBlocks.Logger.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/OroQuizClash.Api.Tests/OroQuizClash.Api.Tests.csproj" />
+    <Project Path="tests/OroQuizClash.Application.Tests/OroQuizClash.Application.Tests.csproj" />
+    <Project Path="tests/OroQuizClash.Architecture.Tests/OroQuizClash.Architecture.Tests.csproj" />
+    <Project Path="tests/OroQuizClash.Domain.Tests/OroQuizClash.Domain.Tests.csproj" />
+    <Project Path="tests/OroQuizClash.Infrastructure.Tests/OroQuizClash.Infrastructure.Tests.csproj" />
   </Folder>
   <Project Path="OroQuizClash.AppHost/OroQuizClash.AppHost.csproj" />
 </Solution>

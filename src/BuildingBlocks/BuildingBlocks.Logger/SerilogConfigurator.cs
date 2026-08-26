@@ -1,6 +1,7 @@
 namespace BuildingBlocks.Logger;
 
-public static class SerilogConfigurator {
+public static class SerilogConfigurator
+{
     public static LoggerConfiguration Configure(LoggerConfiguration cfg, LoggerOptions options)
     {
         ArgumentNullException.ThrowIfNull(cfg);

@@ -1,4 +1,5 @@
 using BuildingBlocks.Kernel.Domain.Specifications;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BuildingBlocks.Kernel.Infrastructure.Persistence;

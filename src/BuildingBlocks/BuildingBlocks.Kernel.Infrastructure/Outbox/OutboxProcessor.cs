@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+
 using BuildingBlocks.EventBus.Abstractions;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
