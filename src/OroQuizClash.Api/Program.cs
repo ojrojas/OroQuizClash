@@ -17,6 +17,7 @@ using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Games.Strategies;
 using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Questions.Services;
+using OroQuizClash.Domain.Rewards;
 using OroQuizClash.Infrastructure.Categories;
 using OroQuizClash.Infrastructure.Counters;
 using OroQuizClash.Infrastructure.Persistence;
@@ -56,6 +57,8 @@ builder.Services.AddScoped<IRepository<Question, QuestionId>>(sp => new EfReposi
 builder.Services.AddScoped<ICategoryExistenceChecker, CategoryExistenceChecker>();
 builder.Services.AddScoped<OroQuizClash.Domain.Categories.IQuestionCounter, EfQuestionCounter>();
 builder.Services.AddScoped<OroQuizClash.Domain.Questions.Services.IQuestionCounter>(sp => (OroQuizClash.Domain.Questions.Services.IQuestionCounter)sp.GetRequiredService<OroQuizClash.Domain.Categories.IQuestionCounter>());
+builder.Services.AddScoped<IRepository<Reward, RewardId>>(sp => new EfRepository<Reward, RewardId>(sp.GetRequiredService<OroQuizClashDbContext>()));
+builder.Services.AddScoped<IRepository<RewardRedemption, RewardRedemptionId>>(sp => new EfRepository<RewardRedemption, RewardRedemptionId>(sp.GetRequiredService<OroQuizClashDbContext>()));
 builder.Services.AddScoped<IQuestionSelectionStrategy, RandomQuestionSelectionStrategy>();
 builder.Services.AddScoped<IDifficultyProgressionStrategy, LinearDifficultyStrategy>();
 
@@ -82,7 +85,12 @@ builder.Services.AddAuthorizationBuilder()
         policy.RequireAssertion(ctx =>
             ctx.User.HasClaim(c => c.Type == "roles" && (c.Value == "ADMIN" || c.Value == "GAME_MANAGER")) ||
             ctx.User.HasClaim(c => c.Type == "role" && (c.Value == "ADMIN" || c.Value == "GAME_MANAGER")) ||
-            ctx.User.IsInRole("ADMIN") || ctx.User.IsInRole("GAME_MANAGER")));
+            ctx.User.IsInRole("ADMIN") || ctx.User.IsInRole("GAME_MANAGER")))
+    .AddPolicy("AdminOrRewardManager", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User.HasClaim(c => c.Type == "roles" && (c.Value == "ADMIN" || c.Value == "REWARD_MANAGER")) ||
+            ctx.User.HasClaim(c => c.Type == "role" && (c.Value == "ADMIN" || c.Value == "REWARD_MANAGER")) ||
+            ctx.User.IsInRole("ADMIN") || ctx.User.IsInRole("REWARD_MANAGER")));
 
 var app = builder.Build();
 

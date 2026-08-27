@@ -634,6 +634,22 @@ public sealed class Game : AggregateRoot<GameId>
         return Result.Success(transaction);
     }
 
+    public Result<PointTransaction> RefundPoints(Guid playerId, int amount, string reason)
+    {
+        if (amount <= 0)
+            return Result.Failure<PointTransaction>(GameErrors.InvalidAdjustmentAmount);
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        player.UpdateScore(player.Score.Award(amount, roundScoped: false));
+
+        var transaction = CreateTransaction(player, amount, PointTransactionType.Adjustment, null, null, null, reason.Trim());
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, playerId, amount, player.Score.CurrentPoints, PointTransactionType.Adjustment.Name));
+        return Result.Success(transaction);
+    }
+
     // ─── Internal scoring helpers ──────────────────────────────────────────────────
 
     private PointTransaction AwardPointsInternal(

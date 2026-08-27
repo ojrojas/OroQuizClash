@@ -1,0 +1,507 @@
+openapi: 3.0.3
+info:
+  title: OroQuizClash Rewards & Redemption API
+  version: 1.0.0
+  description: |
+    Reward catalog and point-redemption endpoints (SPEC-009).
+    Redemption is funded by the player's point balance in a specific game
+    (ledger-backed deduction, SPEC-007). Player identity is derived from the
+    JWT `sub` claim (server-authoritative). Catalog management and redemption
+    processing require the AdminOrRewardManager policy (ADMIN or REWARD_MANAGER role).
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: Rewards
+    description: Reward catalog (player view + manager administration)
+  - name: Redemptions
+    description: Redemption lifecycle (request, processing, history)
+paths:
+  /rewards:
+    get:
+      operationId: getRewards
+      summary: List redeemable rewards (player catalog)
+      description: |
+        Returns rewards that are active, in stock, and not expired.
+        When `gameId` is provided, also includes the requesting player's
+        available point balance in that funding game.
+        Managers may pass `includeUnavailable=true` to see the full catalog.
+      tags: [Rewards]
+      parameters:
+        - name: gameId
+          in: query
+          required: false
+          description: Funding game used to compute the player's available balance
+          schema: { type: string, format: uuid }
+        - name: includeUnavailable
+          in: query
+          required: false
+          description: Include inactive/expired/out-of-stock rewards (manager only)
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Reward catalog
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RewardCatalogResponse' }
+        '401':
+          description: Not authenticated
+    post:
+      operationId: createReward
+      summary: Create a reward (manager)
+      tags: [Rewards]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRewardRequest' }
+      responses:
+        '201':
+          description: Reward created (ACTIVE)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RewardResponse' }
+        '400':
+          description: Validation error (invalid name/description/points/stock)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+  /rewards/{rewardId}:
+    put:
+      operationId: updateReward
+      summary: Update a reward (manager)
+      description: |
+        Updates provided fields. Pending redemptions keep the point cost
+        recorded at request time; changes apply to future redemptions only.
+      tags: [Rewards]
+      parameters:
+        - name: rewardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRewardRequest' }
+      responses:
+        '200':
+          description: Reward updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RewardResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Reward not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: Concurrency conflict
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /rewards/{rewardId}/activate:
+    post:
+      operationId: activateReward
+      summary: Activate a reward (manager)
+      tags: [Rewards]
+      parameters:
+        - name: rewardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reward activated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RewardResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Reward not found
+        '409':
+          description: Already active
+  /rewards/{rewardId}/deactivate:
+    post:
+      operationId: deactivateReward
+      summary: Deactivate a reward (manager)
+      description: Blocks new redemptions; pending redemptions continue to be processed.
+      tags: [Rewards]
+      parameters:
+        - name: rewardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Reward deactivated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RewardResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Reward not found
+        '409':
+          description: Already inactive
+  /rewards/{rewardId}/redeem:
+    post:
+      operationId: redeemReward
+      summary: Redeem a reward with points (player)
+      description: |
+        Atomically validates availability (active, in stock, not expired — RWD-004/005)
+        and sufficient eligible points in the funding game (RWD-001/002), then deducts
+        points via the game ledger (REWARD_REDEMPTION transaction), decrements stock,
+        and creates a redemption in REQUESTED state (RWD-003). Duplicate submissions
+        with the same idempotencyKey return the original redemption without a second
+        deduction (FR-017).
+      tags: [Redemptions]
+      parameters:
+        - name: rewardId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RedeemRewardRequest' }
+      responses:
+        '201':
+          description: Redemption created (REQUESTED)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '200':
+          description: Duplicate submission — existing redemption returned (idempotency)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '400':
+          description: Validation error (missing/invalid game or idempotency key)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401':
+          description: Not authenticated
+        '404':
+          description: Reward or funding game not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: |
+            Conflict — insufficient points, reward unavailable (inactive/out of
+            stock/expired), player not in game, or concurrency conflict
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /redemptions:
+    get:
+      operationId: getPlayerRedemptions
+      summary: List the current player's redemption history
+      description: Returns all redemptions owned by the JWT `sub`, newest first, with status and timestamps.
+      tags: [Redemptions]
+      responses:
+        '200':
+          description: Player's redemption history
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+  /redemptions/all:
+    get:
+      operationId: getAllRedemptions
+      summary: List all redemptions (manager)
+      tags: [Redemptions]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by status
+          schema:
+            type: string
+            enum: [REQUESTED, APPROVED, REJECTED, DELIVERED, CANCELLED]
+      responses:
+        '200':
+          description: Redemption list for processing
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+  /redemptions/{redemptionId}:
+    get:
+      operationId: getRedemption
+      summary: Get a redemption with its full transition history (audit, RWD-006)
+      description: Owners may view their own redemption; managers may view any.
+      tags: [Redemptions]
+      parameters:
+        - name: redemptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Redemption detail with transitions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionDetailResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — not owner and not manager
+        '404':
+          description: Redemption not found
+  /redemptions/{redemptionId}/approve:
+    post:
+      operationId: approveRedemption
+      summary: Approve a requested redemption (manager)
+      tags: [Redemptions]
+      parameters:
+        - name: redemptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Redemption approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Redemption not found
+        '409':
+          description: Invalid transition — not in REQUESTED state
+  /redemptions/{redemptionId}/reject:
+    post:
+      operationId: rejectRedemption
+      summary: Reject a requested redemption (manager)
+      description: Refunds the full point amount to the funding game balance (ADJUSTMENT ledger entry) and releases the stock unit.
+      tags: [Redemptions]
+      parameters:
+        - name: redemptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Redemption rejected and points refunded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Redemption not found
+        '409':
+          description: Invalid transition — not in REQUESTED state
+  /redemptions/{redemptionId}/deliver:
+    post:
+      operationId: deliverRedemption
+      summary: Mark an approved redemption as delivered (manager)
+      description: Confirms the prize was fulfilled outside the system. Point deduction becomes final.
+      tags: [Redemptions]
+      parameters:
+        - name: redemptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Redemption delivered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — requires ADMIN or REWARD_MANAGER role
+        '404':
+          description: Redemption not found
+        '409':
+          description: Invalid transition — not in APPROVED state
+  /redemptions/{redemptionId}/cancel:
+    post:
+      operationId: cancelRedemption
+      summary: Cancel a pending redemption (owning player)
+      description: |
+        Allowed while REQUESTED or APPROVED. Refunds the full point amount to the
+        funding game balance and releases the stock unit. Terminal states are immutable.
+      tags: [Redemptions]
+      parameters:
+        - name: redemptionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Redemption cancelled and points refunded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RedemptionResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — not the owning player
+        '404':
+          description: Redemption not found
+        '409':
+          description: Invalid transition — already delivered, rejected, or cancelled
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by OroIdentityServer
+  schemas:
+    CreateRewardRequest:
+      type: object
+      required: [name, description, pointsRequired, stock]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 100 }
+        description: { type: string, minLength: 3, maxLength: 500 }
+        pointsRequired: { type: integer, minimum: 1 }
+        stock: { type: integer, minimum: 0 }
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional; must be in the future
+    UpdateRewardRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 3, maxLength: 100 }
+        description: { type: string, minLength: 3, maxLength: 500 }
+        pointsRequired: { type: integer, minimum: 1 }
+        stock: { type: integer, minimum: 0 }
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+    RedeemRewardRequest:
+      type: object
+      required: [gameId]
+      properties:
+        gameId:
+          type: string
+          format: uuid
+          description: Game whose player balance funds the redemption
+        idempotencyKey:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional client-generated key; duplicate submissions return the original redemption
+    RewardResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        pointsRequired: { type: integer }
+        stock: { type: integer }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+        available:
+          type: boolean
+          description: active && stock > 0 && not expired (server time)
+        createdAt: { type: string, format: date-time }
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    RewardCatalogResponse:
+      type: object
+      properties:
+        rewards:
+          type: array
+          items: { $ref: '#/components/schemas/RewardResponse' }
+        availablePoints:
+          type: integer
+          nullable: true
+          description: Requesting player's balance in the funding game (present only when gameId was provided)
+        gameId:
+          type: string
+          format: uuid
+          nullable: true
+    RedemptionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        rewardId: { type: string, format: uuid }
+        rewardName: { type: string }
+        gameId: { type: string, format: uuid }
+        points: { type: integer }
+        status:
+          type: string
+          enum: [REQUESTED, APPROVED, REJECTED, DELIVERED, CANCELLED]
+        requestedAt: { type: string, format: date-time }
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+    RedemptionDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/RedemptionResponse'
+        - type: object
+          properties:
+            transitions:
+              type: array
+              items:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [REQUESTED, APPROVED, REJECTED, DELIVERED, CANCELLED]
+                  actorId: { type: string, format: uuid }
+                  at: { type: string, format: date-time }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: object
+          additionalProperties: { type: string }
