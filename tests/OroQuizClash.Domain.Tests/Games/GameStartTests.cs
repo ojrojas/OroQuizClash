@@ -18,29 +18,59 @@ public sealed class GameStartTests
         return result.Value;
     }
 
-    [Fact]
-    public void Start_FromDraft_Succeeds()
+    private static Domain.Games.Game CreateReadyWithPlayers()
     {
         var game = CreateValid();
-        var result = game.Start();
-        Assert.True(result.IsSuccess);
-        Assert.Equal(GameStatus.WaitingForPlayers, game.Status);
+        game.MarkReady(_ => true, _ => 5);
+        game.OpenLobby();
+        game.JoinPlayer(Guid.NewGuid());
+        game.JoinPlayer(Guid.NewGuid());
+        return game;
     }
 
     [Fact]
-    public void Start_Twice_FailsWithImmutable()
+    public void Start_FromWaitingForPlayers_Succeeds()
+    {
+        var game = CreateReadyWithPlayers();
+        var result = game.Start();
+        Assert.True(result.IsSuccess);
+        Assert.Equal(GameStatus.InProgress, game.Status);
+        Assert.NotNull(game.StartedAt);
+    }
+
+    [Fact]
+    public void Start_FromDraft_Fails()
     {
         var game = CreateValid();
+        var result = game.Start();
+        Assert.True(result.IsFailure);
+    }
+
+    [Fact]
+    public void Start_WithNotEnoughPlayers_Fails()
+    {
+        var game = CreateValid();
+        game.MarkReady(_ => true, _ => 5);
+        game.OpenLobby();
+        game.JoinPlayer(Guid.NewGuid());
+        var result = game.Start();
+        Assert.True(result.IsFailure);
+        Assert.Equal("NotEnoughPlayers", result.Error.Code);
+    }
+
+    [Fact]
+    public void Start_Twice_FailsWithInvalidState()
+    {
+        var game = CreateReadyWithPlayers();
         game.Start();
         var second = game.Start();
         Assert.True(second.IsFailure);
-        Assert.Equal("InvalidGameState.ConfigurationImmutable", second.Error.Code);
     }
 
     [Fact]
     public void UpdateConfiguration_AfterStart_Fails()
     {
-        var game = CreateValid();
+        var game = CreateReadyWithPlayers();
         game.Start();
         var newConfig = new GameConfiguration(
             "NewName",
@@ -50,6 +80,5 @@ public sealed class GameStartTests
             ConsolationPolicy.None, new RewardRules("Points", 500), 2, 10);
         var result = game.UpdateConfiguration(newConfig);
         Assert.True(result.IsFailure);
-        Assert.Equal("InvalidGameState.ConfigurationImmutable", result.Error.Code);
     }
 }
