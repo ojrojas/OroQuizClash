@@ -19,9 +19,11 @@ public sealed record WithdrawPlayerCommand(Guid GameId, Guid PlayerId) : IComman
 public sealed record WithdrawPlayerResponse(
     Guid GameId,
     Guid PlayerId,
+    string ParticipationStatus,
     int PointsDeducted,
     int FinalScore,
-    string WithdrawalPolicy);
+    string WithdrawalPolicy,
+    DateTimeOffset? WithdrawnAt);
 
 public sealed class WithdrawPlayerValidator : IValidator<WithdrawPlayerCommand>
 {
@@ -51,12 +53,15 @@ public sealed class WithdrawPlayerHandler(
         await unitOfWork.SaveChangesAsync(ct);
 
         var score = game.GetPlayerScore(command.PlayerId);
+        var player = game.Players.First(p => p.UserId == command.PlayerId);
         return Result.Success(new WithdrawPlayerResponse(
             command.GameId,
             command.PlayerId,
+            player.ParticipationStatus.Name,
             -result.Value.Points,
             score.CurrentPoints,
-            game.Configuration.WithdrawalPolicy.Name));
+            game.Configuration.WithdrawalPolicy.Name,
+            player.ExitedAt));
     }
 }
 

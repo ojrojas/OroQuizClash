@@ -125,6 +125,6 @@ public sealed class ScoringWithdrawalTests
 
         var p = game.Players.Single(x => x.UserId == player);
         Assert.True(p.IsWithdrawn);
-        Assert.NotNull(p.WithdrawnAt);
+        Assert.NotNull(p.ExitedAt);
     }
 }

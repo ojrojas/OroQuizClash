@@ -40,4 +40,6 @@ public static class GameErrors
     public static Error AdjustmentReasonRequired => Error.Validation("AdjustmentReasonRequired", "Adjustment reason must be 3-500 characters.");
     public static Error PlayerAlreadyWithdrawn => Error.Conflict("PlayerAlreadyWithdrawn", "Player has already withdrawn from this game.");
     public static Error InvalidAdjustmentAmount => Error.Validation("InvalidAdjustmentAmount", "Adjustment amount must not be zero.");
+    public static Error PlayerAlreadyEliminated => Error.Conflict("PlayerAlreadyEliminated", "Player has been eliminated and cannot withdraw.");
+    public static Error ParticipationAlreadyFinished => Error.Conflict("ParticipationAlreadyFinished", "Player participation has already finished.");
 }

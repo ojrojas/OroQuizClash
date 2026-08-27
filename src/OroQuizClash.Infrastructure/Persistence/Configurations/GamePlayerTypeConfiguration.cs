@@ -16,8 +16,13 @@ public sealed class GamePlayerTypeConfiguration : IEntityTypeConfiguration<GameP
         builder.Property(p => p.UserId).IsRequired();
         builder.Property(p => p.JoinedAt).IsRequired();
         builder.Property(p => p.DisplayName).HasMaxLength(100);
-        builder.Property(p => p.IsWithdrawn).IsRequired();
-        builder.Property(p => p.WithdrawnAt);
+        builder.Property(p => p.ParticipationStatus)
+            .HasConversion(s => s.Id, id => Domain.Games.Enumerations.PlayerParticipationStatus.FromId(id))
+            .HasColumnName("ParticipationStatus")
+            .IsRequired();
+        builder.Property(p => p.ExitedAt);
+        builder.Ignore(p => p.IsWithdrawn);
+        builder.Ignore(p => p.IsActive);
 
         builder.OwnsOne(p => p.Score, sb =>
         {

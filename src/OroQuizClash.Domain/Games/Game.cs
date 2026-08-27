@@ -208,7 +208,7 @@ public sealed class Game : AggregateRoot<GameId>
         Status = GameStatus.RoundInProgress;
 
         var potential = ComputeRoundPoints(difficulty);
-        foreach (var p in _players.Where(p => !p.IsWithdrawn))
+        foreach (var p in _players.Where(p => p.IsActive))
             p.UpdateScore(p.Score.ResetRound().SetPotential(potential));
 
         RaiseDomainEvent(new RoundStartedDomainEvent(Id.Value, roundId.Value, roundNumber, questionId));
@@ -247,7 +247,7 @@ public sealed class Game : AggregateRoot<GameId>
         Status = GameStatus.RoundCompleted;
 
         // SPEC-007 US3: Secure points + bonuses for active players
-        foreach (var player in _players.Where(p => !p.IsWithdrawn))
+        foreach (var player in _players.Where(p => p.IsActive))
         {
             SecurePoints(player.UserId);
 
@@ -277,7 +277,7 @@ public sealed class Game : AggregateRoot<GameId>
 
         // SPEC-007 US6+US9: Game bonus + consolation for eligible players
         var completedRounds = _rounds.Count(r => r.Status == GameStatus.RoundCompleted);
-        var activePlayers = _players.Where(p => !p.IsWithdrawn).ToList();
+        var activePlayers = _players.Where(p => p.IsActive).ToList();
         var maxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
 
         var consolationEligible = activePlayers
@@ -292,6 +292,11 @@ public sealed class Game : AggregateRoot<GameId>
             if (Configuration.ConsolationPolicy == ConsolationPolicy.FixedPoints && consolationEligible.Contains(player.Id))
                 AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.Consolation, null, null, null, roundScoped: false);
         }
+
+        // SPEC-008 US3: Winner determination — all active players with max final score (ties all win)
+        var finalMaxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
+        foreach (var player in activePlayers.Where(p => p.Score.CurrentPoints == finalMaxScore))
+            player.MarkWinner();
 
         Status = GameStatus.Finished;
         FinishedAt = DateTimeOffset.UtcNow;
@@ -466,7 +471,7 @@ public sealed class Game : AggregateRoot<GameId>
         if (player is null)
             return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
 
-        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        var withdrawnRule = new PlayerNotWithdrawnRule(!player.IsActive);
         if (withdrawnRule.IsBroken())
             return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
 
@@ -487,7 +492,7 @@ public sealed class Game : AggregateRoot<GameId>
         if (player is null)
             return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
 
-        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        var withdrawnRule = new PlayerNotWithdrawnRule(!player.IsActive);
         if (withdrawnRule.IsBroken())
             return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
 
@@ -501,7 +506,7 @@ public sealed class Game : AggregateRoot<GameId>
         if (player is null)
             return Result.Failure(GameErrors.PlayerNotInGame);
 
-        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        var withdrawnRule = new PlayerNotWithdrawnRule(!player.IsActive);
         if (withdrawnRule.IsBroken())
             return Result.Failure(GameErrors.PlayerAlreadyWithdrawn);
 
@@ -535,27 +540,68 @@ public sealed class Game : AggregateRoot<GameId>
 
     public Result<PointTransaction> WithdrawPlayer(Guid playerId)
     {
+        // Step 1: ValidateGameState — no withdrawal from terminal games
         if (Status.IsTerminal)
             return Result.Failure<PointTransaction>(GameErrors.InvalidGameStateDetail($"Cannot withdraw from terminal game in {Status.Name}"));
 
+        // Step 2: ValidatePlayer
         var player = _players.FirstOrDefault(p => p.UserId == playerId);
         if (player is null)
             return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
 
+        // Step 3: No double withdrawal
         if (player.IsWithdrawn)
             return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
 
+        // Step 4: No withdrawal after elimination
+        var eliminatedRule = new PlayerAlreadyEliminatedRule(player.ParticipationStatus);
+        if (eliminatedRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyEliminated);
+
+        // Step 5: Participation must still be active
+        var participationRule = new ParticipationAlreadyFinishedRule(player.ParticipationStatus);
+        if (participationRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.ParticipationAlreadyFinished);
+
+        // CalculateSecuredPoints — apply withdrawal policy
         var strategy = WithdrawalPolicyStrategyFactory.Resolve(Configuration.WithdrawalPolicy);
         var deduction = strategy.CalculateDeduction(player.Score);
 
         if (deduction > 0)
             player.UpdateScore(player.Score.Deduct(deduction));
 
+        // PlayerWithdrawn + FinishPlayerParticipation
         player.MarkWithdrawn();
 
         var transaction = CreateTransaction(player, -deduction, PointTransactionType.Withdrawal, null, null, null, $"Withdrawal policy: {strategy.Name}");
         RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, playerId, -deduction, player.Score.CurrentPoints, PointTransactionType.Withdrawal.Name));
+        RaiseDomainEvent(new PlayerWithdrawnDomainEvent(Id.Value, playerId, player.Score.CurrentPoints, strategy.Name));
         return Result.Success(transaction);
+    }
+
+    public Result EliminatePlayer(Guid playerId, string reason)
+    {
+        if (Status.IsTerminal)
+            return Result.Failure(GameErrors.InvalidGameStateDetail($"Cannot eliminate from terminal game in {Status.Name}"));
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure(GameErrors.PlayerNotInGame);
+
+        if (player.IsWithdrawn)
+            return Result.Failure(GameErrors.PlayerAlreadyWithdrawn);
+
+        var eliminatedRule = new PlayerAlreadyEliminatedRule(player.ParticipationStatus);
+        if (eliminatedRule.IsBroken())
+            return Result.Failure(GameErrors.PlayerAlreadyEliminated);
+
+        var participationRule = new ParticipationAlreadyFinishedRule(player.ParticipationStatus);
+        if (participationRule.IsBroken())
+            return Result.Failure(GameErrors.ParticipationAlreadyFinished);
+
+        player.MarkEliminated();
+        RaiseDomainEvent(new PlayerEliminatedDomainEvent(Id.Value, playerId, reason));
+        return Result.Success();
     }
 
     public Result<PointTransaction> AdjustPoints(Guid playerId, int amount, string reason, Guid adminUserId)

@@ -1,5 +1,6 @@
 using BuildingBlocks.Kernel.Domain.Entities;
 
+using OroQuizClash.Domain.Games.Enumerations;
 using OroQuizClash.Domain.Games.ValueObjects;
 
 namespace OroQuizClash.Domain.Games;
@@ -11,8 +12,11 @@ public sealed class GamePlayer : Entity<GamePlayerId>
     public DateTimeOffset JoinedAt { get; private set; }
     public string? DisplayName { get; private set; }
     public PlayerScore Score { get; private set; } = PlayerScore.Zero();
-    public bool IsWithdrawn { get; private set; }
-    public DateTimeOffset? WithdrawnAt { get; private set; }
+    public PlayerParticipationStatus ParticipationStatus { get; private set; } = PlayerParticipationStatus.Active;
+    public DateTimeOffset? ExitedAt { get; private set; }
+
+    public bool IsWithdrawn => ParticipationStatus == PlayerParticipationStatus.Withdrawn;
+    public bool IsActive => ParticipationStatus == PlayerParticipationStatus.Active;
 
     private GamePlayer() { }
 
@@ -24,7 +28,7 @@ public sealed class GamePlayer : Entity<GamePlayerId>
         DisplayName = displayName;
         JoinedAt = DateTimeOffset.UtcNow;
         Score = PlayerScore.Zero();
-        IsWithdrawn = false;
+        ParticipationStatus = PlayerParticipationStatus.Active;
     }
 
     internal void UpdateScore(PlayerScore newScore)
@@ -34,7 +38,18 @@ public sealed class GamePlayer : Entity<GamePlayerId>
 
     internal void MarkWithdrawn()
     {
-        IsWithdrawn = true;
-        WithdrawnAt = DateTimeOffset.UtcNow;
+        ParticipationStatus = PlayerParticipationStatus.Withdrawn;
+        ExitedAt = DateTimeOffset.UtcNow;
+    }
+
+    internal void MarkEliminated()
+    {
+        ParticipationStatus = PlayerParticipationStatus.Eliminated;
+        ExitedAt = DateTimeOffset.UtcNow;
+    }
+
+    internal void MarkWinner()
+    {
+        ParticipationStatus = PlayerParticipationStatus.Winner;
     }
 }
