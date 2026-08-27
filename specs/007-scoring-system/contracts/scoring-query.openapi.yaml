@@ -1,0 +1,168 @@
+openapi: 3.0.3
+info:
+  title: OroQuizClash Scoring Query API
+  version: 1.0.0
+  description: Query endpoints for player scoring and ledger (SPEC-007)
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+paths:
+  /games/{gameId}/score/{playerId}:
+    get:
+      operationId: getPlayerScore
+      summary: Get player score breakdown
+      description: Returns the full scoring breakdown for a player within a game.
+      tags: [Scoring]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Score breakdown
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScoreBreakdown' }
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/score/{playerId}/ledger:
+    get:
+      operationId: getScoreLedger
+      summary: Get player point transaction ledger
+      description: Returns paginated point transactions for a player, ordered by most recent first.
+      tags: [Scoring]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
+        - name: type
+          in: query
+          description: Filter by transaction type
+          schema:
+            type: string
+            enum: [ANSWER_CORRECT, ANSWER_INCORRECT, ROUND_BONUS, LEVEL_BONUS, GAME_BONUS, PENALTY, WITHDRAWAL, REWARD_REDEMPTION, CONSOLATION, ADJUSTMENT]
+      responses:
+        '200':
+          description: Paginated ledger
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LedgerPage' }
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/leaderboard:
+    get:
+      operationId: getLeaderboard
+      summary: Get game leaderboard
+      description: Returns all players ranked by CurrentPoints descending.
+      tags: [Scoring]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Leaderboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Leaderboard' }
+        '404':
+          description: Game not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ScoreBreakdown:
+      type: object
+      required: [gameId, playerId, currentPoints, securedPoints, roundPoints, potentialPoints, totalPoints]
+      properties:
+        gameId: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        currentPoints: { type: integer, description: Total available points }
+        securedPoints: { type: integer, description: Points protected from loss }
+        roundPoints: { type: integer, description: Points in current round (unsecured) }
+        potentialPoints: { type: integer, description: Max achievable in current round }
+        totalPoints: { type: integer, description: Lifetime cumulative }
+        correctAnswers: { type: integer }
+        incorrectAnswers: { type: integer }
+        isWithdrawn: { type: boolean }
+    LedgerPage:
+      type: object
+      required: [items, totalCount, page, pageSize]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/PointTransactionDto' }
+        totalCount: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+        hasMore: { type: boolean }
+    PointTransactionDto:
+      type: object
+      required: [id, type, points, resultingBalance, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type:
+          type: string
+          enum: [ANSWER_CORRECT, ANSWER_INCORRECT, ROUND_BONUS, LEVEL_BONUS, GAME_BONUS, PENALTY, WITHDRAWAL, REWARD_REDEMPTION, CONSOLATION, ADJUSTMENT]
+        points: { type: integer, description: Positive=award, negative=deduction }
+        resultingBalance: { type: integer }
+        roundId: { type: string, format: uuid, nullable: true }
+        questionId: { type: string, format: uuid, nullable: true }
+        reason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    Leaderboard:
+      type: object
+      required: [gameId, players]
+      properties:
+        gameId: { type: string, format: uuid }
+        players:
+          type: array
+          items: { $ref: '#/components/schemas/LeaderboardEntry' }
+    LeaderboardEntry:
+      type: object
+      required: [playerId, rank, currentPoints]
+      properties:
+        playerId: { type: string, format: uuid }
+        displayName: { type: string, nullable: true }
+        rank: { type: integer }
+        currentPoints: { type: integer }
+        securedPoints: { type: integer }
+        isWithdrawn: { type: boolean }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

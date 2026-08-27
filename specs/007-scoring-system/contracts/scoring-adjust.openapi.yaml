@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: OroQuizClash Scoring Adjustment API
+  version: 1.0.0
+  description: Administrative point adjustment endpoint (SPEC-007). Requires AdminOrGameManager policy.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+paths:
+  /games/{gameId}/score/{playerId}/adjust:
+    post:
+      operationId: adjustScore
+      summary: Administratively adjust a player's points
+      description: |
+        Applies a manual point adjustment (positive or negative) to a player's score.
+        Requires AdminOrGameManager authorization. A reason is mandatory (3-500 chars).
+        Creates an ADJUSTMENT ledger transaction for full auditability.
+      tags: [Scoring]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustScoreRequest' }
+      responses:
+        '200':
+          description: Adjustment applied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdjustScoreResponse' }
+        '400':
+          description: Validation error (missing/invalid reason, zero amount)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Insufficient permissions (requires AdminOrGameManager)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: Concurrency conflict (retry)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AdjustScoreRequest:
+      type: object
+      required: [points, reason]
+      properties:
+        points:
+          type: integer
+          description: Positive to award, negative to deduct. Must not be zero.
+          example: 100
+        reason:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Mandatory justification for the adjustment.
+          example: "System error correction - round 3 points not applied"
+    AdjustScoreResponse:
+      type: object
+      required: [gameId, playerId, transactionId, points, resultingBalance]
+      properties:
+        gameId: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        transactionId: { type: string, format: uuid }
+        points: { type: integer }
+        resultingBalance: { type: integer }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

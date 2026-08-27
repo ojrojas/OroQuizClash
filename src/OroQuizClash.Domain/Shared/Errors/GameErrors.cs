@@ -34,4 +34,10 @@ public static class GameErrors
     public static Error InvalidAnswer => Error.Validation("InvalidAnswer", "Answer option does not belong to the active question.");
     public static Error AnswerTimeout => Error.Validation("AnswerTimeout", "Answer submitted after time limit.");
     public static Error AnswerImmutable => Error.Validation("AnswerImmutable", "Answer cannot be modified after evaluation.");
+
+    public static Error InsufficientPoints => Error.Validation("InsufficientPoints", "Player does not have enough points for this operation.");
+    public static Error InvalidScoringState => Error.Validation("InvalidScoringState", "Game is not in a valid state for scoring operations.");
+    public static Error AdjustmentReasonRequired => Error.Validation("AdjustmentReasonRequired", "Adjustment reason must be 3-500 characters.");
+    public static Error PlayerAlreadyWithdrawn => Error.Conflict("PlayerAlreadyWithdrawn", "Player has already withdrawn from this game.");
+    public static Error InvalidAdjustmentAmount => Error.Validation("InvalidAdjustmentAmount", "Adjustment amount must not be zero.");
 }

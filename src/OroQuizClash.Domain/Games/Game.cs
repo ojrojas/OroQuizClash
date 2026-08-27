@@ -4,6 +4,7 @@ using BuildingBlocks.Kernel.Domain.Results;
 using OroQuizClash.Domain.Games.Enumerations;
 using OroQuizClash.Domain.Games.Events;
 using OroQuizClash.Domain.Games.Rules;
+using OroQuizClash.Domain.Games.Strategies;
 using OroQuizClash.Domain.Games.ValueObjects;
 using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Shared.Errors;
@@ -205,6 +206,11 @@ public sealed class Game : AggregateRoot<GameId>
         var round = new GameRound(roundId, Id, roundNumber, difficulty, qId, timeLimit);
         _rounds.Add(round);
         Status = GameStatus.RoundInProgress;
+
+        var potential = ComputeRoundPoints(difficulty);
+        foreach (var p in _players.Where(p => !p.IsWithdrawn))
+            p.UpdateScore(p.Score.ResetRound().SetPotential(potential));
+
         RaiseDomainEvent(new RoundStartedDomainEvent(Id.Value, roundId.Value, roundNumber, questionId));
         return Result.Success(round);
     }
@@ -231,8 +237,27 @@ public sealed class Game : AggregateRoot<GameId>
         if (round.Status != GameStatus.RoundInProgress)
             return Result.Failure(GameErrors.InvalidGameStateDetail("Round not in progress."));
 
+        var previousMaxDifficulty = _rounds
+            .Where(r => r.Id.Value != roundId && r.Status == GameStatus.RoundCompleted)
+            .Select(r => r.Difficulty)
+            .DefaultIfEmpty(0)
+            .Max();
+
         round.Complete();
         Status = GameStatus.RoundCompleted;
+
+        // SPEC-007 US3: Secure points + bonuses for active players
+        foreach (var player in _players.Where(p => !p.IsWithdrawn))
+        {
+            SecurePoints(player.UserId);
+
+            if (Configuration.ScoringSystem == ScoringSystem.ProgressiveBonus)
+                AwardPointsInternal(player, round.RoundNumber, PointTransactionType.RoundBonus, round.Id, null, null, roundScoped: false);
+
+            if (round.Difficulty > previousMaxDifficulty && previousMaxDifficulty > 0)
+                AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.LevelBonus, round.Id, null, null, roundScoped: false);
+        }
+
         RaiseDomainEvent(new RoundCompletedDomainEvent(Id.Value, roundId));
         return Result.Success();
     }
@@ -249,6 +274,24 @@ public sealed class Game : AggregateRoot<GameId>
 
         if (!GameStatus.IsValidTransition(Status, GameStatus.Finished))
             return Result.Failure(GameErrors.InvalidGameState);
+
+        // SPEC-007 US6+US9: Game bonus + consolation for eligible players
+        var completedRounds = _rounds.Count(r => r.Status == GameStatus.RoundCompleted);
+        var activePlayers = _players.Where(p => !p.IsWithdrawn).ToList();
+        var maxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
+
+        var consolationEligible = activePlayers
+            .Where(p => p.Score.CurrentPoints < maxScore && completedRounds >= Configuration.MinRounds)
+            .Select(p => p.Id)
+            .ToHashSet();
+
+        foreach (var player in activePlayers)
+        {
+            AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.GameBonus, null, null, null, roundScoped: false);
+
+            if (Configuration.ConsolationPolicy == ConsolationPolicy.FixedPoints && consolationEligible.Contains(player.Id))
+                AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.Consolation, null, null, null, roundScoped: false);
+        }
 
         Status = GameStatus.Finished;
         FinishedAt = DateTimeOffset.UtcNow;
@@ -307,7 +350,7 @@ public sealed class Game : AggregateRoot<GameId>
         var player = _players.FirstOrDefault(p => p.UserId == playerId);
         var isPlayerInProgress = player != null;
         var playerRule = new ValidatePlayerRule(isPlayerInProgress);
-        if (playerRule.IsBroken())
+        if (playerRule.IsBroken() || player is null)
             return Result.Failure<Answer>(GameErrors.PlayerNotInGame);
 
         // Step 2: ValidateGame
@@ -355,8 +398,7 @@ public sealed class Game : AggregateRoot<GameId>
         var elapsedTime = (int)elapsed.TotalSeconds;
 
         // CalculateResult — PointsPerRound × DifficultyMultiplier
-        var difficultyMultiplier = 1.0 + (currentRound.Difficulty - 1) * 0.25;
-        var points = isCorrect ? (int)(Configuration.PointsPerRound * difficultyMultiplier) : 0;
+        var points = isCorrect ? ComputeRoundPoints(currentRound.Difficulty) : 0;
 
         // Create Answer
         var answer = new Answer(
@@ -371,17 +413,17 @@ public sealed class Game : AggregateRoot<GameId>
         answer.Evaluate(isCorrect, points, elapsedTime);
         _answers.Add(answer);
 
-        // Create PointTransaction (ledger)
-        var pointTransaction = new PointTransaction(
-            PointTransactionId.New(),
-            Id,
-            playerId,
-            currentRound.Id,
-            currentRound.QuestionId,
-            answer.Id,
-            isCorrect ? PointTransactionType.AnswerCorrect : PointTransactionType.AnswerIncorrect,
-            points);
-        _pointTransactions.Add(pointTransaction);
+        // Scoring via ledger operations (SPEC-007)
+        if (isCorrect)
+        {
+            AwardPointsInternal(player, points, PointTransactionType.AnswerCorrect,
+                currentRound.Id, currentRound.QuestionId, answer.Id, roundScoped: true);
+        }
+        else
+        {
+            RemovePointsInternal(player, PointTransactionType.AnswerIncorrect,
+                currentRound.Id, currentRound.QuestionId, answer.Id);
+        }
 
         RaiseDomainEvent(new AnswerSubmittedDomainEvent(
             Id.Value, answer.Id.Value, playerId,
@@ -398,6 +440,206 @@ public sealed class Game : AggregateRoot<GameId>
         return _pointTransactions
             .Where(pt => pt.PlayerId == playerId)
             .Sum(pt => pt.Points);
+    }
+
+    public PlayerScore GetPlayerScore(Guid playerId)
+    {
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        return player?.Score ?? PlayerScore.Zero();
+    }
+
+    // ─── SPEC-007: Scoring Domain Operations ───────────────────────────────────────
+
+    public Result<PointTransaction> AwardPoints(
+        Guid playerId, int amount, PointTransactionType type,
+        GameRoundId? roundId = null, QuestionId? questionId = null,
+        AnswerId? answerId = null, string? reason = null, bool roundScoped = false)
+    {
+        if (amount <= 0)
+            return Result.Failure<PointTransaction>(GameErrors.InvalidAdjustmentAmount);
+
+        var stateRule = new ScoringStateValidRule(Status);
+        if (stateRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.InvalidScoringState);
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        if (withdrawnRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
+
+        var transaction = AwardPointsInternal(player, amount, type, roundId, questionId, answerId, roundScoped, reason);
+        return Result.Success(transaction);
+    }
+
+    public Result<PointTransaction> RemovePoints(
+        Guid playerId, PointTransactionType type,
+        GameRoundId? roundId = null, QuestionId? questionId = null,
+        AnswerId? answerId = null, string? reason = null)
+    {
+        var stateRule = new ScoringStateValidRule(Status);
+        if (stateRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.InvalidScoringState);
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        if (withdrawnRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
+
+        var transaction = RemovePointsInternal(player, type, roundId, questionId, answerId, reason);
+        return Result.Success(transaction);
+    }
+
+    public Result SecurePoints(Guid playerId)
+    {
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure(GameErrors.PlayerNotInGame);
+
+        var withdrawnRule = new PlayerNotWithdrawnRule(player.IsWithdrawn);
+        if (withdrawnRule.IsBroken())
+            return Result.Failure(GameErrors.PlayerAlreadyWithdrawn);
+
+        if (player.Score.RoundPoints == 0)
+            return Result.Success();
+
+        var securedAmount = player.Score.RoundPoints;
+        player.UpdateScore(player.Score.Secure());
+        RaiseDomainEvent(new PointsSecuredDomainEvent(Id.Value, playerId, securedAmount, player.Score.SecuredPoints));
+        return Result.Success();
+    }
+
+    public Result<PointTransaction> ConsumePoints(Guid playerId, int amount, string reason)
+    {
+        if (amount <= 0)
+            return Result.Failure<PointTransaction>(GameErrors.InvalidAdjustmentAmount);
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        var balanceRule = new SufficientBalanceRule(player.Score.CurrentPoints, amount);
+        if (balanceRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.InsufficientPoints);
+
+        player.UpdateScore(player.Score.Consume(amount));
+        var transaction = CreateTransaction(player, -amount, PointTransactionType.RewardRedemption, null, null, null, reason);
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, playerId, -amount, player.Score.CurrentPoints, PointTransactionType.RewardRedemption.Name));
+        return Result.Success(transaction);
+    }
+
+    public Result<PointTransaction> WithdrawPlayer(Guid playerId)
+    {
+        if (Status.IsTerminal)
+            return Result.Failure<PointTransaction>(GameErrors.InvalidGameStateDetail($"Cannot withdraw from terminal game in {Status.Name}"));
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        if (player.IsWithdrawn)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerAlreadyWithdrawn);
+
+        var strategy = WithdrawalPolicyStrategyFactory.Resolve(Configuration.WithdrawalPolicy);
+        var deduction = strategy.CalculateDeduction(player.Score);
+
+        if (deduction > 0)
+            player.UpdateScore(player.Score.Deduct(deduction));
+
+        player.MarkWithdrawn();
+
+        var transaction = CreateTransaction(player, -deduction, PointTransactionType.Withdrawal, null, null, null, $"Withdrawal policy: {strategy.Name}");
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, playerId, -deduction, player.Score.CurrentPoints, PointTransactionType.Withdrawal.Name));
+        return Result.Success(transaction);
+    }
+
+    public Result<PointTransaction> AdjustPoints(Guid playerId, int amount, string reason, Guid adminUserId)
+    {
+        if (amount == 0)
+            return Result.Failure<PointTransaction>(GameErrors.InvalidAdjustmentAmount);
+
+        var reasonRule = new AdjustmentReasonRequiredRule(reason);
+        if (reasonRule.IsBroken())
+            return Result.Failure<PointTransaction>(GameErrors.AdjustmentReasonRequired);
+
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
+            return Result.Failure<PointTransaction>(GameErrors.PlayerNotInGame);
+
+        if (amount < 0)
+        {
+            var balanceRule = new BalanceCannotGoNegativeRule(player.Score.CurrentPoints, -amount);
+            if (balanceRule.IsBroken())
+                return Result.Failure<PointTransaction>(GameErrors.InsufficientPoints);
+        }
+
+        if (amount > 0)
+            player.UpdateScore(player.Score.Award(amount, roundScoped: false));
+        else
+            player.UpdateScore(player.Score.Deduct(-amount));
+
+        var transaction = CreateTransaction(player, amount, PointTransactionType.Adjustment, null, null, null, reason.Trim());
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, playerId, amount, player.Score.CurrentPoints, PointTransactionType.Adjustment.Name));
+        return Result.Success(transaction);
+    }
+
+    // ─── Internal scoring helpers ──────────────────────────────────────────────────
+
+    private PointTransaction AwardPointsInternal(
+        GamePlayer player, int amount, PointTransactionType type,
+        GameRoundId? roundId, QuestionId? questionId, AnswerId? answerId,
+        bool roundScoped, string? reason = null)
+    {
+        player.UpdateScore(player.Score.Award(amount, roundScoped));
+        var transaction = CreateTransaction(player, amount, type, roundId, questionId, answerId, reason);
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, player.UserId, amount, player.Score.CurrentPoints, type.Name));
+        return transaction;
+    }
+
+    private PointTransaction RemovePointsInternal(
+        GamePlayer player, PointTransactionType type,
+        GameRoundId? roundId, QuestionId? questionId, AnswerId? answerId,
+        string? reason = null)
+    {
+        var strategy = LossPolicyStrategyFactory.Resolve(Configuration.LossPolicy);
+        var deduction = strategy.CalculateDeduction(player.Score);
+
+        if (deduction > 0)
+            player.UpdateScore(player.Score.Deduct(deduction));
+
+        var transaction = CreateTransaction(player, -deduction, type, roundId, questionId, answerId, reason ?? $"Loss policy: {strategy.Name}");
+        RaiseDomainEvent(new ScoreUpdatedDomainEvent(Id.Value, player.UserId, -deduction, player.Score.CurrentPoints, type.Name));
+        return transaction;
+    }
+
+    private PointTransaction CreateTransaction(
+        GamePlayer player, int points, PointTransactionType type,
+        GameRoundId? roundId, QuestionId? questionId, AnswerId? answerId, string? reason)
+    {
+        var transaction = new PointTransaction(
+            PointTransactionId.New(),
+            Id,
+            player.UserId,
+            roundId,
+            questionId,
+            answerId,
+            type,
+            points,
+            player.Score.CurrentPoints,
+            reason);
+        _pointTransactions.Add(transaction);
+        return transaction;
+    }
+
+    private int ComputeRoundPoints(int difficulty)
+    {
+        var difficultyMultiplier = 1.0 + (difficulty - 1) * 0.25;
+        return (int)(Configuration.PointsPerRound * difficultyMultiplier);
     }
 
     public Answer? GetAnswer(Guid playerId, GameRoundId roundId)

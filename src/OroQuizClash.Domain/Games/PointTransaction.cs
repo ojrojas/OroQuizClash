@@ -9,11 +9,13 @@ public sealed class PointTransaction : Entity<PointTransactionId>
 {
     public GameId GameId { get; private set; } = null!;
     public Guid PlayerId { get; private set; }
-    public GameRoundId RoundId { get; private set; } = null!;
-    public QuestionId QuestionId { get; private set; } = null!;
-    public AnswerId AnswerId { get; private set; } = null!;
+    public GameRoundId? RoundId { get; private set; }
+    public QuestionId? QuestionId { get; private set; }
+    public AnswerId? AnswerId { get; private set; }
     public PointTransactionType Type { get; private set; } = null!;
     public int Points { get; private set; }
+    public int ResultingBalance { get; private set; }
+    public string? Reason { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
 
     private PointTransaction() { }
@@ -22,11 +24,13 @@ public sealed class PointTransaction : Entity<PointTransactionId>
         PointTransactionId id,
         GameId gameId,
         Guid playerId,
-        GameRoundId roundId,
-        QuestionId questionId,
-        AnswerId answerId,
+        GameRoundId? roundId,
+        QuestionId? questionId,
+        AnswerId? answerId,
         PointTransactionType type,
-        int points)
+        int points,
+        int resultingBalance,
+        string? reason = null)
         : base(id)
     {
         GameId = gameId;
@@ -36,6 +40,8 @@ public sealed class PointTransaction : Entity<PointTransactionId>
         AnswerId = answerId;
         Type = type;
         Points = points;
+        ResultingBalance = resultingBalance;
+        Reason = reason;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 }
