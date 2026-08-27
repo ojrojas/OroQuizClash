@@ -14,9 +14,13 @@ using Microsoft.IdentityModel.Tokens;
 
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
+using OroQuizClash.Domain.Questions;
+using OroQuizClash.Domain.Questions.Services;
 using OroQuizClash.Infrastructure.Categories;
 using OroQuizClash.Infrastructure.Counters;
 using OroQuizClash.Infrastructure.Persistence;
+using OroQuizClash.Infrastructure.Selection;
+using OroQuizClash.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,7 +51,11 @@ builder.Services.AddSingleton<IEventBus, NullEventBus>();
 builder.Services.AddScoped<IRepository<Game, GameId>>(sp => new EfRepository<Game, GameId>(sp.GetRequiredService<OroQuizClashDbContext>()));
 builder.Services.AddScoped<ICategoryValidator, CategoryValidatorStub>();
 builder.Services.AddScoped<IRepository<Category, CategoryId>>(sp => new EfRepository<Category, CategoryId>(sp.GetRequiredService<OroQuizClashDbContext>()));
-builder.Services.AddScoped<IQuestionCounter, InMemoryQuestionCounter>();
+builder.Services.AddScoped<IRepository<Question, QuestionId>>(sp => new EfRepository<Question, QuestionId>(sp.GetRequiredService<OroQuizClashDbContext>()));
+builder.Services.AddScoped<ICategoryExistenceChecker, CategoryExistenceChecker>();
+builder.Services.AddScoped<OroQuizClash.Domain.Categories.IQuestionCounter, EfQuestionCounter>();
+builder.Services.AddScoped<OroQuizClash.Domain.Questions.Services.IQuestionCounter>(sp => (OroQuizClash.Domain.Questions.Services.IQuestionCounter)sp.GetRequiredService<OroQuizClash.Domain.Categories.IQuestionCounter>());
+builder.Services.AddScoped<IQuestionSelectionStrategy, RandomQuestionSelectionStrategy>();
 
 builder.Services.AddEndpoints(typeof(OroQuizClash.Application.Features.Games.CreateGameEndpoint).Assembly);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

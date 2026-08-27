@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
+using OroQuizClash.Domain.Questions;
 
 namespace OroQuizClash.Infrastructure.Persistence;
 
@@ -15,6 +16,8 @@ public sealed class OroQuizClashDbContext(DbContextOptions<OroQuizClashDbContext
     public DbSet<Game> Games => Set<Game>();
 
     public DbSet<Category> Categories => Set<Category>();
+
+    public DbSet<Question> Questions => Set<Question>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

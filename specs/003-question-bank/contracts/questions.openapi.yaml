@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Question Bank
+  version: 1.0.0
+  description: |
+    Vertical Slices `CreateQuestion/UpdateQuestion/ActivateQuestion/DeactivateQuestion/PublishQuestion/ArchiveQuestion` + `GetQuestions/GetQuestionById/SelectQuestions`.
+    Requiere JWT bearer de OroIdentityServer (ADMIN/GAME_MANAGER para escritura/publish; lectura autenticada).
+    Invariantes QST-001..006: 4 opciones, 1 correcta, Category+Difficulty requeridos, Published no puede quedar sin correcta, solo PUBLISHED seleccionable.
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/questions:
+    post:
+      operationId: createQuestion
+      summary: Crear pregunta (DRAFT) — QST-001..004 validados
+      tags: [Questions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateQuestionRequest' }
+            examples:
+              valid:
+                value:
+                  text: "¿Capital de Francia?"
+                  categoryId: "11111111-1111-1111-1111-111111111111"
+                  difficulty: 2
+                  academicLevel: "Secundaria"
+                  ageMin: 13
+                  ageMax: 17
+                  answerOptions:
+                    - { text: "Londres", isCorrect: false, displayOrder: 0 }
+                    - { text: "París", isCorrect: true, displayOrder: 1 }
+                    - { text: "Berlín", isCorrect: false, displayOrder: 2 }
+                    - { text: "Madrid", isCorrect: false, displayOrder: 3 }
+      responses:
+        '201': { description: Creada, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: CategoryNotFound, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    get:
+      operationId: getQuestions
+      summary: Listar preguntas con filtros y paginación
+      tags: [Questions]
+      parameters:
+        - { name: categoryId, in: query, schema: { type: string, format: uuid }, description: "FK lógico a Category" }
+        - { name: difficulty, in: query, schema: { type: integer, minimum: 1, maximum: 5 } }
+        - { name: academicLevel, in: query, schema: { type: string } }
+        - { name: ageMin, in: query, schema: { type: integer, minimum: 0, maximum: 120 } }
+        - { name: ageMax, in: query, schema: { type: integer, minimum: 0, maximum: 120 } }
+        - { name: status, in: query, schema: { type: string, enum: [DRAFT, ACTIVE, PUBLISHED, INACTIVE, ARCHIVED] }, description: "Solo PUBLISHED es seleccionable para juego" }
+        - { name: search, in: query, schema: { type: string }, description: "Búsqueda por texto de pregunta" }
+        - { name: page, in: query, schema: { type: integer, default: 1, minimum: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20, minimum: 1, maximum: 100 } }
+      responses:
+        '200': { description: Paginado, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedQuestions' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/questions/{id}:
+    get:
+      operationId: getQuestionById
+      summary: Detalle de pregunta con 4 opciones y correcta señalada
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: updateQuestion
+      summary: Actualizar pregunta (solo DRAFT/INACTIVE; PUBLISHED solo si mantiene 4/1 — ver QST-005)
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/UpdateQuestionRequest' } } } }
+      responses:
+        '200': { description: Actualizada, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/questions/{id}/activate:
+    post:
+      operationId: activateQuestion
+      summary: DRAFT/INACTIVE → ACTIVE (no implica PUBLISHED)
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Activada, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/questions/{id}/deactivate:
+    post:
+      operationId: deactivateQuestion
+      summary: ACTIVE/PUBLISHED → INACTIVE (deja de contar para Category gate y de ser seleccionable)
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Desactivada, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/questions/{id}/publish:
+    post:
+      operationId: publishQuestion
+      summary: Publish DRAFT/ACTIVE/INACTIVE → PUBLISHED (gate QST-001..004 validación previa, QST-006)
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Publicada (ahora seleccionable), content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400':
+          description: No publicable (3 opciones, 0/2 correctas, sin Category/Difficulty, desalineada si aplica)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+              examples:
+                notPublishable: { value: { type: "https://oroclash.dev/errors/question-not-publishable", title: "QuestionNotPublishable", status: 400, code: "QuestionNotPublishable", detail: "Requires exactly 4 options, 1 correct, Category and Difficulty" } }
+                notValidated: { value: { type: "https://oroclash.dev/errors/question-not-validated", title: "QuestionNotValidated", status: 400, code: "QuestionNotValidated", detail: "AgeRange/AcademicLevel misaligned" } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/questions/{id}/archive:
+    post:
+      operationId: archiveQuestion
+      summary: ACTIVE/PUBLISHED/INACTIVE → ARCHIVED (terminal)
+      tags: [Questions]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Archivada, content: { application/json: { schema: { $ref: '#/components/schemas/QuestionResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # Selección para motor de juego — contrato 7 parámetros (FR-013/014)
+  /api/questions/select:
+    post:
+      operationId: selectQuestions
+      summary: Seleccionar preguntas considerando Category, Difficulty, AcademicLevel, AgeRange, PreviousQuestions, Game, Round (estrategia Random/DifficultyAware/Adaptive)
+      tags: [Questions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SelectQuestionsRequest' }
+            examples:
+              byCategoryDifficulty:
+                value:
+                  categoryId: "11111111-1111-1111-1111-111111111111"
+                  difficulty: 2
+                  academicLevel: "Secundaria"
+                  ageMin: 13
+                  ageMax: 17
+                  previousQuestionIds: ["22222222-2222-2222-2222-222222222222"]
+                  gameId: "33333333-3333-3333-3333-333333333333"
+                  roundNumber: 3
+                  take: 1
+      responses:
+        '200': { description: Selección (solo PUBLISHED, excluye Previous), content: { application/json: { schema: { $ref: '#/components/schemas/SelectQuestionsResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { description: NoAvailableQuestion — no hay pregunta que cumpla criterios, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+
+components:
+  securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: "JWT OroIdentityServer OpenIddict 8, discovery http://identity:5080/.well-known/openid-configuration, roles ADMIN/GAME_MANAGER" } }
+  schemas:
+    CreateQuestionRequest:
+      type: object
+      required: [text, categoryId, difficulty, academicLevel, ageMin, ageMax, answerOptions]
+      properties:
+        text: { type: string, minLength: 3, maxLength: 500, example: "¿Capital de Francia?" }
+        categoryId: { type: string, format: uuid, description: "FK lógico a Category (debe existir, no ARCHIVED)" }
+        difficulty: { type: integer, minimum: 1, maximum: 5, example: 2, description: "QST-004 1..5" }
+        academicLevel: { type: string, minLength: 2, maxLength: 100, example: "Secundaria" }
+        ageMin: { type: integer, minimum: 0, maximum: 120, example: 13 }
+        ageMax: { type: integer, minimum: 0, maximum: 120, example: 17 }
+        answerOptions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: { $ref: '#/components/schemas/AnswerOptionRequest' }
+          description: "QST-001 exactamente 4, QST-002 exactamente 1 isCorrect==true"
+    UpdateQuestionRequest:
+      allOf: [{ $ref: '#/components/schemas/CreateQuestionRequest' }]
+      description: "Mismos campos que Create; en PUBLISHED debe mantener 4/1 (QST-005) o se rechaza"
+    AnswerOptionRequest:
+      type: object
+      required: [text, isCorrect]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 500, example: "París" }
+        isCorrect: { type: boolean, example: true }
+        displayOrder: { type: integer, minimum: 0, maximum: 3, example: 1, description: "0=A 1=B 2=C 3=D, opcional se asigna server-side" }
+    QuestionResponse:
+      type: object
+      required: [id, text, categoryId, difficulty, academicLevel, ageMin, ageMax, status, answerOptions]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string, example: "¿Capital de Francia?" }
+        categoryId: { type: string, format: uuid }
+        difficulty: { type: integer, minimum: 1, maximum: 5 }
+        academicLevel: { type: string }
+        ageMin: { type: integer }
+        ageMax: { type: integer }
+        status: { type: string, enum: [DRAFT, ACTIVE, PUBLISHED, INACTIVE, ARCHIVED], description: "Solo PUBLISHED es seleccionable (QST-006)" }
+        answerOptions:
+          type: array
+          items: { $ref: '#/components/schemas/AnswerOptionResponse' }
+        rowVersion: { type: string, description: "Base64 rowversion para concurrencia optimista (If-Match)" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        publishedAt: { type: string, format: date-time, nullable: true }
+    AnswerOptionResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        isCorrect: { type: boolean, description: "Solo 1 true por Question (QST-002, DB CHECK)" }
+        displayOrder: { type: integer, minimum: 0, maximum: 3 }
+    PaginatedQuestions:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/QuestionResponse' } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    SelectQuestionsRequest:
+      type: object
+      required: [previousQuestionIds, gameId]
+      properties:
+        categoryId: { type: string, format: uuid, nullable: true, description: "Si null, filtra solo por Difficulty/AcademicLevel/AgeRange provistos" }
+        difficulty: { type: integer, minimum: 1, maximum: 5, nullable: true }
+        academicLevel: { type: string, minLength: 2, maxLength: 100, nullable: true }
+        ageMin: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        ageMax: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        previousQuestionIds: { type: array, items: { type: string, format: uuid }, description: "Excluidas (PreviousQuestions) — evita repetición en Game" }
+        gameId: { type: string, format: uuid, description: "Contexto Game (requerido)" }
+        roundNumber: { type: integer, minimum: 1, nullable: true, description: "Contexto Round" }
+        roundId: { type: string, format: uuid, nullable: true }
+        take: { type: integer, minimum: 1, maximum: 10, default: 1, example: 1 }
+    SelectQuestionsResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/QuestionResponse' }, description: "Solo PUBLISHED, alineadas, no en previousQuestionIds, orden según estrategia (Random por defecto)" }
+        strategy: { type: string, enum: [Random, DifficultyAware, Adaptive], example: Random, description: "Estrategia usada (intercambiable sin cambiar contrato)" }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, format: uri, example: "https://oroclash.dev/errors/question-must-have-four-options" }
+        title: { type: string, example: "QuestionMustHaveFourOptions" }
+        status: { type: integer, example: 400 }
+        detail: { type: string }
+        code: { type: string, example: "QuestionMustHaveFourOptions" }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    BadRequest: { description: Validación / regla de dominio (QST-001..006), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Conflict: { description: Conflicto rowversion/estado (409), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Unauthorized: { description: No autenticado (JWT requerido), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Forbidden: { description: No autorizado (ADMIN/GAME_MANAGER), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+

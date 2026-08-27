@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Question Selection (Game Engine)
+  version: 1.0.0
+  description: |
+    Contrato alternativo para selección vía Game/Round (equivalente a POST /api/questions/select).
+    Usado por `Game.StartRound` / `IQuestionSelectionStrategy.SelectAsync(QuestionSelectionCriteria)`.
+    Estrategia por defecto `Random`; `DifficultyAware`/`Adaptive` intercambiables (ADR-008). Solo `PUBLISHED` seleccionable (QST-006).
+
+paths:
+  /api/games/{gameId}/rounds/{roundNumber}/question:
+    get:
+      operationId: getQuestionForRound
+      summary: Obtener pregunta para Game/Round (delega a IQuestionSelectionStrategy con 7 params)
+      tags: [Questions, Games]
+      parameters:
+        - { name: gameId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: roundNumber, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: categoryId, in: query, schema: { type: string, format: uuid } }
+        - { name: difficulty, in: query, schema: { type: integer, minimum: 1, maximum: 5 } }
+        - { name: academicLevel, in: query, schema: { type: string } }
+        - { name: ageMin, in: query, schema: { type: integer } }
+        - { name: ageMax, in: query, schema: { type: integer } }
+      responses:
+        '200': { description: Pregunta seleccionada (PUBLISHED, no en Previous), content: { application/json: { schema: { $ref: 'questions.openapi.yaml#/components/schemas/QuestionResponse' } } } }
+        '404': { description: NoAvailableQuestion, content: { application/problem+json: { schema: { $ref: 'questions.openapi.yaml#/components/schemas/ProblemDetails' } } } }
+
+  /api/games/{gameId}/questions/select:
+    post:
+      operationId: selectQuestionForGame
+      summary: Seleccionar pregunta para Game (batch, con PreviousQuestions)
+      tags: [Questions, Games]
+      parameters: [{ name: gameId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: 'questions.openapi.yaml#/components/schemas/SelectQuestionsRequest' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: 'questions.openapi.yaml#/components/schemas/SelectQuestionsResponse' } } } }
+        '404': { description: NoAvailableQuestion, content: { application/problem+json: { schema: { $ref: 'questions.openapi.yaml#/components/schemas/ProblemDetails' } } } }
+
