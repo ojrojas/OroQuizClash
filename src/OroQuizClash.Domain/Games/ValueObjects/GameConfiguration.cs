@@ -21,6 +21,7 @@ public sealed class GameConfiguration : ValueObject
     public RewardRules RewardRules { get; }
     public int MinPlayers { get; }
     public int MaxPlayers { get; }
+    public int PointsPerRound { get; }
 
     public GameConfiguration(
         string name,
@@ -36,7 +37,8 @@ public sealed class GameConfiguration : ValueObject
         ConsolationPolicy consolationPolicy,
         RewardRules rewardRules,
         int minPlayers,
-        int maxPlayers)
+        int maxPlayers,
+        int pointsPerRound = 10)
     {
         Name = name;
         CategoryId = categoryId;
@@ -52,6 +54,7 @@ public sealed class GameConfiguration : ValueObject
         RewardRules = rewardRules;
         MinPlayers = minPlayers;
         MaxPlayers = maxPlayers;
+        PointsPerRound = pointsPerRound;
     }
 
     private GameConfiguration()
@@ -64,6 +67,7 @@ public sealed class GameConfiguration : ValueObject
         WithdrawalPolicy = WithdrawalPolicy.LoseAll;
         ConsolationPolicy = ConsolationPolicy.None;
         RewardRules = new RewardRules("Points", 0);
+        PointsPerRound = 10;
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()
@@ -82,5 +86,6 @@ public sealed class GameConfiguration : ValueObject
         yield return RewardRules;
         yield return MinPlayers;
         yield return MaxPlayers;
+        yield return PointsPerRound;
     }
 }

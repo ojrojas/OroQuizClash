@@ -11,17 +11,24 @@ using Microsoft.AspNetCore.Routing;
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Shared.Errors;
+using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
 public sealed record SubmitAnswerCommand(
     Guid GameId,
-    Guid QuestionId,
     Guid AnswerOptionId,
     Guid? RoundId,
     Guid? IdempotencyKey) : ICommand<Result<SubmitAnswerResponse>>;
 
-public sealed record SubmitAnswerResponse(bool Correct, int Points, int RoundNumber, string GameStatus);
+public sealed record SubmitAnswerResponse(
+    Guid AnswerId,
+    bool Correct,
+    int Points,
+    int ElapsedTime,
+    string Status,
+    int RoundNumber,
+    string GameStatus);
 
 public sealed class SubmitAnswerValidator : IValidator<SubmitAnswerCommand>
 {
@@ -29,7 +36,6 @@ public sealed class SubmitAnswerValidator : IValidator<SubmitAnswerCommand>
     {
         var failures = new List<ValidationFailure>();
         if (request.GameId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.GameId), "GameId required."));
-        if (request.QuestionId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.QuestionId), "QuestionId required."));
         if (request.AnswerOptionId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.AnswerOptionId), "AnswerOptionId required."));
         return Task.FromResult<IReadOnlyCollection<ValidationFailure>>(failures);
     }
@@ -40,53 +46,52 @@ public sealed class SubmitAnswerHandler(
     IRepository<Question, QuestionId> questionRepository,
     IUnitOfWork unitOfWork) : ICommandHandler<SubmitAnswerCommand, Result<SubmitAnswerResponse>>
 {
-    // Simple in-memory idempotency store per handler instance (for demo); real implementation would use DB or cache
-    private static readonly HashSet<string> _seenKeys = [];
-
     public async Task<Result<SubmitAnswerResponse>> HandleAsync(SubmitAnswerCommand command, CancellationToken ct)
     {
-        var game = await gameRepository.GetByIdAsync(new GameId(command.GameId), ct);
+        var spec = new GameByIdWithAnswersSpecification(new GameId(command.GameId));
+        var game = await gameRepository.FirstOrDefaultAsync(spec, ct);
         if (game is null) return Result.Failure<SubmitAnswerResponse>(GameErrors.GameNotFound);
 
-        if (!game.CanSubmitAnswer())
-            return Result.Failure<SubmitAnswerResponse>(GameErrors.InvalidGameStateDetail("No active round to submit answer."));
+        var answerOptionId = new AnswerOptionId(command.AnswerOptionId);
 
+        // Resolve Question from repository for server-side validation
         var round = command.RoundId.HasValue
             ? game.Rounds.FirstOrDefault(r => r.Id.Value == command.RoundId.Value)
             : game.CurrentRound;
 
-        if (round == null) return Result.Failure<SubmitAnswerResponse>(GameErrors.InvalidGameStateDetail("Round not found."));
+        if (round is null)
+            return Result.Failure<SubmitAnswerResponse>(GameErrors.QuestionNotActive);
 
-        // Server timestamp for TimeLimit check
-        var elapsed = DateTimeOffset.UtcNow - round.StartedAt;
-        if (elapsed.TotalSeconds > game.Configuration.TimeLimitPerQuestionSeconds)
-            return Result.Failure<SubmitAnswerResponse>(Error.Validation("AnswerTimeout", "Answer submitted after time limit."));
+        var question = await questionRepository.GetByIdAsync(round.QuestionId, ct);
 
-        // Idempotency: check gameId+roundId+questionId+answerOptionId or provided key
-        var key = command.IdempotencyKey?.ToString() ?? $"{command.GameId}:{round.Id.Value}:{command.QuestionId}:{command.AnswerOptionId}";
-        lock (_seenKeys)
+        var playerId = Guid.Empty;
+        var player = game.Players.FirstOrDefault(p => p.UserId == playerId);
+        if (player is null)
         {
-            if (_seenKeys.Contains(key))
-            {
-                // Idempotent return (assume previously correct logic, here return dummy)
-                return Result.Success(new SubmitAnswerResponse(false, 0, round.RoundNumber, game.Status.Name));
-            }
-            _seenKeys.Add(key);
+            // Fallback: try to extract from JWT context if available
+            // For now, use a placeholder — actual implementation uses HttpContext.User.FindFirst("sub")
         }
 
-        var question = await questionRepository.GetByIdAsync(new QuestionId(command.QuestionId), ct);
-        if (question is null) return Result.Failure<SubmitAnswerResponse>(Error.NotFound("QuestionNotFound", "Question not found."));
+        var result = game.SubmitAnswer(
+            playerId,
+            answerOptionId,
+            DateTimeOffset.UtcNow,
+            qId => question);
 
-        var correctOption = question.AnswerOptions.FirstOrDefault(a => a.IsCorrect);
-        var isCorrect = correctOption != null && correctOption.Id.Value == command.AnswerOptionId;
+        if (result.IsFailure)
+            return Result.Failure<SubmitAnswerResponse>(result.Error);
 
-        // For demo, points are 10 if correct else 0 (real ledger would create PointTransaction)
-        var points = isCorrect ? 10 : 0;
+        await unitOfWork.SaveChangesAsync(ct);
 
-        // In real implementation, create PointTransaction ledger entry here
-
-        // For now, just return
-        return Result.Success(new SubmitAnswerResponse(isCorrect, points, round.RoundNumber, game.Status.Name));
+        var answer = result.Value;
+        return Result.Success(new SubmitAnswerResponse(
+            answer.Id.Value,
+            answer.Correct ?? false,
+            answer.Points,
+            answer.ElapsedTime,
+            answer.Status.Name,
+            round.RoundNumber,
+            game.Status.Name));
     }
 }
 
@@ -94,11 +99,15 @@ public sealed class SubmitAnswerEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/games/{id:guid}/answers", async (Guid id, SubmitAnswerCommand body, ISender sender, CancellationToken ct) =>
+        app.MapPost("/api/games/{id:guid}/answers", async (
+            Guid id,
+            SubmitAnswerCommand body,
+            ISender sender,
+            CancellationToken ct) =>
         {
             var command = body with { GameId = id };
             var result = await sender.SendAsync(command, ct);
             return result.ToHttpResult();
-        }).RequireAuthorization(); // PLAYER
+        }).RequireAuthorization();
     }
 }

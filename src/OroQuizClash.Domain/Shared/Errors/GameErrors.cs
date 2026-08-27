@@ -27,4 +27,11 @@ public static class GameErrors
     public static Error ConcurrencyConflict => Error.Conflict("ConcurrencyConflict", "Game was modified by another request. Please reload and retry.");
     public static Error NoAvailableQuestion => Error.Validation("NoAvailableQuestion", "No available question for next round.");
     public static Error InvalidReason => Error.Validation("InvalidReason", "Reason must be 3-500 characters.");
+
+    public static Error PlayerNotInGame => Error.Validation("PlayerNotInGame", "Player is not in progress in this game.");
+    public static Error GameNotActive => Error.Validation("GameNotActive", "Game is not in active state.");
+    public static Error QuestionNotActive => Error.Validation("QuestionNotActive", "Round is not in progress.");
+    public static Error InvalidAnswer => Error.Validation("InvalidAnswer", "Answer option does not belong to the active question.");
+    public static Error AnswerTimeout => Error.Validation("AnswerTimeout", "Answer submitted after time limit.");
+    public static Error AnswerImmutable => Error.Validation("AnswerImmutable", "Answer cannot be modified after evaluation.");
 }

@@ -33,6 +33,18 @@ public sealed class GameTypeConfiguration : IEntityTypeConfiguration<Game>
             .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation("Rounds").HasField("_rounds").UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.HasMany(typeof(Answer), "_answers")
+            .WithOne()
+            .HasForeignKey("GameId")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation("Answers").HasField("_answers").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(typeof(PointTransaction), "_pointTransactions")
+            .WithOne()
+            .HasForeignKey("GameId")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation("PointTransactions").HasField("_pointTransactions").UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.OwnsOne(g => g.Configuration, cb =>
         {
             cb.Property(c => c.Name).HasColumnName("Configuration_Name").HasMaxLength(100);
@@ -48,6 +60,7 @@ public sealed class GameTypeConfiguration : IEntityTypeConfiguration<Game>
             cb.Property(c => c.ConsolationPolicy).HasConversion(s => s.Id, id => Domain.Games.Enumerations.ConsolationPolicy.FromId(id)).HasColumnName("ConsolationPolicy");
             cb.Property(c => c.MinPlayers).HasColumnName("MinPlayers");
             cb.Property(c => c.MaxPlayers).HasColumnName("MaxPlayers");
+            cb.Property(c => c.PointsPerRound).HasColumnName("PointsPerRound");
             cb.OwnsOne(c => c.RewardRules, rb =>
             {
                 rb.Property(r => r.Type).HasColumnName("RewardRules_Type").HasMaxLength(50);

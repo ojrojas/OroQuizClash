@@ -5,6 +5,7 @@ using OroQuizClash.Domain.Games.Enumerations;
 using OroQuizClash.Domain.Games.Events;
 using OroQuizClash.Domain.Games.Rules;
 using OroQuizClash.Domain.Games.ValueObjects;
+using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Shared.Errors;
 
 namespace OroQuizClash.Domain.Games;
@@ -26,6 +27,12 @@ public sealed class Game : AggregateRoot<GameId>
 
     private readonly List<GameRound> _rounds = [];
     public IReadOnlyList<GameRound> Rounds => _rounds.AsReadOnly();
+
+    private readonly List<Answer> _answers = [];
+    public IReadOnlyList<Answer> Answers => _answers.AsReadOnly();
+
+    private readonly List<PointTransaction> _pointTransactions = [];
+    public IReadOnlyList<PointTransaction> PointTransactions => _pointTransactions.AsReadOnly();
 
     public GameRound? CurrentRound => _rounds.FirstOrDefault(r => r.Status == GameStatus.RoundInProgress);
 
@@ -288,6 +295,139 @@ public sealed class Game : AggregateRoot<GameId>
     public bool CanSubmitAnswer()
     {
         return Status == GameStatus.RoundInProgress && CurrentRound != null;
+    }
+
+    public Result<Answer> SubmitAnswer(
+        Guid playerId,
+        AnswerOptionId answerOptionId,
+        DateTimeOffset serverTimestamp,
+        Func<QuestionId, Question?> questionResolver)
+    {
+        // Step 1: ValidatePlayer
+        var player = _players.FirstOrDefault(p => p.UserId == playerId);
+        var isPlayerInProgress = player != null;
+        var playerRule = new ValidatePlayerRule(isPlayerInProgress);
+        if (playerRule.IsBroken())
+            return Result.Failure<Answer>(GameErrors.PlayerNotInGame);
+
+        // Step 2: ValidateGame
+        var gameRule = new ValidateGameRule(Status);
+        if (gameRule.IsBroken())
+            return Result.Failure<Answer>(GameErrors.GameNotActive);
+
+        // Step 3: ValidateRound
+        var currentRound = CurrentRound;
+        var roundRule = new ValidateRoundRule(currentRound);
+        if (roundRule.IsBroken())
+            return Result.Failure<Answer>(GameErrors.QuestionNotActive);
+
+        // Step 4: ValidateQuestion — AnswerOptionId must belong to the Question of this round
+        var question = questionResolver(currentRound!.QuestionId);
+        if (question is null)
+            return Result.Failure<Answer>(GameErrors.InvalidAnswer);
+
+        var optionBelongsToQuestion = question.AnswerOptions.Any(o => o.Id == answerOptionId);
+        if (!optionBelongsToQuestion)
+            return Result.Failure<Answer>(GameErrors.InvalidAnswer);
+
+        // Step 5: ValidateTime
+        var elapsed = serverTimestamp - currentRound.StartedAt;
+        var timeRule = new ValidateTimeRule(elapsed, currentRound.TimeLimit);
+        if (timeRule.IsBroken())
+        {
+            var expiredAnswer = CreateExpiredAnswer(playerId, currentRound, question, answerOptionId, currentRound.TimeLimit);
+            _answers.Add(expiredAnswer);
+            RaiseDomainEvent(new AnswerSubmittedDomainEvent(
+                Id.Value, expiredAnswer.Id.Value, playerId,
+                currentRound.Id.Value, currentRound.QuestionId.Value, answerOptionId.Value));
+            return Result.Failure<Answer>(GameErrors.AnswerTimeout);
+        }
+
+        // Step 6: ValidateIdempotency
+        var existingAnswer = _answers.FirstOrDefault(a =>
+            a.PlayerId == playerId && a.RoundId == currentRound.Id);
+        if (existingAnswer is not null)
+            return Result.Success(existingAnswer);
+
+        // Step 7: EvaluateAnswer
+        var correctOption = question.AnswerOptions.First(o => o.Id == answerOptionId);
+        var isCorrect = correctOption.IsCorrect;
+        var elapsedTime = (int)elapsed.TotalSeconds;
+
+        // CalculateResult — PointsPerRound × DifficultyMultiplier
+        var difficultyMultiplier = 1.0 + (currentRound.Difficulty - 1) * 0.25;
+        var points = isCorrect ? (int)(Configuration.PointsPerRound * difficultyMultiplier) : 0;
+
+        // Create Answer
+        var answer = new Answer(
+            AnswerId.New(),
+            Id,
+            playerId,
+            currentRound.Id,
+            currentRound.QuestionId,
+            answerOptionId);
+
+        answer.Submit();
+        answer.Evaluate(isCorrect, points, elapsedTime);
+        _answers.Add(answer);
+
+        // Create PointTransaction (ledger)
+        var pointTransaction = new PointTransaction(
+            PointTransactionId.New(),
+            Id,
+            playerId,
+            currentRound.Id,
+            currentRound.QuestionId,
+            answer.Id,
+            isCorrect ? PointTransactionType.AnswerCorrect : PointTransactionType.AnswerIncorrect,
+            points);
+        _pointTransactions.Add(pointTransaction);
+
+        RaiseDomainEvent(new AnswerSubmittedDomainEvent(
+            Id.Value, answer.Id.Value, playerId,
+            currentRound.Id.Value, currentRound.QuestionId.Value, answerOptionId.Value));
+        RaiseDomainEvent(new AnswerEvaluatedDomainEvent(
+            Id.Value, answer.Id.Value, playerId,
+            currentRound.Id.Value, isCorrect, points, elapsedTime, answer.Status));
+
+        return Result.Success(answer);
+    }
+
+    public int GetScore(Guid playerId)
+    {
+        return _pointTransactions
+            .Where(pt => pt.PlayerId == playerId)
+            .Sum(pt => pt.Points);
+    }
+
+    public Answer? GetAnswer(Guid playerId, GameRoundId roundId)
+    {
+        return _answers.FirstOrDefault(a =>
+            a.PlayerId == playerId && a.RoundId == roundId);
+    }
+
+    private Answer CreateExpiredAnswer(
+        Guid playerId,
+        GameRound round,
+        Question question,
+        AnswerOptionId answerOptionId,
+        int timeLimit)
+    {
+        var answer = new Answer(
+            AnswerId.New(),
+            Id,
+            playerId,
+            round.Id,
+            round.QuestionId,
+            answerOptionId);
+
+        answer.Expire(timeLimit);
+
+        RaiseDomainEvent(new AnswerSubmittedDomainEvent(
+            Id.Value, answer.Id.Value, playerId,
+            round.Id.Value, round.QuestionId.Value, answerOptionId.Value));
+
+        return answer;
     }
 
     public Result UpdateConfiguration(GameConfiguration newConfig)

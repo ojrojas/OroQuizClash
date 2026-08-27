@@ -1,0 +1,286 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Answer Evaluation
+  version: 1.0.0
+  description: |
+    SubmitAnswer con validación server-side de 7 pasos (ValidatePlayer→ValidateGame→ValidateRound→ValidateQuestion→ValidateTime→ValidateIdempotency→EvaluateAnswer→CalculateResult).
+    El servidor determina autoritativamente correct/elapsedTime/points/eligibility. El cliente NUNCA determina estos valores.
+    Idempotencia por PlayerId+RoundId. Answer lifecycle NOT_ANSWERED→ANSWERED→EVALUATED/EXPIRED.
+    PointTransaction append-only ledger para scoring.
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/games/{id}/answers:
+    post:
+      operationId: submitAnswer
+      summary: Enviar respuesta con evaluación server-side (7 pasos)
+      tags: [Answers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid }, description: GameId }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitAnswerRequest'
+      responses:
+        '200':
+          description: Respuesta evaluada (correct/incorrect) o idempotente (misma respuesta existente)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitAnswerResponse'
+        '400':
+          description: Validación fallida (PlayerNotInGame, GameNotActive, QuestionNotActive, InvalidAnswer)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '408':
+          description: AnswerTimeout — respuesta fuera de TimeLimit
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: ConcurrencyConflict — rowversion mismatch
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/games/{id}/answers/{answerId}:
+    get:
+      operationId: getAnswer
+      summary: Consultar respuesta evaluada
+      tags: [Answers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid }, description: GameId }
+        - { name: answerId, in: path, required: true, schema: { type: string, format: uuid }, description: AnswerId }
+      responses:
+        '200':
+          description: Respuesta encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/games/{id}/answers/player/{playerId}:
+    get:
+      operationId: getPlayerAnswers
+      summary: Listar respuestas de un jugador en un juego
+      tags: [Answers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid }, description: GameId }
+        - { name: playerId, in: path, required: true, schema: { type: string, format: uuid }, description: PlayerId (sub) }
+        - { name: roundId, in: query, schema: { type: string, format: uuid }, description: Filtrar por ronda específica }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200':
+          description: Lista paginada de respuestas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAnswers'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/games/{id}/score/{playerId}:
+    get:
+      operationId: getPlayerScore
+      summary: Consultar score de un jugador (SUM PointTransaction.Points)
+      tags: [Answers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid }, description: GameId }
+        - { name: playerId, in: path, required: true, schema: { type: string, format: uuid }, description: PlayerId (sub) }
+      responses:
+        '200':
+          description: Score total del jugador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoreResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT emitido por OroIdentityServer (sub = PlayerId)
+
+  schemas:
+    SubmitAnswerRequest:
+      type: object
+      required: [answerOptionId]
+      properties:
+        answerOptionId:
+          type: string
+          format: uuid
+          description: ID de la opción de respuesta seleccionada
+          example: "d290f1ee-6c54-4b01-90e6-d701748f0851"
+        roundId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID de la ronda (opcional si hay ronda activa)
+        idempotencyKey:
+          type: string
+          format: uuid
+          nullable: true
+          description: Key de idempotencia opcional (default: PlayerId+RoundId)
+
+    SubmitAnswerResponse:
+      type: object
+      properties:
+        answerId:
+          type: string
+          format: uuid
+          description: ID de la respuesta creada
+        correct:
+          type: boolean
+          description: true si la respuesta es correcta (determinado server-side)
+        points:
+          type: integer
+          description: Puntos otorgados (PointsPerRound × DifficultyMultiplier si correct, 0 si incorrect)
+        elapsedTime:
+          type: integer
+          description: Tiempo transcurrido en segundos (server-calculado)
+        status:
+          type: string
+          enum: [NOT_ANSWERED, EVALUATED, EXPIRED]
+          description: Estado de la respuesta
+        roundNumber:
+          type: integer
+          description: Número de ronda
+        gameStatus:
+          type: string
+          description: Estado actual del juego
+
+    AnswerDetailResponse:
+      type: object
+      properties:
+        answerId:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        roundId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        answerOptionId:
+          type: string
+          format: uuid
+        correct:
+          type: boolean
+          nullable: true
+          description: null si EXPIRED
+        points:
+          type: integer
+        elapsedTime:
+          type: integer
+        status:
+          type: string
+          enum: [NOT_ANSWERED, ANSWERED, EVALUATED, EXPIRED]
+        createdAt:
+          type: string
+          format: date-time
+        evaluatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ScoreResponse:
+      type: object
+      properties:
+        gameId:
+          type: string
+          format: uuid
+        playerId:
+          type: string
+          format: uuid
+        totalPoints:
+          type: integer
+          description: SUM(PointTransaction.Points) para este jugador
+        correctAnswers:
+          type: integer
+          description: Count de PointTransaction con Type=ANSWER_CORRECT
+        incorrectAnswers:
+          type: integer
+          description: Count de PointTransaction con Type=ANSWER_INCORRECT
+        totalAnswered:
+          type: integer
+
+    PaginatedAnswers:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerDetailResponse'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+  responses:
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    BadRequest:
+      description: Validación fallida
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Conflict:
+      description: Conflicto de concurrencia o idempotencia
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
