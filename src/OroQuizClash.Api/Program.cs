@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
+using OroQuizClash.Domain.Games.Strategies;
 using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Questions.Services;
 using OroQuizClash.Infrastructure.Categories;
@@ -56,6 +57,7 @@ builder.Services.AddScoped<ICategoryExistenceChecker, CategoryExistenceChecker>(
 builder.Services.AddScoped<OroQuizClash.Domain.Categories.IQuestionCounter, EfQuestionCounter>();
 builder.Services.AddScoped<OroQuizClash.Domain.Questions.Services.IQuestionCounter>(sp => (OroQuizClash.Domain.Questions.Services.IQuestionCounter)sp.GetRequiredService<OroQuizClash.Domain.Categories.IQuestionCounter>());
 builder.Services.AddScoped<IQuestionSelectionStrategy, RandomQuestionSelectionStrategy>();
+builder.Services.AddScoped<IDifficultyProgressionStrategy, LinearDifficultyStrategy>();
 
 builder.Services.AddEndpoints(typeof(OroQuizClash.Application.Features.Games.CreateGameEndpoint).Assembly);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

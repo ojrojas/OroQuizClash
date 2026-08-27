@@ -15,11 +15,14 @@ public sealed class GameRoundTypeConfiguration : IEntityTypeConfiguration<GameRo
         builder.Property(r => r.Id).HasConversion(id => id.Value, v => new GameRoundId(v)).IsRequired();
         builder.Property(r => r.GameId).HasConversion(id => id.Value, v => new GameId(v)).IsRequired();
         builder.Property(r => r.RoundNumber).IsRequired();
+        builder.Property(r => r.Difficulty).IsRequired();
+        builder.Property(r => r.TimeLimit).IsRequired();
         builder.Property(r => r.QuestionId).HasConversion(id => id.Value, v => new QuestionId(v)).IsRequired();
         builder.Property(r => r.Status).HasConversion(s => s.Id, id => Domain.Games.Enumerations.GameStatus.FromId(id)).IsRequired();
         builder.Property(r => r.StartedAt).IsRequired();
         builder.Property(r => r.CompletedAt);
         builder.HasIndex(r => new { r.GameId, r.RoundNumber }).IsUnique();
+        builder.HasIndex(r => new { r.GameId, r.QuestionId }).IsUnique();
         builder.HasIndex(r => r.QuestionId);
         builder.HasIndex(r => r.GameId);
     }

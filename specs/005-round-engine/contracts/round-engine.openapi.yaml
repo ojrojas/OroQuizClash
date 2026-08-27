@@ -1,0 +1,185 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Round Engine
+  version: 1.0.0
+  description: |
+    Vertical Slices para motor de rondas 5 campos (`RoundNumber/Difficulty/Question/TimeLimit/Status`) con flujo 8 pasos `StartRound→SelectQuestion→PresentQuestion→WaitForAnswers→EvaluateAnswers→CalculateScores→CompleteRound→IncreaseDifficulty`.
+    Selección impredecible server-side aleatoria (`IQuestionSelectionStrategy` ORDER BY NEWID()), evita repetidas intra-juego (PreviousQuestionIds), respeta Category/Difficulty/Academic/Age. Progresión `IDifficultyProgressionStrategy` Linear 1→5 default.
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/games/{id}/rounds/start:
+    post:
+      operationId: startRound
+      summary: IN_PROGRESS/ROUND_COMPLETED → ROUND_IN_PROGRESS (asigna RoundNumber/Difficulty/Question/TimeLimit/Status, aleatoria impredecible)
+      tags: [Rounds]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                difficultyStrategy:
+                  type: string
+                  enum: [Linear, Progressive, Adaptive, CategorySpecific]
+                  example: Linear
+                  description: Opcional override para esta ronda (default Linear 1→5)
+      responses:
+        '200': { description: Ronda creada, content: { application/json: { schema: { $ref: '#/components/schemas/GameRoundResponse' } } } }
+        '400': { description: RoundAlreadyInProgress / PreviousRoundNotCompleted / InvalidGameState, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { description: NoAvailableQuestion / ConcurrencyConflict / DuplicateRoundNumber, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/games/{id}/rounds/{roundId}/complete:
+    post:
+      operationId: completeRound
+      summary: ROUND_IN_PROGRESS → ROUND_COMPLETED (set CompletedAt, IncreaseDifficulty para siguiente)
+      tags: [Rounds]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: roundId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Completada, content: { application/json: { schema: { $ref: '#/components/schemas/GameRoundResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '404': { $ref: '#/components/responses/NotFound' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/games/{id}/rounds:
+    get:
+      operationId: getRounds
+      summary: Listar rondas del juego (con 5 campos)
+      tags: [Rounds]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: status, in: query, schema: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+      responses: { '200': { description: Paginado, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedRounds' } } } }, '404': { $ref: '#/components/responses/NotFound' } }
+
+  /api/games/{id}/rounds/{roundId}:
+    get:
+      operationId: getRoundById
+      summary: Detalle de ronda con 5 campos
+      tags: [Rounds]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: roundId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/GameRoundResponse' } } } }, '404': { $ref: '#/components/responses/NotFound' } }
+
+  /api/games/{id}/rounds/{roundId}/question:
+    get:
+      operationId: presentQuestion
+      summary: Presentar pregunta de la ronda (filtra IsCorrect para PLAYER)
+      tags: [Rounds]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: roundId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Pregunta sin IsCorrect para PLAYER, con IsCorrect para ADMIN
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PresentQuestionResponse' }
+              examples:
+                player:
+                  value: { questionId: "33333333-3333-3333-3333-333333333333", text: "¿Capital de Perú?", difficulty: 2, timeLimit: 30, roundNumber: 1, status: "ROUND_IN_PROGRESS", answerOptions: [{ id: "a", text: "Lima", displayOrder: 0 }, { id: "b", text: "Cusco", displayOrder: 1 }] }
+                admin:
+                  value: { questionId: "333...", text: "¿Capital...?", difficulty: 2, timeLimit: 30, answerOptions: [{ id: "a", text: "Lima", isCorrect: true }] }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/games/{id}/answers:
+    post:
+      operationId: submitAnswer
+      summary: Enviar respuesta (solo ROUND_IN_PROGRESS, server timestamp, idempotente, EvaluateAnswers + CalculateScores)
+      tags: [Rounds]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [questionId, answerOptionId]
+              properties:
+                questionId: { type: string, format: uuid }
+                answerOptionId: { type: string, format: uuid }
+                roundId: { type: string, format: uuid, description: "Opcional si se infiere del current round" }
+                idempotencyKey: { type: string, format: uuid, description: "Para deduplicar SubmitAnswer (PlayerId+RoundId)" }
+      responses:
+        '200': { description: Evaluada (correct + points + ledger), content: { application/json: { schema: { $ref: '#/components/schemas/SubmitAnswerResponse' } } } }
+        '400': { description: NoActiveRound / AnswerTimeout / InvalidGameState, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { description: DuplicateRoundNumber / Concurrency, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+
+components:
+  securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: "JWT OroIdentityServer OpenIddict 8, discovery http://identity:5080/.well-known/openid-configuration, roles ADMIN/GAME_MANAGER/PLAYER" } }
+  schemas:
+    GameRoundResponse:
+      type: object
+      required: [id, gameId, roundNumber, difficulty, questionId, timeLimit, status, startedAt]
+      properties:
+        id: { type: string, format: uuid }
+        gameId: { type: string, format: uuid }
+        roundNumber: { type: integer, minimum: 1, example: 1, description: "1..MaxRounds único sin huecos" }
+        difficulty: { type: integer, minimum: 1, maximum: 5, example: 1 }
+        questionId: { type: string, format: uuid, description: "PUBLISHED, no repetida, Category/Difficulty/Academic/Age alineada" }
+        timeLimit: { type: integer, minimum: 5, maximum: 300, example: 30, description: "Copiado de GameConfiguration.TimeLimitPerQuestion" }
+        status: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        rowVersion: { type: string, description: "Base64 rowversion de Game agregado (no de Round)" }
+    PresentQuestionResponse:
+      type: object
+      required: [questionId, text, difficulty, timeLimit, roundNumber, status, answerOptions]
+      properties:
+        questionId: { type: string, format: uuid }
+        text: { type: string, example: "¿Capital de Perú?" }
+        categoryId: { type: string, format: uuid }
+        difficulty: { type: integer, minimum: 1, maximum: 5 }
+        timeLimit: { type: integer, example: 30 }
+        roundNumber: { type: integer, example: 1 }
+        status: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] }
+        answerOptions:
+          type: array
+          items:
+            type: object
+            required: [id, text]
+            properties:
+              id: { type: string, format: uuid }
+              text: { type: string, example: "Lima" }
+              displayOrder: { type: integer, minimum: 0, maximum: 3 }
+              isCorrect: { type: boolean, description: "Solo expuesto a ADMIN/GAME_MANAGER, filtrado para PLAYER" }
+    SubmitAnswerResponse:
+      type: object
+      properties:
+        correct: { type: boolean }
+        points: { type: integer, example: 10 }
+        totalScore: { type: integer, description: "Reconstruido de PointTransaction ledger" }
+        roundStatus: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] }
+        answerTimeout: { type: boolean, description: "true si ServerTimestamp - StartedAt > TimeLimit" }
+    PaginatedRounds:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/GameRoundResponse' } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, format: uri, example: "https://oroclash.dev/errors/round-already-in-progress" }
+        title: { type: string, example: "RoundAlreadyInProgress" }
+        status: { type: integer, example: 400 }
+        detail: { type: string }
+        code: { type: string, example: "RoundAlreadyInProgress" }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    BadRequest: { description: Validación / regla de dominio (MinRounds, Round campos, NoAvailableQuestion), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    NotFound: { description: No encontrado (Game/Round/Question), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Conflict: { description: Conflicto rowversion/UNIQUE/RoundAlreadyInProgress (409), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Unauthorized: { description: No autenticado (JWT requerido), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Forbidden: { description: No autorizado (PLAYER/ADMIN según endpoint), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }

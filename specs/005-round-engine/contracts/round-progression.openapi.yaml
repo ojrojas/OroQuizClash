@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Round Difficulty Progression
+  version: 1.0.0
+  description: |
+    Política configurable `IDifficultyProgressionStrategy` para `Round.Difficulty`.
+    Default `Linear` 1→2→3→4→5 clamp 1..5 para MinRounds=5, InitialDifficulty=1.
+    Intercambiable sin cambiar flujo 8 pasos: `Progressive`, `Adaptive` (desempeño), `CategorySpecific`.
+
+paths:
+  /api/games/config/difficulty-strategies:
+    get:
+      operationId: getDifficultyStrategies
+      summary: Listar estrategias registradas
+      tags: [Rounds]
+      responses:
+        '200':
+          description: Estrategias disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  default: { type: string, example: Linear }
+                  strategies:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string, example: Linear }
+                        description: { type: string, example: "Initial + completedRounds clamp 1..5" }
+                        example: { type: array, items: { type: integer }, example: [1, 2, 3, 4, 5] }
+
+  /api/games/{id}/rounds/progression:
+    get:
+      operationId: getProgression
+      summary: Ver progresión de dificultad calculada para el juego (solo lectura, no muta)
+      tags: [Rounds]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200':
+          description: Progresión por roundNumber
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  initialDifficulty: { type: integer, example: 1 }
+                  strategy: { type: string, example: Linear }
+                  rounds:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        roundNumber: { type: integer, example: 1 }
+                        difficulty: { type: integer, example: 1 }
+                        questionId: { type: string, format: uuid, nullable: true }
+                        status: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED, PENDING] }
+
+components:
+  schemas:
+    DifficultyProgressionConfig:
+      type: object
+      properties:
+        strategy: { type: string, enum: [Linear, Progressive, Adaptive, CategorySpecific], example: Linear }
+        initialDifficulty: { type: integer, minimum: 1, maximum: 5, example: 1 }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string }

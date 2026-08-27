@@ -1,0 +1,18 @@
+# .dockerignore for .NET modular monolith
+.git
+.gitignore
+.vs
+.vscode
+bin
+obj
+*.md
+Dockerfile*
+.dockerignore
+.env
+.env*
+*.log
+coverage
+TestResults
+node_modules
+dist
+build

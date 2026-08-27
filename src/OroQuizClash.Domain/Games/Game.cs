@@ -165,8 +165,8 @@ public sealed class Game : AggregateRoot<GameId>
         return Result.Success();
     }
 
-    // IN_PROGRESS or ROUND_COMPLETED -> ROUND_IN_PROGRESS (creates GameRound, assigns QuestionId)
-    public Result<GameRound> StartRound(Guid questionId)
+    // IN_PROGRESS or ROUND_COMPLETED -> ROUND_IN_PROGRESS (creates GameRound, assigns QuestionId, Difficulty, TimeLimit)
+    public Result<GameRound> StartRound(Guid questionId, int difficulty, int? timeLimitOverride = null)
     {
         if (Status != GameStatus.InProgress && Status != GameStatus.RoundCompleted)
             return Result.Failure<GameRound>(GameErrors.InvalidGameStateDetail($"StartRound only from IN_PROGRESS or ROUND_COMPLETED, current is {Status.Name}"));
@@ -180,18 +180,35 @@ public sealed class Game : AggregateRoot<GameId>
         if (questionId == Guid.Empty)
             return Result.Failure<GameRound>(GameErrors.NoAvailableQuestion);
 
-        // Ensure question not used previously
+        // Validate 5 fields invariants
+        if (difficulty < 1 || difficulty > 5)
+            return Result.Failure<GameRound>(GameErrors.InvalidGameStateDetail($"Difficulty must be 1..5, got {difficulty}"));
+
+        var timeLimit = timeLimitOverride ?? Configuration.TimeLimitPerQuestionSeconds;
+        if (timeLimit < 5 || timeLimit > 300)
+            return Result.Failure<GameRound>(GameErrors.InvalidGameStateDetail($"TimeLimit must be 5-300, got {timeLimit}"));
+
+        // Ensure question not used previously (PreviousQuestionIds exclusion)
         var qId = new Questions.QuestionId(questionId);
         if (_rounds.Any(r => r.QuestionId == qId))
             return Result.Failure<GameRound>(GameErrors.InvalidGameStateDetail("Question already used in this game."));
 
         var roundId = GameRoundId.New();
         var roundNumber = _rounds.Count + 1;
-        var round = new GameRound(roundId, Id, roundNumber, qId);
+        var round = new GameRound(roundId, Id, roundNumber, difficulty, qId, timeLimit);
         _rounds.Add(round);
         Status = GameStatus.RoundInProgress;
         RaiseDomainEvent(new RoundStartedDomainEvent(Id.Value, roundId.Value, roundNumber, questionId));
         return Result.Success(round);
+    }
+
+    // Overload for backward compatibility (used by existing tests) - computes difficulty via linear progression
+    public Result<GameRound> StartRound(Guid questionId) => StartRound(questionId, ComputeLinearDifficulty(), Configuration.TimeLimitPerQuestionSeconds);
+
+    private int ComputeLinearDifficulty()
+    {
+        var completed = _rounds.Count(r => r.Status == GameStatus.RoundCompleted);
+        return Math.Clamp(Configuration.InitialDifficulty + completed, 1, 5);
     }
 
     // ROUND_IN_PROGRESS -> ROUND_COMPLETED
@@ -213,11 +230,15 @@ public sealed class Game : AggregateRoot<GameId>
         return Result.Success();
     }
 
-    // Finish from IN_PROGRESS, ROUND_COMPLETED, or ROUND_IN_PROGRESS (per policy) -> FINISHED
+    // Finish from IN_PROGRESS, ROUND_COMPLETED, or ROUND_IN_PROGRESS (per policy) -> FINISHED, gate MinRounds
     public Result Finish()
     {
         if (Status != GameStatus.InProgress && Status != GameStatus.RoundCompleted && Status != GameStatus.RoundInProgress)
             return Result.Failure(GameErrors.InvalidGameStateDetail($"Finish only from IN_PROGRESS/ROUND_COMPLETED/ROUND_IN_PROGRESS, current is {Status.Name}"));
+
+        var completed = _rounds.Count(r => r.Status == GameStatus.RoundCompleted);
+        if (completed < Configuration.MinRounds)
+            return Result.Failure(GameErrors.InvalidGameStateDetail($"Not enough rounds to finish: completed {completed} < MinRounds {Configuration.MinRounds}"));
 
         if (!GameStatus.IsValidTransition(Status, GameStatus.Finished))
             return Result.Failure(GameErrors.InvalidGameState);
