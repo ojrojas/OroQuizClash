@@ -16,7 +16,22 @@ public sealed class GameTypeConfiguration : IEntityTypeConfiguration<Game>
         builder.Property(g => g.Status).HasConversion(s => s.Id, id => Domain.Games.Enumerations.GameStatus.FromId(id)).IsRequired();
         builder.Property(g => g.RowVersion).IsRowVersion().IsConcurrencyToken();
         builder.Property(g => g.CreatedAt).IsRequired();
+        builder.Property(g => g.ReadyAt);
+        builder.Property(g => g.StartedAt);
+        builder.Property(g => g.FinishedAt);
         builder.Property(g => g.CreatedBy).IsRequired();
+
+        builder.HasMany(typeof(GamePlayer), "_players")
+            .WithOne()
+            .HasForeignKey("GameId")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation("Players").HasField("_players").UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.HasMany(typeof(GameRound), "_rounds")
+            .WithOne()
+            .HasForeignKey("GameId")
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation("Rounds").HasField("_rounds").UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.OwnsOne(g => g.Configuration, cb =>
         {

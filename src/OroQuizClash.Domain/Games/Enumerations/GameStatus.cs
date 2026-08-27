@@ -17,4 +17,23 @@ public sealed class GameStatus(int id, string name) : Enumeration<GameStatus>(id
     public bool IsTerminal => this == Finished || this == Cancelled || this == ForcedFinished;
 
     public bool IsStarted => Id >= WaitingForPlayers.Id;
+
+    public bool IsRoundActive => this == RoundInProgress;
+
+    public bool CanTransitionTo(GameStatus target)
+    {
+        return IsValidTransition(this, target);
+    }
+
+    public static bool IsValidTransition(GameStatus from, GameStatus to)
+    {
+        if (from == Draft && (to == Ready || to == Cancelled)) return true;
+        if (from == Ready && (to == WaitingForPlayers || to == Cancelled)) return true;
+        if (from == WaitingForPlayers && (to == InProgress || to == Cancelled)) return true;
+        if (from == InProgress && (to == RoundInProgress || to == Finished || to == Cancelled || to == ForcedFinished)) return true;
+        if (from == RoundInProgress && (to == RoundCompleted || to == Cancelled || to == ForcedFinished || to == Finished)) return true;
+        if (from == RoundCompleted && (to == RoundInProgress || to == Finished || to == Cancelled || to == ForcedFinished)) return true;
+        // Terminal has no outgoing
+        return false;
+    }
 }

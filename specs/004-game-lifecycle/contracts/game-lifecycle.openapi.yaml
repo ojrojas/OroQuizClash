@@ -1,0 +1,285 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Game Lifecycle
+  version: 1.0.0
+  description: |
+    Vertical Slices para ciclo de vida 9 estados `DRAFT→READY→WAITING_FOR_PLAYERS→IN_PROGRESS→ROUND_IN_PROGRESS↔ROUND_COMPLETED→FINISHED` + `CANCELLED`/`FORCED_FINISHED`.
+    Requiere JWT bearer de OroIdentityServer (ADMIN/GAME_MANAGER para ciclo, PLAYER para Join/SubmitAnswer).
+    Gates: config válida (SPEC-001) + categoría ≥5 válidas (SPEC-002/003) para Ready; players≥MinPlayers para Start; solo ROUND_IN_PROGRESS acepta respuestas.
+
+servers:
+  - url: http://localhost:5000
+    description: OroQuizClash.Api (Aspire)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/games:
+    post:
+      operationId: createGame
+      summary: Crear juego en DRAFT (config válida SPEC-001)
+      tags: [Games]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGameRequest' }
+            examples:
+              valid:
+                value:
+                  name: "Quiz Secundaria Historia"
+                  categoryId: "11111111-1111-1111-1111-111111111111"
+                  minRounds: 5
+                  maxRounds: 10
+                  initialDifficulty: 2
+                  difficultyStrategy: "Linear"
+                  timeLimitPerQuestion: 30
+                  pointsPerRound: 10
+                  minPlayers: 2
+                  maxPlayers: 10
+                  withdrawalPolicy: "KEEP_CURRENT_SCORE"
+                  lossPolicy: "LOSE_CURRENT_ROUND"
+                  consolationPolicy: "NONE"
+                  scoringSystem: "STANDARD"
+                  rewardRules: { type: "POINTS", threshold: 100 }
+      responses:
+        '201': { description: Creado DRAFT, headers: { Location: { schema: { type: string } } }, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      operationId: getGames
+      summary: Listar juegos con filtros y paginación
+      tags: [Games]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [DRAFT, READY, WAITING_FOR_PLAYERS, IN_PROGRESS, ROUND_IN_PROGRESS, ROUND_COMPLETED, FINISHED, CANCELLED, FORCED_FINISHED] } }
+        - { name: categoryId, in: query, schema: { type: string, format: uuid } }
+        - { name: createdBy, in: query, schema: { type: string, format: uuid } }
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: Paginado, content: { application/json: { schema: { $ref: '#/components/schemas/PaginatedGames' } } } }
+
+  /api/games/{id}:
+    get:
+      operationId: getGameById
+      summary: Detalle de juego con Players y Rounds
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: updateGame
+      summary: Actualizar juego (solo DRAFT/READY, inmutable tras IN_PROGRESS)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateGameRequest' } } } }
+      responses:
+        '200': { description: Actualizado, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/games/{id}/ready:
+    post:
+      operationId: markReady
+      summary: DRAFT → READY (gate config válida + categoría ≥5 válidas)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Ready, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '400': { description: CategoryNotReady / InvalidGameConfiguration, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/games/{id}/open-lobby:
+    post:
+      operationId: openLobby
+      summary: READY → WAITING_FOR_PLAYERS
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Lobby abierto, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/games/{id}/players:
+    post:
+      operationId: joinGame
+      summary: Unir jugador (solo WAITING_FOR_PLAYERS, PlayerJoined)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [userId], properties: { userId: { type: string, format: uuid, description: "sub de OroIdentityServer (si no se envía se usa el del JWT)" } } }
+      responses:
+        '200': { description: Unido, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: GameFull / PlayerAlreadyJoined, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+
+  /api/games/{id}/start:
+    post:
+      operationId: startGame
+      summary: WAITING_FOR_PLAYERS → IN_PROGRESS (players≥MinPlayers, GameStarted, bloquea config)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Iniciado, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }
+        '400': { description: NotEnoughPlayers, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/games/{id}/rounds/start:
+    post:
+      operationId: startRound
+      summary: IN_PROGRESS/ROUND_COMPLETED → ROUND_IN_PROGRESS (selecciona PUBLISHED no usada, crea GameRound)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Ronda iniciada, content: { application/json: { schema: { $ref: '#/components/schemas/GameRoundResponse' } } } }
+        '400': { description: RoundAlreadyInProgress / PreviousRoundNotCompleted, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { description: NoAvailableQuestion, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+
+  /api/games/{id}/rounds/{roundId}/complete:
+    post:
+      operationId: completeRound
+      summary: ROUND_IN_PROGRESS → ROUND_COMPLETED
+      tags: [Games]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: roundId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses: { '200': { description: Completada, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/games/{id}/answers:
+    post:
+      operationId: submitAnswer
+      summary: Enviar respuesta (solo ROUND_IN_PROGRESS, server timestamp, idempotente)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [questionId, answerOptionId]
+              properties:
+                questionId: { type: string, format: uuid }
+                answerOptionId: { type: string, format: uuid }
+                roundId: { type: string, format: uuid, description: "Opcional si se infiere del current round" }
+                idempotencyKey: { type: string, format: uuid, description: "Para deduplicar SubmitAnswer" }
+      responses:
+        '200': { description: Evaluada (correct/incorrect + puntos), content: { application/json: { schema: { $ref: '#/components/schemas/SubmitAnswerResponse' } } } }
+        '400': { description: NoActiveRound / AnswerTimeout / InvalidGameState, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/games/{id}/finish:
+    post:
+      operationId: finishGame
+      summary: → FINISHED (solo desde IN_PROGRESS/ROUND_COMPLETED/ROUND_IN_PROGRESS según política)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: Finalizado, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/games/{id}/cancel:
+    post:
+      operationId: cancelGame
+      summary: → CANCELLED (DRAFT/READY/WAITING/IN_PROGRESS/ROUND_* → CANCELLED, Reason 3-500)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 3, maxLength: 500, example: "Organizador cancela por mantenimiento" } } } } } }
+      responses: { '200': { description: Cancelado, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+  /api/games/{id}/force-finish:
+    post:
+      operationId: forceFinishGame
+      summary: → FORCED_FINISHED (IN_PROGRESS/ROUND_* → FORCED_FINISHED, Reason 3-500)
+      tags: [Games]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string, minLength: 3, maxLength: 500, example: "Timeout global, categoría archivada, sin preguntas" } } } } } }
+      responses: { '200': { description: Forzado, content: { application/json: { schema: { $ref: '#/components/schemas/GameResponse' } } } }, '400': { $ref: '#/components/responses/BadRequest' }, '409': { $ref: '#/components/responses/Conflict' } }
+
+components:
+  securitySchemes: { bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: "JWT OroIdentityServer OpenIddict 8, discovery http://identity:5080/.well-known/openid-configuration, roles ADMIN/GAME_MANAGER/PLAYER" } }
+  schemas:
+    CreateGameRequest:
+      type: object
+      required: [name, categoryId, minRounds, maxRounds, initialDifficulty, difficultyStrategy, timeLimitPerQuestion, pointsPerRound, minPlayers, maxPlayers]
+      properties:
+        name: { type: string, minLength: 3, maxLength: 100, example: "Quiz Secundaria Historia" }
+        categoryId: { type: string, format: uuid }
+        minRounds: { type: integer, minimum: 5, maximum: 50, example: 5 }
+        maxRounds: { type: integer, minimum: 5, maximum: 50, example: 10 }
+        initialDifficulty: { type: integer, minimum: 1, maximum: 5, example: 2 }
+        difficultyStrategy: { type: string, enum: [Linear, Progressive, Adaptive, CategorySpecific], example: Linear }
+        timeLimitPerQuestion: { type: integer, minimum: 5, maximum: 300, example: 30 }
+        pointsPerRound: { type: integer, minimum: 1, example: 10 }
+        minPlayers: { type: integer, minimum: 1, maximum: 100, example: 2 }
+        maxPlayers: { type: integer, minimum: 1, maximum: 100, example: 10 }
+        withdrawalPolicy: { type: string, enum: [LOSE_ALL, KEEP_CURRENT_SCORE, KEEP_SECURED_SCORE, KEEP_CHECKPOINT_SCORE], example: KEEP_CURRENT_SCORE }
+        lossPolicy: { type: string, enum: [LOSE_ALL, LOSE_CURRENT_ROUND, LOSE_UNSECURED_POINTS, FALLBACK_TO_CHECKPOINT], example: LOSE_CURRENT_ROUND }
+        consolationPolicy: { type: string, enum: [NONE, CONSOLATION], example: NONE }
+        scoringSystem: { type: string, example: STANDARD }
+        rewardRules: { type: object, properties: { type: { type: string, example: POINTS }, threshold: { type: integer, example: 100 } } }
+    GameResponse:
+      type: object
+      required: [id, name, status, configuration]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [DRAFT, READY, WAITING_FOR_PLAYERS, IN_PROGRESS, ROUND_IN_PROGRESS, ROUND_COMPLETED, FINISHED, CANCELLED, FORCED_FINISHED] }
+        configuration: { $ref: '#/components/schemas/CreateGameRequest' }
+        players: { type: array, items: { $ref: '#/components/schemas/GamePlayerResponse' } }
+        rounds: { type: array, items: { $ref: '#/components/schemas/GameRoundResponse' } }
+        currentRound: { $ref: '#/components/schemas/GameRoundResponse', nullable: true }
+        rowVersion: { type: string, description: "Base64 rowversion para If-Match / concurrencia" }
+        createdAt: { type: string, format: date-time }
+        readyAt: { type: string, format: date-time, nullable: true }
+        startedAt: { type: string, format: date-time, nullable: true }
+        finishedAt: { type: string, format: date-time, nullable: true }
+        createdBy: { type: string, format: uuid }
+    GamePlayerResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        gameId: { type: string, format: uuid }
+        userId: { type: string, format: uuid, description: "sub de OroIdentityServer" }
+        joinedAt: { type: string, format: date-time }
+    GameRoundResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        gameId: { type: string, format: uuid }
+        roundNumber: { type: integer, minimum: 1 }
+        questionId: { type: string, format: uuid }
+        status: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+    SubmitAnswerResponse:
+      type: object
+      properties:
+        correct: { type: boolean }
+        points: { type: integer }
+        totalScore: { type: integer }
+        roundStatus: { type: string, enum: [ROUND_IN_PROGRESS, ROUND_COMPLETED] }
+    PaginatedGames:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/GameResponse' } }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string, format: uri, example: "https://oroclash.dev/errors/invalid-game-state" }
+        title: { type: string, example: "InvalidGameState" }
+        status: { type: integer, example: 400 }
+        detail: { type: string }
+        code: { type: string, example: "InvalidGameState" }
+        errors: { type: object, additionalProperties: { type: array, items: { type: string } } }
+  responses:
+    BadRequest: { description: Validación / regla de dominio, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Conflict: { description: Conflicto rowversion/estado (409), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Unauthorized: { description: No autenticado (JWT requerido), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }
+    Forbidden: { description: No autorizado (ADMIN/GAME_MANAGER/PLAYER según endpoint), content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemDetails' } } } }

@@ -13,20 +13,22 @@ using OroQuizClash.Domain.Shared.Errors;
 
 namespace OroQuizClash.Application.Features.Games;
 
-public sealed record StartGameCommand(Guid GameId) : ICommand<Result<GameResponse>>;
+public sealed record OpenLobbyCommand(Guid GameId) : ICommand<Result<GameResponse>>;
 
-public sealed class StartGameHandler(IRepository<Game, GameId> games, IUnitOfWork unitOfWork)
-    : ICommandHandler<StartGameCommand, Result<GameResponse>>
+public sealed class OpenLobbyHandler(IRepository<Game, GameId> repository, IUnitOfWork unitOfWork) : ICommandHandler<OpenLobbyCommand, Result<GameResponse>>
 {
-    public async Task<Result<GameResponse>> HandleAsync(StartGameCommand command, CancellationToken ct)
+    public async Task<Result<GameResponse>> HandleAsync(OpenLobbyCommand command, CancellationToken ct)
     {
-        var game = await games.GetByIdAsync(new GameId(command.GameId), ct);
+        var game = await repository.GetByIdAsync(new GameId(command.GameId), ct);
         if (game is null) return Result.Failure<GameResponse>(GameErrors.GameNotFound);
-        var result = game.Start();
+
+        var result = game.OpenLobby();
         if (result.IsFailure) return Result.Failure<GameResponse>(result.Error);
-        games.Update(game);
+
+        repository.Update(game);
         try { await unitOfWork.SaveChangesAsync(ct); }
         catch (DbUpdateConcurrencyException) { return Result.Failure<GameResponse>(GameErrors.ConcurrencyConflict); }
+
         return Result.Success(new GameResponse(
             game.Id.Value, game.Name, game.Status.Name, game.Configuration.CategoryId.Value,
             game.Configuration.MinRounds, game.Configuration.MaxRounds,
@@ -36,13 +38,13 @@ public sealed class StartGameHandler(IRepository<Game, GameId> games, IUnitOfWor
     }
 }
 
-public sealed class StartGameEndpoint : IEndpoint
+public sealed class OpenLobbyEndpoint : IEndpoint
 {
     public void MapEndpoint(IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/games/{gameId:guid}/start", async (Guid gameId, ISender sender, CancellationToken ct) =>
+        app.MapPost("/api/games/{id:guid}/open-lobby", async (Guid id, ISender sender, CancellationToken ct) =>
         {
-            var result = await sender.SendAsync(new StartGameCommand(gameId), ct);
+            var result = await sender.SendAsync(new OpenLobbyCommand(id), ct);
             return result.ToHttpResult();
         }).RequireAuthorization("AdminOrGameManager");
     }

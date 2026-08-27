@@ -1,0 +1,111 @@
+openapi: 3.1.0
+info:
+  title: OroQuizClash — Game Lifecycle Events
+  version: 1.0.0
+  description: |
+    Eventos de dominio emitidos por el agregado `Game` tras cada transición exitosa.
+    Dispatch in-process en `AppDbContextBase.SaveChanges` (DomainEvent); si se publica integración, `IntegrationEvent` vía `Outbox` → RabbitMQ (`GameFinished` topic).
+    Todos incluyen `EventId` (Guid) y `OccurredOnUtc` (DateTime).
+
+paths: {}
+
+components:
+  schemas:
+    GameCreatedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        name: { type: string, example: "Quiz Secundaria Historia" }
+
+    GameReadyDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+
+    PlayerJoinedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId, userId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        userId: { type: string, format: uuid, description: "sub de OroIdentityServer" }
+        joinedAt: { type: string, format: date-time }
+
+    GameStartedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        startedAt: { type: string, format: date-time }
+
+    RoundStartedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId, roundId, roundNumber, questionId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        roundId: { type: string, format: uuid }
+        roundNumber: { type: integer, example: 1 }
+        questionId: { type: string, format: uuid }
+
+    RoundCompletedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId, roundId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        roundId: { type: string, format: uuid }
+        completedAt: { type: string, format: date-time }
+
+    GameFinishedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        finishedAt: { type: string, format: date-time }
+
+    GameFinishedIntegrationEvent:
+      allOf: [{ $ref: '#/components/schemas/GameFinishedDomainEvent' }]
+      description: IntegrationEvent publicado vía Outbox → RabbitMQ (topic `game.finished`, publisher confirms, manual ack, retries) para estadísticas/recompensas (SPEC-011).
+      properties:
+        integrationEventType: { type: string, example: "GameFinishedIntegrationEvent" }
+
+    GameCancelledDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId, reason]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        reason: { type: string, minLength: 3, maxLength: 500, example: "Organizador cancela por mantenimiento" }
+
+    GameForcedFinishedDomainEvent:
+      type: object
+      required: [eventId, occurredOnUtc, gameId, reason]
+      properties:
+        eventId: { type: string, format: uuid }
+        occurredOnUtc: { type: string, format: date-time }
+        gameId: { type: string, format: uuid }
+        reason: { type: string, minLength: 3, maxLength: 500, example: "Timeout global, sin preguntas disponibles" }
+
+    OutboxMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, example: "GameFinishedIntegrationEvent" }
+        payload: { type: object, description: "JSON serializado del IntegrationEvent" }
+        occurredOn: { type: string, format: date-time }
+        processedAt: { type: string, format: date-time, nullable: true }
