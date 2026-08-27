@@ -16,6 +16,24 @@ public sealed class ScoringConsolationTests
         }
     }
 
+    private static void PlayRound(Domain.Games.Game game, Guid player, bool correct)
+    {
+        var q = ScoringTestBase.CreateQuestion(game.Configuration.CategoryId);
+        ScoringTestBase.StartRoundWithQuestion(game, q, difficulty: 1);
+        var option = correct ? ScoringTestBase.CorrectOption(q) : ScoringTestBase.IncorrectOption(q);
+        game.SubmitAnswer(player, option, DateTimeOffset.UtcNow, ScoringTestBase.Resolver(q));
+        game.CompleteRound(game.CurrentRound!.Id.Value);
+    }
+
+    private static void PlayRoundWithBothPlayers(Domain.Games.Game game, Guid winner, Guid loser)
+    {
+        var q = ScoringTestBase.CreateQuestion(game.Configuration.CategoryId);
+        ScoringTestBase.StartRoundWithQuestion(game, q, difficulty: 1);
+        game.SubmitAnswer(winner, ScoringTestBase.CorrectOption(q), DateTimeOffset.UtcNow, ScoringTestBase.Resolver(q));
+        game.SubmitAnswer(loser, ScoringTestBase.IncorrectOption(q), DateTimeOffset.UtcNow, ScoringTestBase.Resolver(q));
+        game.CompleteRound(game.CurrentRound!.Id.Value);
+    }
+
     [Fact]
     public void Finish_FixedPointsPolicy_EligibleNonWinner_ReceivesConsolation()
     {
@@ -23,7 +41,8 @@ public sealed class ScoringConsolationTests
             consolationPolicy: ConsolationPolicy.FixedPoints,
             lossPolicy: LossPolicy.LoseCurrentRound,
             pointsPerRound: 100,
-            minRounds: 5);
+            minRounds: 5,
+            consolationPoints: 100);
         var game = ScoringTestBase.CreateStartedGame(out var winner, out var loser, config);
         PlayRounds(game, winner, 5, correct: true);
         PlayRounds(game, loser, 5, correct: false);
@@ -61,7 +80,8 @@ public sealed class ScoringConsolationTests
         var config = ScoringTestBase.Config(
             consolationPolicy: ConsolationPolicy.FixedPoints,
             pointsPerRound: 100,
-            minRounds: 5);
+            minRounds: 5,
+            consolationPoints: 100);
         var game = ScoringTestBase.CreateStartedGame(out var winner, out var loser, config);
         PlayRounds(game, winner, 5, correct: true);
         PlayRounds(game, loser, 5, correct: true);
@@ -73,21 +93,35 @@ public sealed class ScoringConsolationTests
     }
 
     [Fact]
-    public void Finish_WithdrawnPlayer_NoConsolation()
+    public void Finish_WithdrawnPlayer_MeetsThresholds_ReceivesConsolation()
     {
         var config = ScoringTestBase.Config(
             consolationPolicy: ConsolationPolicy.FixedPoints,
             withdrawalPolicy: WithdrawalPolicy.KeepCurrentScore,
             pointsPerRound: 100,
-            minRounds: 5);
+            minRounds: 5,
+            consolationPoints: 50);
         var game = ScoringTestBase.CreateStartedGame(out var winner, out var withdrawn, config);
-        PlayRounds(game, winner, 5, correct: true);
-        PlayRounds(game, withdrawn, 5, correct: false);
+
+        for (int i = 0; i < 3; i++)
+            PlayRoundWithBothPlayers(game, winner, withdrawn);
+
         game.WithdrawPlayer(withdrawn);
+
+        for (int i = 3; i < 5; i++)
+        {
+            var q = ScoringTestBase.CreateQuestion(game.Configuration.CategoryId);
+            ScoringTestBase.StartRoundWithQuestion(game, q, difficulty: 1);
+            game.SubmitAnswer(winner, ScoringTestBase.CorrectOption(q), DateTimeOffset.UtcNow, ScoringTestBase.Resolver(q));
+            game.CompleteRound(game.CurrentRound!.Id.Value);
+        }
 
         game.Finish();
 
-        Assert.DoesNotContain(game.PointTransactions,
-            pt => pt.Type == PointTransactionType.Consolation && pt.PlayerId == withdrawn);
+        var consolation = game.PointTransactions
+            .Where(pt => pt.Type == PointTransactionType.Consolation && pt.PlayerId == withdrawn)
+            .ToList();
+        Assert.Single(consolation);
+        Assert.Equal(50, consolation[0].Points);
     }
 }

@@ -19,7 +19,11 @@ public static class ScoringTestBase
         ScoringSystem? scoringSystem = null,
         int pointsPerRound = 100,
         int minRounds = 5,
-        int minPlayers = 2)
+        int minPlayers = 2,
+        int minimumParticipationRounds = 0,
+        int minimumAnsweredQuestions = 0,
+        int consolationPoints = 0,
+        Guid? consolationRewardId = null)
     {
         return new GameConfiguration(
             "Scoring Game",
@@ -32,7 +36,11 @@ public static class ScoringTestBase
             consolationPolicy ?? ConsolationPolicy.None,
             new RewardRules("Points", 1000),
             minPlayers, 10,
-            pointsPerRound);
+            pointsPerRound,
+            minimumParticipationRounds,
+            minimumAnsweredQuestions,
+            consolationPoints,
+            consolationRewardId);
     }
 
     public static Game CreateStartedGame(

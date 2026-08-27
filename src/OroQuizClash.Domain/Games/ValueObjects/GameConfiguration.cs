@@ -22,6 +22,10 @@ public sealed class GameConfiguration : ValueObject
     public int MinPlayers { get; }
     public int MaxPlayers { get; }
     public int PointsPerRound { get; }
+    public int MinimumParticipationRounds { get; }
+    public int MinimumAnsweredQuestions { get; }
+    public int ConsolationPoints { get; }
+    public Guid? ConsolationRewardId { get; }
 
     public GameConfiguration(
         string name,
@@ -38,7 +42,11 @@ public sealed class GameConfiguration : ValueObject
         RewardRules rewardRules,
         int minPlayers,
         int maxPlayers,
-        int pointsPerRound = 10)
+        int pointsPerRound = 10,
+        int minimumParticipationRounds = 0,
+        int minimumAnsweredQuestions = 0,
+        int consolationPoints = 0,
+        Guid? consolationRewardId = null)
     {
         Name = name;
         CategoryId = categoryId;
@@ -55,6 +63,10 @@ public sealed class GameConfiguration : ValueObject
         MinPlayers = minPlayers;
         MaxPlayers = maxPlayers;
         PointsPerRound = pointsPerRound;
+        MinimumParticipationRounds = minimumParticipationRounds;
+        MinimumAnsweredQuestions = minimumAnsweredQuestions;
+        ConsolationPoints = consolationPoints;
+        ConsolationRewardId = consolationRewardId;
     }
 
     private GameConfiguration()
@@ -87,5 +99,9 @@ public sealed class GameConfiguration : ValueObject
         yield return MinPlayers;
         yield return MaxPlayers;
         yield return PointsPerRound;
+        yield return MinimumParticipationRounds;
+        yield return MinimumAnsweredQuestions;
+        yield return ConsolationPoints;
+        yield return ConsolationRewardId;
     }
 }

@@ -1,0 +1,130 @@
+openapi: 3.0.3
+info:
+  title: OroQuizClash Consolation API
+  version: 1.0.0
+  description: Consolation status and history endpoints (SPEC-010). Consolidation is evaluated automatically at game finish — no mutation endpoints.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: Consolation
+    description: Consolation status and history queries
+paths:
+  /games/{gameId}/players/{playerId}/consolation:
+    get:
+      operationId: getPlayerConsolationStatus
+      summary: Get a player's consolation status for a specific game
+      description: |
+        Returns whether the player received consolation in the given game,
+        the policy type, points awarded (if any), reward name (if any), and timestamp.
+        The player identity is derived from the JWT `sub` claim; players can only
+        query their own status. Managers can query any player.
+      tags: [Consolation]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Consolation status
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsolationStatusResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — not the player and not a manager
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /players/{playerId}/consolation-history:
+    get:
+      operationId: getPlayerConsolationHistory
+      summary: Get a player's consolation history across all games
+      description: |
+        Returns all consolation awards for the player, including game reference,
+        policy type, points, reward name, and timestamp. Players can only
+        query their own history.
+      tags: [Consolation]
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Consolation history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsolationHistoryResponse' }
+        '401':
+          description: Not authenticated
+        '403':
+          description: Forbidden — not the player
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by OroIdentityServer
+  schemas:
+    ConsolationStatusResponse:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        received: { type: boolean }
+        policy: { type: string, enum: [None, FixedPoints, RewardBased, ParticipationBased] }
+        points:
+          type: integer
+          nullable: true
+          description: Points awarded (null if policy is None or RewardBased)
+        rewardName:
+          type: string
+          nullable: true
+          description: Name of the consolation reward (null if not RewardBased)
+        timestamp:
+          type: string
+          format: date-time
+          nullable: true
+          description: When consolation was awarded (null if not received)
+    ConsolationHistoryItem:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        gameName: { type: string }
+        policy: { type: string, enum: [None, FixedPoints, RewardBased, ParticipationBased] }
+        points:
+          type: integer
+          nullable: true
+        rewardName:
+          type: string
+          nullable: true
+        timestamp: { type: string, format: date-time }
+    ConsolationHistoryResponse:
+      type: object
+      properties:
+        playerId: { type: string, format: uuid }
+        consolations:
+          type: array
+          items: { $ref: '#/components/schemas/ConsolationHistoryItem' }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: object
+          additionalProperties: { type: string }

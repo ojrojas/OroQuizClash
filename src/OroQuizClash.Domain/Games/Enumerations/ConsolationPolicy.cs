@@ -6,5 +6,6 @@ public sealed class ConsolationPolicy(int id, string name) : Enumeration<Consola
 {
     public static readonly ConsolationPolicy None = new(1, "None");
     public static readonly ConsolationPolicy FixedPoints = new(2, "FixedPoints");
-    public static readonly ConsolationPolicy Badge = new(3, "Badge");
+    public static readonly ConsolationPolicy RewardBased = new(3, "RewardBased");
+    public static readonly ConsolationPolicy ParticipationBased = new(4, "ParticipationBased");
 }

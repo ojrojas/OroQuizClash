@@ -7,6 +7,7 @@ using OroQuizClash.Domain.Games.Rules;
 using OroQuizClash.Domain.Games.Strategies;
 using OroQuizClash.Domain.Games.ValueObjects;
 using OroQuizClash.Domain.Questions;
+using OroQuizClash.Domain.Rewards;
 using OroQuizClash.Domain.Shared.Errors;
 
 namespace OroQuizClash.Domain.Games;
@@ -33,7 +34,9 @@ public sealed class Game : AggregateRoot<GameId>
     public IReadOnlyList<Answer> Answers => _answers.AsReadOnly();
 
     private readonly List<PointTransaction> _pointTransactions = [];
+    private readonly List<Rewards.RewardRedemption> _consolationRedemptions = [];
     public IReadOnlyList<PointTransaction> PointTransactions => _pointTransactions.AsReadOnly();
+    public IReadOnlyList<Rewards.RewardRedemption> ConsolationRedemptions => _consolationRedemptions.AsReadOnly();
 
     public GameRound? CurrentRound => _rounds.FirstOrDefault(r => r.Status == GameStatus.RoundInProgress);
 
@@ -275,27 +278,76 @@ public sealed class Game : AggregateRoot<GameId>
         if (!GameStatus.IsValidTransition(Status, GameStatus.Finished))
             return Result.Failure(GameErrors.InvalidGameState);
 
-        // SPEC-007 US6+US9: Game bonus + consolation for eligible players
+        // SPEC-007 US6+US9 + SPEC-010: Game bonus, winner determination, then consolidation
         var completedRounds = _rounds.Count(r => r.Status == GameStatus.RoundCompleted);
         var activePlayers = _players.Where(p => p.IsActive).ToList();
-        var maxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
+        var nonEliminatedPlayers = _players.Where(p => p.ParticipationStatus != Games.Enumerations.PlayerParticipationStatus.Eliminated).ToList();
 
-        var consolationEligible = activePlayers
-            .Where(p => p.Score.CurrentPoints < maxScore && completedRounds >= Configuration.MinRounds)
-            .Select(p => p.Id)
-            .ToHashSet();
-
+        // Step 1: Award game bonus to all active players
         foreach (var player in activePlayers)
         {
             AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.GameBonus, null, null, null, roundScoped: false);
-
-            if (Configuration.ConsolationPolicy == ConsolationPolicy.FixedPoints && consolationEligible.Contains(player.Id))
-                AwardPointsInternal(player, Configuration.PointsPerRound, PointTransactionType.Consolation, null, null, null, roundScoped: false);
         }
 
-        // SPEC-008 US3: Winner determination — all active players with max final score (ties all win)
-        var finalMaxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
-        foreach (var player in activePlayers.Where(p => p.Score.CurrentPoints == finalMaxScore))
+        // Step 2: Determine winners from post-bonus scores (active players only)
+        var postBonusMaxScore = activePlayers.Select(p => p.Score.CurrentPoints).DefaultIfEmpty(0).Max();
+        var winnerIds = activePlayers
+            .Where(p => p.Score.CurrentPoints == postBonusMaxScore)
+            .Select(p => p.Id)
+            .ToHashSet();
+
+        // Step 3: Award consolidation to eligible non-winners (includes withdrawn players)
+        foreach (var player in nonEliminatedPlayers)
+        {
+            if (winnerIds.Contains(player.Id))
+                continue;
+
+            var answeredQuestions = PointTransactions
+                .Count(pt => pt.PlayerId == player.UserId &&
+                    (pt.Type == PointTransactionType.AnswerCorrect || pt.Type == PointTransactionType.AnswerIncorrect));
+
+            var playerRoundIds = PointTransactions
+                .Where(pt => pt.PlayerId == player.UserId && pt.RoundId != null &&
+                    (pt.Type == PointTransactionType.AnswerCorrect || pt.Type == PointTransactionType.AnswerIncorrect))
+                .Select(pt => pt.RoundId!.Value)
+                .Distinct()
+                .Count();
+
+            var eligibility = new Rules.ConsolationEligibilityRule(
+                isEliminated: player.ParticipationStatus == Games.Enumerations.PlayerParticipationStatus.Eliminated,
+                isWinner: false,
+                playerParticipationRounds: playerRoundIds,
+                playerAnsweredQuestions: answeredQuestions,
+                minimumParticipationRounds: Configuration.MinimumParticipationRounds,
+                minimumAnsweredQuestions: Configuration.MinimumAnsweredQuestions,
+                policy: Configuration.ConsolationPolicy);
+
+            if (eligibility.IsBroken())
+                continue;
+
+            switch (Configuration.ConsolationPolicy)
+            {
+                case var _ when Configuration.ConsolationPolicy == ConsolationPolicy.FixedPoints:
+                    AwardPointsInternal(player, Configuration.ConsolationPoints, PointTransactionType.Consolation, null, null, null, roundScoped: false);
+                    break;
+                case var _ when Configuration.ConsolationPolicy == ConsolationPolicy.ParticipationBased:
+                    var scaledPoints = completedRounds > 0
+                        ? (int)(Configuration.ConsolationPoints * ((double)playerRoundIds / completedRounds))
+                        : 0;
+                    if (scaledPoints > 0)
+                        AwardPointsInternal(player, scaledPoints, PointTransactionType.Consolation, null, null, null, roundScoped: false);
+                    break;
+                case var _ when Configuration.ConsolationPolicy == ConsolationPolicy.RewardBased && Configuration.ConsolationRewardId.HasValue:
+                    var redemptionResult = Rewards.RewardRedemption.CreateAsConsolation(
+                        player.UserId, Configuration.ConsolationRewardId.Value, Id.Value);
+                    if (redemptionResult.IsSuccess)
+                        _consolationRedemptions.Add(redemptionResult.Value);
+                    break;
+            }
+        }
+
+        // Step 4: Mark winners
+        foreach (var player in activePlayers.Where(p => winnerIds.Contains(p.Id)))
             player.MarkWinner();
 
         Status = GameStatus.Finished;

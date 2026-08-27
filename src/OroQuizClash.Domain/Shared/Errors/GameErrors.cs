@@ -42,4 +42,7 @@ public static class GameErrors
     public static Error InvalidAdjustmentAmount => Error.Validation("InvalidAdjustmentAmount", "Adjustment amount must not be zero.");
     public static Error PlayerAlreadyEliminated => Error.Conflict("PlayerAlreadyEliminated", "Player has been eliminated and cannot withdraw.");
     public static Error ParticipationAlreadyFinished => Error.Conflict("ParticipationAlreadyFinished", "Player participation has already finished.");
+
+    public static Error InvalidConsolationConfiguration => Error.Validation("InvalidConsolationConfiguration", "Consolation configuration is invalid: ConsolationPoints must be > 0 for FixedPoints/ParticipationBased policies, and ConsolationRewardId is required for RewardBased policy.");
+    public static Error ConsolidationRewardNotFound => Error.NotFound("ConsolidationRewardNotFound", "The configured consolation reward does not exist in the catalog.");
 }

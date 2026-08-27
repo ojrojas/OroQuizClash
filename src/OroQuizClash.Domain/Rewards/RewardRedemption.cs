@@ -53,6 +53,40 @@ public sealed class RewardRedemption : AggregateRoot<RewardRedemptionId>
         return Result.Success(redemption);
     }
 
+    public static Result<RewardRedemption> CreateAsConsolation(
+        Guid playerId,
+        Guid rewardId,
+        Guid gameId)
+    {
+        if (playerId == Guid.Empty)
+            return Result.Failure<RewardRedemption>(RewardErrors.InvalidPointsRequired);
+
+        if (rewardId == Guid.Empty)
+            return Result.Failure<RewardRedemption>(RewardErrors.InvalidPointsRequired);
+
+        if (gameId == Guid.Empty)
+            return Result.Failure<RewardRedemption>(RewardErrors.InvalidPointsRequired);
+
+        var redemption = new RewardRedemption
+        {
+            Id = RewardRedemptionId.New(),
+            PlayerId = playerId,
+            RewardId = new RewardId(rewardId),
+            GameId = new GameId(gameId),
+            Points = 0,
+            Status = RedemptionStatus.Approved,
+            RequestedAt = DateTimeOffset.UtcNow,
+            DeliveredAt = DateTimeOffset.UtcNow
+        };
+
+        var systemActor = Guid.Empty;
+        redemption._transitions.Add(new RedemptionTransition(RedemptionStatus.Approved, systemActor));
+        redemption.RaiseDomainEvent(new RewardRedeemedDomainEvent(
+            redemption.Id.Value, rewardId, playerId, gameId, 0));
+
+        return Result.Success(redemption);
+    }
+
     public Result Approve(Guid managerId)
     {
         var rule = new RedemptionTransitionRule(Status, RedemptionStatus.Approved);
