@@ -48,7 +48,11 @@ public sealed record CategoryForm(
     int AgeMin,
     int AgeMax,
     int Difficulty,
-    IReadOnlyList<string> Tags)
+    IReadOnlyList<string> Tags,
+    string TargetAudience = "General",
+    string ProgressionRule = "Linear",
+    string? Color = null,
+    string? Icon = null)
 {
     public IReadOnlyDictionary<string, string[]> Validate()
     {
@@ -62,6 +66,9 @@ public sealed record CategoryForm(
         var level = AcademicLevel?.Trim() ?? string.Empty;
         if (level.Length < 2 || level.Length > 100)
             errors[nameof(AcademicLevel)] = ["Academic level must be 2-100 characters."];
+        var target = TargetAudience?.Trim() ?? string.Empty;
+        if (target.Length < 2 || target.Length > 100)
+            errors[nameof(TargetAudience)] = ["Target audience must be 2-100 characters."];
         if (AgeMin is < 0 or > 120)
             errors[nameof(AgeMin)] = ["Minimum age must be 0-120."];
         if (AgeMax is < 0 or > 120 || AgeMax < AgeMin)
@@ -74,7 +81,14 @@ public sealed record CategoryForm(
                 errors[nameof(Tags)] = ["At most 10 tags."];
             else if (Tags.Any(t => string.IsNullOrWhiteSpace(t) || t.Trim().Length is < 2 or > 30))
                 errors[nameof(Tags)] = ["Each tag must be 2-30 characters."];
+            else if (Tags.Distinct(StringComparer.OrdinalIgnoreCase).Count() != Tags.Count)
+                errors[nameof(Tags)] = ["Tags must not contain duplicates."];
         }
+        if (Color is not null && !System.Text.RegularExpressions.Regex.IsMatch(Color, "^#[0-9A-Fa-f]{6}$"))
+            errors[nameof(Color)] = ["Color must be hex #RRGGBB."];
+        var allowedProgression = new[] { "Linear", "Progressive", "Adaptive", "CategorySpecific" };
+        if (!allowedProgression.Contains(ProgressionRule))
+            errors[nameof(ProgressionRule)] = ["Progression rule must be Linear, Progressive, Adaptive or CategorySpecific."];
         return errors;
     }
 

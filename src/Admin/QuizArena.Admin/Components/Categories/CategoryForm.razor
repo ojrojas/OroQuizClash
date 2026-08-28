@@ -1,0 +1,72 @@
+@using QuizArena.Admin.Client.Models
+@using GC = QuizArena.Admin.Client.Models.Categories
+
+<div class="category-form" role="form" aria-label="Formulario de categoría">
+    @if (IsReadOnly)
+    {
+        <div class="form-readonly-banner" role="alert">Categoría archivada — solo lectura</div>
+    }
+
+    <QuizInput Id="cat-name" Label="Nombre *" Required="true" Value="@Form.Name" ValueChanged="@(v => Update(nameof(Form.Name), v ?? string.Empty))" Error="@Err(nameof(Form.Name))" Disabled="@IsReadOnly" />
+    <QuizInput Id="cat-desc" Label="Descripción" Value="@(Form.Description ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Description), v))" Disabled="@IsReadOnly" />
+    <QuizInput Id="cat-area" Label="Área de conocimiento *" Required="true" Value="@Form.KnowledgeArea" ValueChanged="@(v => Update(nameof(Form.KnowledgeArea), v ?? string.Empty))" Error="@Err(nameof(Form.KnowledgeArea))" Disabled="@IsReadOnly" />
+    <QuizInput Id="cat-level" Label="Nivel académico *" Required="true" Value="@Form.AcademicLevel" ValueChanged="@(v => Update(nameof(Form.AcademicLevel), v ?? string.Empty))" Error="@Err(nameof(Form.AcademicLevel))" Disabled="@IsReadOnly" />
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);">
+        <QuizInput Id="cat-amin" Label="Edad mínima" Type="number" Value="@Form.AgeMin.ToString()" ValueChanged="@(v => Update(nameof(Form.AgeMin), v ?? string.Empty))" Error="@Err(nameof(Form.AgeMin))" Disabled="@IsReadOnly" />
+        <QuizInput Id="cat-amax" Label="Edad máxima" Type="number" Value="@Form.AgeMax.ToString()" ValueChanged="@(v => Update(nameof(Form.AgeMax), v ?? string.Empty))" Error="@Err(nameof(Form.AgeMax))" Disabled="@IsReadOnly" />
+        <QuizSelect Id="cat-diff" Label="Dificultad" Value="@Form.Difficulty.ToString()" ValueChanged="@(v => Update(nameof(Form.Difficulty), v ?? string.Empty))" Options="@diffOptions" Disabled="@IsReadOnly" />
+        <QuizInput Id="cat-target" Label="Público objetivo *" Required="true" Value="@Form.TargetAudience" ValueChanged="@(v => Update(nameof(Form.TargetAudience), v ?? string.Empty))" Error="@Err(nameof(Form.TargetAudience))" Disabled="@IsReadOnly" />
+    </div>
+
+    <QuizInput Id="cat-tags" Label="Tags (coma separados)" Value="@tagsText" ValueChanged="@(v => tagsText = v ?? string.Empty)" Helper="Máx 10 tags, 2–30 chars" Disabled="@IsReadOnly" />
+    @if (FieldErrors.TryGetValue("Tags", out var tagErr)) { <div class="validation-message" role="alert">@string.Join(", ", tagErr)</div> }
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);">
+        <QuizInput Id="cat-color" Label="Color (#RRGGBB)" Value="@(Form.Color ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Color), v))" Error="@Err(nameof(Form.Color))" Disabled="@IsReadOnly" />
+        <QuizInput Id="cat-icon" Label="Icono Lucide" Value="@(Form.Icon ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Icon), v))" Disabled="@IsReadOnly" />
+        <QuizSelect Id="cat-progression" Label="Reglas de progresión *" Required="true" Value="@Form.Progression.ToString()" ValueChanged="@(v => Update(nameof(Form.Progression), v ?? string.Empty))" Options="@progressionOptions" Disabled="@IsReadOnly" />
+    </div>
+
+    @foreach (var kv in FieldErrors.Where(kv => new[] { "Name","KnowledgeArea","AcademicLevel","TargetAudience","AgeMin","AgeMax","Difficulty","Tags","Color","Progression" }.Contains(kv.Key) == false))
+    {
+        <div class="validation-message" role="alert">@kv.Key: @string.Join(", ", kv.Value)</div>
+    }
+
+    <div style="margin-top:var(--space-4);">
+        <QuizButton Variant="primary" OnClick="HandleSubmit" Disabled="@IsReadOnly" Loading="@IsSubmitting">Guardar categoría</QuizButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GC.CategoryForm Form { get; set; } = default!;
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string[]> FieldErrors { get; set; } = new Dictionary<string, string[]>();
+    [Parameter] public EventCallback<GC.CategoryForm> OnSubmit { get; set; }
+    [Parameter] public EventCallback<(string Field, string? Value)> OnFieldChanged { get; set; }
+
+    private string? tagsText;
+    protected override void OnParametersSet()
+    {
+        if (tagsText is null && Form.Tags is not null)
+            tagsText = string.Join(", ", Form.Tags);
+    }
+
+    private IReadOnlyList<QuizSelect.OptionDef> diffOptions = [new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
+    private IReadOnlyList<QuizSelect.OptionDef> progressionOptions = [new("Linear","Linear"), new("Progressive","Progressive"), new("Adaptive","Adaptive"), new("CategorySpecific","CategorySpecific")];
+
+    private string? Err(string f) => FieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+
+    private Task Update(string field, string? value)
+    {
+        if (field == "Tags")
+        {
+            // handled via tagsText
+            return Task.CompletedTask;
+        }
+        return OnFieldChanged.InvokeAsync((field, value));
+    }
+
+    private Task HandleSubmit(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnSubmit.InvokeAsync(Form);
+}

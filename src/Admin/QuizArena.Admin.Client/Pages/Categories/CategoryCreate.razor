@@ -1,0 +1,78 @@
+@page "/admin/categories/new"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.Categories
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Categories
+@inject ICategoriesService CategoriesService
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Crear categoría — QuizArena Admin</PageTitle>
+
+<h1>Crear categoría</h1>
+
+@if (isSubmitting)
+{
+    <LoadingSkeleton Rows="4" />
+}
+else
+{
+    <CategoryForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+    @if (!string.IsNullOrEmpty(generalError))
+    {
+        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
+    }
+}
+
+@code {
+    private GC.CategoryForm form = new("", null, "", "", 0, 0, 1, "General", [], null, null, GC.ProgressionRule.Linear);
+    private Dictionary<string, string[]> fieldErrors = new();
+    private string generalError = string.Empty;
+    private bool isSubmitting;
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        var (field, value) = args;
+        form = field switch
+        {
+            nameof(GC.CategoryForm.Name) => form with { Name = value ?? string.Empty },
+            nameof(GC.CategoryForm.Description) => form with { Description = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(GC.CategoryForm.KnowledgeArea) => form with { KnowledgeArea = value ?? string.Empty },
+            nameof(GC.CategoryForm.AcademicLevel) => form with { AcademicLevel = value ?? string.Empty },
+            nameof(GC.CategoryForm.AgeMin) when int.TryParse(value, out var n) => form with { AgeMin = n },
+            nameof(GC.CategoryForm.AgeMax) when int.TryParse(value, out var n) => form with { AgeMax = n },
+            nameof(GC.CategoryForm.Difficulty) when int.TryParse(value, out var n) => form with { Difficulty = n },
+            nameof(GC.CategoryForm.TargetAudience) => form with { TargetAudience = value ?? string.Empty },
+            nameof(GC.CategoryForm.Color) => form with { Color = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(GC.CategoryForm.Icon) => form with { Icon = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(GC.CategoryForm.Progression) when Enum.TryParse<GC.ProgressionRule>(value, out var v) => form with { Progression = v },
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit(GC.CategoryForm _)
+    {
+        fieldErrors.Clear();
+        generalError = string.Empty;
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            // Map to legacy CategoryForm for existing service (which expects old type)
+            var legacyForm = new QuizArena.Admin.Client.Models.CategoryForm(form.Name, form.Description, form.KnowledgeArea, form.AcademicLevel, form.AgeMin, form.AgeMax, form.Difficulty, form.Tags, form.TargetAudience, form.Progression.ToString(), form.Color, form.Icon);
+            var result = await CategoriesService.CreateCategoryAsync(legacyForm);
+            Toasts.Success($"Categoría creada: {result.Name}");
+            Navigation.NavigateTo($"/admin/categories/{result.Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+            generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            if (ex.ErrorView.Code == "Unauthorized") generalError = "Sesión expirada — re-autenticar. Borrador preservado.";
+        }
+        catch (Exception) { generalError = "No se pudo crear la categoría. Reintente."; }
+        finally { isSubmitting = false; }
+    }
+}

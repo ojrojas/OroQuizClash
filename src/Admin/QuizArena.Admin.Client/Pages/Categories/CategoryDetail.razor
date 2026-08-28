@@ -1,0 +1,91 @@
+@page "/admin/categories/{Id:guid}"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.Categories
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Categories
+@inject ICategoriesService CategoriesService
+
+<PageTitle>Detalle categoría — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (detail is not null)
+{
+    <h1>@detail.Name</h1>
+    <CategoryStateBadge State="@MapState(detail.Status)" ValidQuestionCount="@detail.ValidQuestionCount" />
+    <p>Área: @detail.KnowledgeArea | Nivel: @detail.AcademicLevel | Edad: @detail.AgeMin-@detail.AgeMax | Dificultad: @detail.Difficulty</p>
+    <p>Público: @(detail.Description ?? "-")</p>
+    <p>Preguntas válidas: @detail.ValidQuestionCount / 5 @(detail.ValidQuestionCount >= 5 ? "(elegible)" : "(no elegible)")</p>
+
+    <CategoryTransitionsBar State="@MapState(detail.Status)" ValidQuestionCount="@detail.ValidQuestionCount" RowVersion="@rowVersion" OnTransition="HandleTransition" />
+
+    @if (!string.IsNullOrEmpty(error)) { <div class="validation-errors" role="alert">@error</div> }
+}
+else
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private QuizArena.Admin.Client.Models.CategorySummary? detail;
+    private bool isLoading = true;
+    private string error = string.Empty;
+    private string rowVersion = string.Empty;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            detail = await CategoriesService.GetCategoryAsync(Id);
+            rowVersion = detail.Id.ToString(); // placeholder until RowVersion available
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+
+    private GC.CategoryStateView MapState(QuizArena.Admin.Client.Models.CategoryStatusView s) => s switch
+    {
+        QuizArena.Admin.Client.Models.CategoryStatusView.Active => GC.CategoryStateView.Active,
+        QuizArena.Admin.Client.Models.CategoryStatusView.Inactive => GC.CategoryStateView.Inactive,
+        QuizArena.Admin.Client.Models.CategoryStatusView.Archived => GC.CategoryStateView.Archived,
+        _ => GC.CategoryStateView.Draft
+    };
+
+    private async Task HandleTransition((GC.CategoryStateView To, string RowVersion) args)
+    {
+        if (detail is null) return;
+        try
+        {
+            switch (args.To)
+            {
+                case GC.CategoryStateView.Active:
+                    await PublishWithCountCheck();
+                    break;
+                case GC.CategoryStateView.Inactive:
+                    await CategoriesService.DeactivateCategoryAsync(Id);
+                    break;
+                case GC.CategoryStateView.Archived:
+                    await CategoriesService.ArchiveCategoryAsync(Id);
+                    break;
+                default:
+                    break;
+            }
+            // Reload to get new state
+            detail = await CategoriesService.GetCategoryAsync(Id);
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+    }
+
+    private async Task PublishWithCountCheck()
+    {
+        if (detail is not null && detail.ValidQuestionCount < 5)
+            throw new ApiErrorException(new QuizArena.Admin.Client.Models.ApiErrorView("CategoryNotReady", "Category requires at least 5 valid questions.", "Need 5 valid questions"));
+        await CategoriesService.PublishCategoryAsync(Id);
+    }
+}

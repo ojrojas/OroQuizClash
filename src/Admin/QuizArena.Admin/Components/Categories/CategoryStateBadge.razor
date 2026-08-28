@@ -1,0 +1,22 @@
+@using GC = QuizArena.Admin.Client.Models.Categories
+
+<span class="category-state-badge state-@State.ToString().ToLower()" title="@GC.CategoryStateViewMap.DisplayName(State)">
+    <QuizBadge Variant="@Variant" Label="@GC.CategoryStateViewMap.DisplayName(State)" />
+    @if (ValidQuestionCount >= 0)
+    {
+        <span class="valid-count" title="Preguntas válidas">@ValidQuestionCount/5</span>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public GC.CategoryStateView State { get; set; }
+    [Parameter] public int ValidQuestionCount { get; set; } = -1;
+    private string Variant => State switch
+    {
+        GC.CategoryStateView.Draft => "neutral",
+        GC.CategoryStateView.Active => "success",
+        GC.CategoryStateView.Inactive => "warning",
+        GC.CategoryStateView.Archived => "neutral",
+        _ => "neutral"
+    };
+}

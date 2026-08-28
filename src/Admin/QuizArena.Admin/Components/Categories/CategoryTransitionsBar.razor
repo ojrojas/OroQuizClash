@@ -1,0 +1,25 @@
+@using GC = QuizArena.Admin.Client.Models.Categories
+
+<div class="transitions-bar" role="toolbar" aria-label="Transiciones de categoría">
+    <QuizButton Variant="primary" Disabled="@(!CanPublish)" OnClick="HandlePublish">Publicar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanDeactivate)" OnClick="HandleDeactivate">Desactivar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanActivate)" OnClick="HandleActivate">Activar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanArchive)" OnClick="HandleArchive">Archivar</QuizButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GC.CategoryStateView State { get; set; }
+    [Parameter] public int ValidQuestionCount { get; set; }
+    [Parameter] public string RowVersion { get; set; } = string.Empty;
+    [Parameter] public EventCallback<(GC.CategoryStateView To, string RowVersion)> OnTransition { get; set; }
+
+    private bool CanPublish => State == GC.CategoryStateView.Draft && ValidQuestionCount >= 5;
+    private bool CanDeactivate => State == GC.CategoryStateView.Active;
+    private bool CanActivate => State == GC.CategoryStateView.Inactive;
+    private bool CanArchive => State == GC.CategoryStateView.Active || State == GC.CategoryStateView.Inactive;
+
+    private Task HandlePublish(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GC.CategoryStateView.Active, RowVersion));
+    private Task HandleDeactivate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GC.CategoryStateView.Inactive, RowVersion));
+    private Task HandleActivate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GC.CategoryStateView.Active, RowVersion));
+    private Task HandleArchive(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GC.CategoryStateView.Archived, RowVersion));
+}

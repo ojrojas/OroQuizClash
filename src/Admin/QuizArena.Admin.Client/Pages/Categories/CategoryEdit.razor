@@ -1,0 +1,101 @@
+@page "/admin/categories/{Id:guid}/edit"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.Categories
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Categories
+@inject ICategoriesService CategoriesService
+@inject NavigationManager Navigation
+
+<PageTitle>Editar categoría — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (loadError is not null)
+{
+    <ErrorState Message="@loadError" OnRetry="LoadAsync" />
+}
+else if (form is not null)
+{
+    <h1>Editar categoría</h1>
+    <CategoryForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleUpdate" IsReadOnly="@isReadOnly" IsSubmitting="@isSubmitting" />
+    @if (isReadOnly) { <div class="form-readonly-banner" role="alert">Categoría archivada — solo lectura</div> }
+    @if (!string.IsNullOrEmpty(generalError)) { <div class="validation-errors" role="alert">@generalError</div> }
+}
+else
+{
+    <EmptyState Title="No encontrado" Message="Categoría no encontrada." />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private GC.CategoryForm? form;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? loadError;
+    private string generalError = string.Empty;
+    private Dictionary<string, string[]> fieldErrors = new();
+    private bool isReadOnly;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var detail = await CategoriesService.GetCategoryAsync(Id);
+            form = new GC.CategoryForm(detail.Name, detail.Description, detail.KnowledgeArea, detail.AcademicLevel, detail.AgeMin, detail.AgeMax, detail.Difficulty, "General", detail.Tags, null, null, GC.ProgressionRule.Linear);
+            isReadOnly = detail.Status == QuizArena.Admin.Client.Models.CategoryStatusView.Archived;
+        }
+        catch (ApiErrorException ex) { loadError = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        if (form is null) return Task.CompletedTask;
+        var (field, value) = args;
+        form = field switch
+        {
+            nameof(GC.CategoryForm.Name) => form with { Name = value ?? string.Empty },
+            nameof(GC.CategoryForm.Description) => form with { Description = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(GC.CategoryForm.KnowledgeArea) => form with { KnowledgeArea = value ?? string.Empty },
+            nameof(GC.CategoryForm.AcademicLevel) => form with { AcademicLevel = value ?? string.Empty },
+            nameof(GC.CategoryForm.AgeMin) when int.TryParse(value, out var n) => form with { AgeMin = n },
+            nameof(GC.CategoryForm.AgeMax) when int.TryParse(value, out var n) => form with { AgeMax = n },
+            nameof(GC.CategoryForm.Difficulty) when int.TryParse(value, out var n) => form with { Difficulty = n },
+            nameof(GC.CategoryForm.TargetAudience) => form with { TargetAudience = value ?? string.Empty },
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleUpdate(GC.CategoryForm _)
+    {
+        if (form is null) return;
+        if (isReadOnly) { generalError = "Categoría archivada — no se puede editar."; return; }
+        fieldErrors.Clear();
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            var legacyForm = new QuizArena.Admin.Client.Models.CategoryForm(form.Name, form.Description, form.KnowledgeArea, form.AcademicLevel, form.AgeMin, form.AgeMax, form.Difficulty, form.Tags, form.TargetAudience, form.Progression.ToString(), form.Color, form.Icon);
+            await CategoriesService.UpdateCategoryAsync(Id, legacyForm);
+            Navigation.NavigateTo($"/admin/categories/{Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code == "ConcurrencyConflict") generalError = "Conflicto de concurrencia — recargue.";
+            else
+            {
+                if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+                generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            }
+        }
+        finally { isSubmitting = false; }
+    }
+}
