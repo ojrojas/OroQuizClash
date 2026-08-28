@@ -1,0 +1,39 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<section class="quiz-card quiz-card-@Variant @(Loading ? "is-loading" : string.Empty)" aria-busy="@Loading">
+    @if (!string.IsNullOrEmpty(Title) || HeaderActions is not null)
+    {
+        <header class="quiz-card-header">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <h2 class="quiz-card-title">@Title</h2>
+            }
+            @HeaderActions
+        </header>
+    }
+    <div class="quiz-card-body">
+        @if (Loading)
+        {
+            <LoadingSkeleton Rows="3" />
+        }
+        else
+        {
+            @ChildContent
+        }
+    </div>
+    @if (Footer is not null)
+    {
+        <footer class="quiz-card-footer">
+            @Footer
+        </footer>
+    }
+</section>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Variant { get; set; } = "default";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+}

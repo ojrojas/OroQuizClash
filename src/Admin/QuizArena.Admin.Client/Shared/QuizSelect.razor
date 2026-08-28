@@ -1,0 +1,54 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-field @(Error is not null ? "has-error" : string.Empty)">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="quiz-field-label" for="@Id">
+            @Label
+            @if (Required)
+            {
+                <span class="quiz-field-required" aria-hidden="true">*</span>
+            }
+        </label>
+    }
+    <select id="@Id" class="quiz-select" disabled="@Disabled" required="@Required"
+            aria-invalid="@(Error is not null)" aria-describedby="@DescribedBy"
+            @onchange="OnChange" @attributes="AdditionalAttributes">
+        @if (Placeholder is not null)
+        {
+            <option value="" disabled selected="@(string.IsNullOrEmpty(Value))">@Placeholder</option>
+        }
+        @foreach (var option in Options)
+        {
+            <option value="@option.Value" selected="@(option.Value == Value)">@option.Label</option>
+        }
+    </select>
+    @if (Error is not null)
+    {
+        <p class="quiz-field-error" id="@($"{Id}-error")" role="alert">@Error</p>
+    }
+    else if (!string.IsNullOrEmpty(Helper))
+    {
+        <p class="quiz-field-helper" id="@($"{Id}-helper")">@Helper</p>
+    }
+</div>
+
+@code {
+    public sealed record OptionDef(string Value, string Label);
+
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public IReadOnlyList<OptionDef> Options { get; set; } = [];
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public string? Helper { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string? DescribedBy => Error is not null ? $"{Id}-error" : string.IsNullOrEmpty(Helper) ? null : $"{Id}-helper";
+
+    private Task OnChange(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString());
+}

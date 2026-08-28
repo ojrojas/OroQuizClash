@@ -1,0 +1,288 @@
+@page "/admin/games"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject IGamesAdminService GamesService
+@inject ICategoriesService Categories
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Games — QuizArena Admin</PageTitle>
+
+<div class="page-header">
+    <h1>Games</h1>
+    <QuizButton Icon="plus" OnClick="GoToConfiguration">New game</QuizButton>
+</div>
+
+<QuizCard>
+    <div class="games-filters">
+        <QuizInput Id="game-search" Label="Search" Placeholder="Search by name…"
+                   Value="search" ValueChanged="OnSearchChanged" />
+        <QuizSelect Id="game-status-filter" Label="Status" Value="statusFilter" ValueChanged="OnStatusFilterChanged"
+                    Options="statusOptions" Placeholder="All statuses" />
+        <QuizSelect Id="game-category-filter" Label="Category" Value="categoryFilter" ValueChanged="OnCategoryFilterChanged"
+                    Options="categoryOptions" Placeholder="All categories" />
+    </div>
+
+    @if (state == PageState.Error)
+    {
+        <ErrorState Message="@errorMessage" OnRetry="LoadAsync" />
+    }
+    else
+    {
+        <QuizTable Caption="Games" Density="compact" ColumnCount="6"
+                   Loading="state == PageState.Loading" IsEmpty="state == PageState.Empty"
+                   Page="page" TotalPages="totalPages" PageChanged="OnPageChanged">
+            <HeaderCells>
+                <th scope="col">Name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Rounds</th>
+                <th scope="col">Players</th>
+                <th scope="col">Created</th>
+                <th scope="col"><span class="visually-hidden">Actions</span></th>
+            </HeaderCells>
+            <BodyRows>
+                @foreach (var game in items)
+                {
+                    <tr key="@game.Id">
+                        <td>@game.Name</td>
+                        <td><QuizBadge Variant="@StatusVariant(game.Status)">@GameStatusMap.DisplayName(game.Status)</QuizBadge></td>
+                        <td>@game.MinRounds–@game.MaxRounds</td>
+                        <td>@game.PlayerCount</td>
+                        <td>@game.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td class="row-actions">
+                            <QuizButton Variant="ghost" Size="sm" Icon="eye"
+                                        OnClick="() => GoToDetail(game.Id)">Details</QuizButton>
+                            @if (game.Status is GameStatusView.Configuring or GameStatusView.Lobby)
+                            {
+                                <QuizButton Variant="secondary" Size="sm" OnClick="() => StartAsync(game)">Start</QuizButton>
+                            }
+                            @if (game.Status is GameStatusView.Configuring or GameStatusView.Lobby or GameStatusView.Active)
+                            {
+                                <QuizButton Variant="destructive" Size="sm" OnClick="() => OpenCancel(game)">Cancel</QuizButton>
+                            }
+                            @if (game.Status == GameStatusView.Active)
+                            {
+                                <QuizButton Variant="destructive" Size="sm" OnClick="() => OpenForceFinish(game)">Force finish</QuizButton>
+                            }
+                        </td>
+                    </tr>
+                }
+            </BodyRows>
+            <EmptyContent>
+                <EmptyState Icon="gamepad" Title="No games found"
+                            Message="Create your first game or adjust the filters."
+                            ActionLabel="New game"
+                            OnAction="GoToConfiguration" />
+            </EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+<QuizModal Open="confirmModal is not null" Title="@confirmTitle" OnClose="CloseConfirm">
+    <ChildContent>
+        <p>@confirmMessage</p>
+        @if (confirmNeedsReason)
+        {
+            <QuizInput Id="confirm-reason" Label="Reason" Required="true"
+                       Value="confirmReason" ValueChanged="v => confirmReason = v"
+                       Error="@(reasonError ? "A reason is required." : null)" />
+        }
+    </ChildContent>
+    <Footer>
+        <QuizButton Variant="ghost" OnClick="CloseConfirm">Back</QuizButton>
+        <QuizButton Variant="destructive" Loading="confirmBusy" Disabled="confirmBusy" OnClick="ConfirmAsync">Confirm</QuizButton>
+    </Footer>
+</QuizModal>
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+
+    private PageState state = PageState.Loading;
+    private string errorMessage = string.Empty;
+    private IReadOnlyList<GameSummary> items = [];
+    private IReadOnlyList<CategorySummary> categories = [];
+
+    private string? search;
+    private string? statusFilter;
+    private string? categoryFilter;
+    private int page = 1;
+    private int totalPages = 1;
+
+    private GameSummary? confirmModal;
+    private string confirmAction = string.Empty;
+    private string confirmTitle = string.Empty;
+    private string confirmMessage = string.Empty;
+    private bool confirmNeedsReason;
+    private string? confirmReason;
+    private bool confirmBusy;
+    private bool reasonError;
+
+    private static readonly QuizSelect.OptionDef[] statusOptions =
+    [
+        new("Configuring", "Configuring"),
+        new("Lobby", "Lobby"),
+        new("Active", "Active"),
+        new("Finished", "Finished"),
+        new("Cancelled", "Cancelled")
+    ];
+
+    private List<QuizSelect.OptionDef> categoryOptions =>
+        categories.Select(c => new QuizSelect.OptionDef(c.Id.ToString(), c.Name)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var categoryResult = await Categories.GetCategoriesAsync(new CategoryFilter(Page: 1, PageSize: 100));
+            categories = categoryResult.Items;
+        }
+        catch (Exception)
+        {
+            // Category filter is optional; the list still works without it.
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try
+        {
+            var filter = new GameFilter(
+                Status: string.IsNullOrEmpty(statusFilter) ? null : Enum.Parse<GameStatusView>(statusFilter),
+                CategoryId: Guid.TryParse(categoryFilter, out var categoryId) ? categoryId : null,
+                Search: string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
+                Page: page);
+            var result = await GamesService.GetGamesAsync(filter);
+            items = result.Items;
+            totalPages = Math.Max(1, result.TotalPages);
+            state = items.Count == 0 ? PageState.Empty : PageState.Ready;
+        }
+        catch (ApiErrorException ex)
+        {
+            state = PageState.Error;
+            errorMessage = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+        catch (Exception)
+        {
+            state = PageState.Error;
+            errorMessage = "The game list could not be loaded.";
+        }
+    }
+
+    private async Task OnSearchChanged(string? value)
+    {
+        search = value;
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnStatusFilterChanged(string? value)
+    {
+        statusFilter = value;
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnCategoryFilterChanged(string? value)
+    {
+        categoryFilter = value;
+        page = 1;
+        await LoadAsync();
+    }
+
+    private async Task OnPageChanged(int newPage)
+    {
+        page = newPage;
+        await LoadAsync();
+    }
+
+    private async Task StartAsync(GameSummary game)
+    {
+        try
+        {
+            await GamesService.StartGameAsync(game.Id);
+            Toasts.Success("Game started", game.Name);
+            await LoadAsync();
+        }
+        catch (ApiErrorException ex)
+        {
+            Toasts.Error("Could not start the game", ex.ErrorView.Detail ?? ex.ErrorView.Title);
+        }
+    }
+
+    private void OpenCancel(GameSummary game)
+    {
+        confirmModal = game;
+        confirmAction = "cancel";
+        confirmTitle = "Cancel game";
+        confirmMessage = $"Cancel \"{game.Name}\"? Players will be notified and the game cannot be resumed.";
+        confirmNeedsReason = true;
+        confirmReason = null;
+        reasonError = false;
+    }
+
+    private void OpenForceFinish(GameSummary game)
+    {
+        confirmModal = game;
+        confirmAction = "force-finish";
+        confirmTitle = "Force finish game";
+        confirmMessage = $"Force finish \"{game.Name}\"? Current round results are kept and the game ends immediately.";
+        confirmNeedsReason = true;
+        confirmReason = null;
+        reasonError = false;
+    }
+
+    private void CloseConfirm()
+    {
+        confirmModal = null;
+        confirmBusy = false;
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (confirmModal is null)
+        {
+            return;
+        }
+        if (confirmNeedsReason && string.IsNullOrWhiteSpace(confirmReason))
+        {
+            reasonError = true;
+            return;
+        }
+
+        confirmBusy = true;
+        try
+        {
+            if (confirmAction == "cancel")
+            {
+                await GamesService.CancelGameAsync(confirmModal.Id, confirmReason!.Trim());
+                Toasts.Success("Game cancelled", confirmModal.Name);
+            }
+            else
+            {
+                await GamesService.ForceFinishGameAsync(confirmModal.Id, confirmReason!.Trim());
+                Toasts.Success("Game force-finished", confirmModal.Name);
+            }
+            CloseConfirm();
+            await LoadAsync();
+        }
+        catch (ApiErrorException ex)
+        {
+            confirmBusy = false;
+            Toasts.Error("Operation failed", ex.ErrorView.Detail ?? ex.ErrorView.Title);
+        }
+    }
+
+    private void GoToDetail(Guid id) => Navigation.NavigateTo($"/admin/games/{id}");
+    private void GoToConfiguration() => Navigation.NavigateTo("/admin/games/configuration");
+
+    private static string StatusVariant(GameStatusView status) => status switch
+    {
+        GameStatusView.Configuring => "neutral",
+        GameStatusView.Lobby => "info",
+        GameStatusView.Active => "success",
+        GameStatusView.Finished => "accent",
+        GameStatusView.Cancelled => "error",
+        _ => "neutral"
+    };
+}

@@ -1,0 +1,22 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-empty-state" role="status">
+    <LucideIcon Name="@Icon" />
+    <h3 class="quiz-empty-title">@Title</h3>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="quiz-empty-message">@Message</p>
+    }
+    @if (!string.IsNullOrEmpty(ActionLabel))
+    {
+        <QuizButton Variant="secondary" Size="sm" OnClick="OnAction">@ActionLabel</QuizButton>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string Icon { get; set; } = "search";
+    [Parameter] public string? ActionLabel { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+}

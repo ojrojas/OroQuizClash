@@ -1,0 +1,122 @@
+.admin-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: calc(var(--space-12) * 5);
+    background: var(--color-card);
+    border-right: 1px solid var(--color-border);
+    transform: translateX(-100%);
+    transition: transform var(--motion-slide);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.admin-sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--color-neutral-900);
+    opacity: 0.4;
+    z-index: 30;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-family: var(--typography-font-heading);
+    font-weight: 700;
+    font-size: var(--typography-label-m-size);
+}
+
+.brand-name {
+    font-family: var(--typography-font-heading);
+    font-weight: 600;
+}
+
+.sidebar-sections {
+    list-style: none;
+    margin: var(--space-2) 0;
+    padding: 0;
+    flex: 1;
+}
+
+.sidebar-sections li {
+    margin: var(--space-1) var(--space-2);
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: calc(var(--space-1) * 11);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--color-muted-foreground);
+    text-decoration: none;
+    font-size: var(--typography-label-m-size);
+}
+
+.sidebar-link:hover {
+    background: var(--color-muted);
+    color: var(--color-foreground);
+}
+
+.sidebar-link.active {
+    background: var(--color-muted);
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.sidebar-roles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.role-chip {
+    font-size: var(--typography-caption-size);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-2xl);
+    background: var(--color-muted);
+    color: var(--color-muted-foreground);
+}
+
+@media (min-width: 64em) {
+    .admin-sidebar {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        transform: none;
+        z-index: 10;
+    }
+
+    .sidebar-backdrop {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .admin-sidebar {
+        transition: none;
+    }
+}

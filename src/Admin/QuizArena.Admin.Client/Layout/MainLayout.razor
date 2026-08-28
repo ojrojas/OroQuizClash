@@ -1,0 +1,71 @@
+﻿@inherits LayoutComponentBase
+@using QuizArena.Admin.Client.Shared
+
+<div class="admin-shell">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <NavMenu @bind-Open="sidebarOpen" />
+
+    <div class="admin-main">
+        <header class="admin-topbar" role="banner">
+            <button type="button" class="topbar-toggle" @onclick="() => sidebarOpen = !sidebarOpen"
+                    aria-label="Toggle navigation" aria-expanded="@sidebarOpen.ToString().ToLowerInvariant()">
+                <LucideIcon Name="menu" />
+            </button>
+            <div class="topbar-title" aria-hidden="true">QuizArena Admin</div>
+            <div class="topbar-user">
+                <AuthorizeView>
+                    <Authorized>
+                        <span class="topbar-username">@context.User.Identity?.Name</span>
+                        <form action="authentication/logout" method="post" class="logout-form">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="logout-button">
+                                <LucideIcon Name="logout" />
+                                <span>Logout</span>
+                            </button>
+                        </form>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main id="main-content" role="main" class="admin-content">
+            @Body
+        </main>
+    </div>
+
+    <QuizToast />
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss" role="button" tabindex="0">&#x2715;</span>
+</div>
+
+@code {
+    private bool sidebarOpen;
+    private string? currentUrl;
+
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = Navigation.ToBaseRelativePath(e.Location);
+        sidebarOpen = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

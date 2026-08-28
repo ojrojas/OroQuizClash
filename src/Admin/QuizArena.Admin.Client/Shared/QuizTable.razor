@@ -1,0 +1,68 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-table-wrapper">
+    <table class="quiz-table quiz-table-@Density">
+        <caption class="visually-hidden">@Caption</caption>
+        <thead>
+            <tr>
+                @HeaderCells
+            </tr>
+        </thead>
+        <tbody>
+            @if (Loading)
+            {
+                <tr>
+                    <td colspan="@ColumnCount">
+                        <LoadingSkeleton Rows="5" />
+                    </td>
+                </tr>
+            }
+            else if (IsEmpty)
+            {
+                <tr>
+                    <td colspan="@ColumnCount" class="quiz-table-empty-cell">
+                        @if (EmptyContent is not null)
+                        {
+                            @EmptyContent
+                        }
+                        else
+                        {
+                            <EmptyState Title="No records" Message="Nothing to display yet." />
+                        }
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @BodyRows
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (TotalPages > 1)
+{
+    <nav class="quiz-table-pagination" aria-label="Pagination">
+        <QuizButton Variant="ghost" Size="sm" Icon="chevron-left" Disabled="@(Page <= 1)"
+                    OnClick="() => GoTo(Page - 1)">Previous</QuizButton>
+        <span class="quiz-table-page-info" aria-live="polite">Page @Page of @TotalPages</span>
+        <QuizButton Variant="ghost" Size="sm" Icon="chevron-right" Disabled="@(Page >= TotalPages)"
+                    OnClick="() => GoTo(Page + 1)">Next</QuizButton>
+    </nav>
+}
+
+@code {
+    [Parameter] public string Caption { get; set; } = "Data table";
+    [Parameter] public string Density { get; set; } = "comfortable";
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public bool IsEmpty { get; set; }
+    [Parameter] public int ColumnCount { get; set; } = 1;
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int TotalPages { get; set; } = 1;
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+    [Parameter] public RenderFragment? HeaderCells { get; set; }
+    [Parameter] public RenderFragment? BodyRows { get; set; }
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    private Task GoTo(int page) => PageChanged.InvokeAsync(page);
+}

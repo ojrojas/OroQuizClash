@@ -1,0 +1,46 @@
+@namespace QuizArena.Admin.Client.Shared
+
+@if (Open)
+{
+    <div class="quiz-drawer-overlay" @onclick="CloseAsync">
+        <aside class="quiz-drawer quiz-drawer-@Side" role="dialog" aria-modal="true"
+               aria-labelledby="@titleId" @onkeydown="OnKeyDown">
+            <header class="quiz-drawer-header">
+                <h2 class="quiz-drawer-title" id="@titleId">@Title</h2>
+                <button type="button" class="quiz-drawer-close" aria-label="Close panel" @onclick="CloseAsync">
+                    <LucideIcon Name="close" />
+                </button>
+            </header>
+            <div class="quiz-drawer-body">
+                @ChildContent
+            </div>
+            @if (Footer is not null)
+            {
+                <footer class="quiz-drawer-footer">
+                    @Footer
+                </footer>
+            }
+        </aside>
+    </div>
+}
+
+@code {
+    private readonly string titleId = $"drawer-title-{Guid.NewGuid():N}";
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Side { get; set; } = "right";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
+}

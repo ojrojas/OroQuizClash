@@ -43,7 +43,7 @@ public sealed class DesignSystemNoDirectDbTests
         }
 
         var sourceFiles = Directory.EnumerateFiles(target, "*.*", SearchOption.AllDirectories)
-            .Where(f => IsSourceFile(f))
+            .Where(f => IsSourceFile(f) && !IsBuildArtifact(f))
             .ToList();
 
         var violations = new List<string>();
@@ -68,6 +68,15 @@ public sealed class DesignSystemNoDirectDbTests
     {
         var ext = Path.GetExtension(path);
         return ext is ".cs" or ".razor" or ".ts" or ".tsx" or ".js" or ".html" or ".cshtml" or ".json";
+    }
+
+    // bin/obj contain restore/build artifacts (deps.json, dgspec.json) that list the
+    // transitive closure of shared building blocks (e.g. ServiceDefaults → EF Core for
+    // OTel). They are not source and cannot introduce direct DB access.
+    private static bool IsBuildArtifact(string path)
+    {
+        var segments = path.Replace('\\', '/').Split('/');
+        return segments.Contains("bin") || segments.Contains("obj");
     }
 
     private static string FindRepoRoot()

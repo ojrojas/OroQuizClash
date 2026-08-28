@@ -1,0 +1,60 @@
+.quiz-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-2xl);
+    font-size: var(--typography-caption-size);
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.quiz-badge-neutral {
+    background: var(--color-muted);
+    color: var(--color-muted-foreground);
+}
+
+.quiz-badge-success {
+    background: color-mix(in srgb, var(--color-success) 12%, var(--color-card));
+    color: var(--color-success-text);
+}
+
+.quiz-badge-warning {
+    background: color-mix(in srgb, var(--color-warning) 12%, var(--color-card));
+    color: var(--color-accent-text);
+}
+
+.quiz-badge-error {
+    background: color-mix(in srgb, var(--color-destructive) 12%, var(--color-card));
+    color: var(--color-destructive-text);
+}
+
+.quiz-badge-info {
+    background: color-mix(in srgb, var(--color-info) 12%, var(--color-card));
+    color: var(--color-primary);
+}
+
+.quiz-badge-accent {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-card));
+    color: var(--color-accent-text);
+}
+
+.quiz-badge-dot {
+    width: var(--space-2);
+    height: var(--space-2);
+    border-radius: 50%;
+    background: var(--color-success);
+    animation: quiz-badge-pulse 1s var(--motion-ease-in-out) infinite;
+}
+
+@keyframes quiz-badge-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .quiz-badge-dot {
+        animation: none;
+    }
+}

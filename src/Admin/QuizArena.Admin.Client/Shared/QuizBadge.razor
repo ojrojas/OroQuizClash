@@ -1,0 +1,20 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<span class="quiz-badge quiz-badge-@Variant" role="@(Pulse ? "status" : null)">
+    @if (Pulse)
+    {
+        <span class="quiz-badge-dot" aria-hidden="true"></span>
+    }
+    else if (!string.IsNullOrEmpty(Icon))
+    {
+        <LucideIcon Name="@Icon" />
+    }
+    <span class="quiz-badge-label">@ChildContent</span>
+</span>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "neutral";
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public bool Pulse { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

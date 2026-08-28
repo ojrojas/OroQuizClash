@@ -1,0 +1,94 @@
+.quiz-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    border: 1px solid transparent;
+    border-radius: var(--component-button-radius);
+    font-family: var(--typography-font-body);
+    font-size: var(--typography-label-m-size);
+    font-weight: 500;
+    cursor: pointer;
+    transition: box-shadow var(--motion-fade), background-color var(--motion-fade);
+    min-height: var(--space-8);
+    padding: var(--space-2) var(--space-4);
+}
+
+.quiz-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--component-button-focus-ring);
+}
+
+.quiz-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.quiz-btn-primary {
+    background: var(--component-button-bg-primary);
+    color: var(--component-button-text-primary);
+    box-shadow: var(--elevation-1);
+}
+
+.quiz-btn-primary:hover:not(:disabled) {
+    box-shadow: var(--elevation-2);
+}
+
+.quiz-btn-secondary {
+    background: var(--color-card);
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.quiz-btn-secondary:hover:not(:disabled) {
+    background: var(--color-muted);
+}
+
+.quiz-btn-ghost {
+    background: transparent;
+    color: var(--color-primary);
+}
+
+.quiz-btn-ghost:hover:not(:disabled) {
+    background: var(--color-muted);
+}
+
+.quiz-btn-destructive {
+    background: var(--color-destructive);
+    color: var(--color-on-destructive);
+    box-shadow: var(--elevation-1);
+}
+
+.quiz-btn-destructive:hover:not(:disabled) {
+    box-shadow: var(--elevation-2);
+}
+
+.quiz-btn-sm {
+    min-height: var(--space-6);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--typography-caption-size);
+}
+
+.quiz-btn-lg {
+    min-height: calc(var(--space-1) * 11);
+    padding: var(--space-3) var(--space-6);
+}
+
+.quiz-btn-spinner {
+    width: var(--space-3);
+    height: var(--space-3);
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: quiz-btn-spin var(--motion-duration-800) linear infinite;
+}
+
+@keyframes quiz-btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (max-width: 47.99em) {
+    .quiz-btn-block-mobile {
+        width: 100%;
+    }
+}

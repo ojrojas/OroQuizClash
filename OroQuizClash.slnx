@@ -5,6 +5,10 @@
     <Project Path="src/OroQuizClash.Domain/OroQuizClash.Domain.csproj" />
     <Project Path="src/OroQuizClash.Infrastructure/OroQuizClash.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Admin/">
+    <Project Path="src/Admin/QuizArena.Admin.Client/QuizArena.Admin.Client.csproj" />
+    <Project Path="src/Admin/QuizArena.Admin/QuizArena.Admin.csproj" />
+  </Folder>
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.CQRS/BuildingBlocks.CQRS.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.EventBus.RabbitMQ/BuildingBlocks.EventBus.RabbitMQ.csproj" />
@@ -20,6 +24,7 @@
     <Project Path="tests/OroQuizClash.Architecture.Tests/OroQuizClash.Architecture.Tests.csproj" />
     <Project Path="tests/OroQuizClash.Domain.Tests/OroQuizClash.Domain.Tests.csproj" />
     <Project Path="tests/OroQuizClash.Infrastructure.Tests/OroQuizClash.Infrastructure.Tests.csproj" />
+    <Project Path="tests/QuizArena.Admin.Tests/QuizArena.Admin.Tests.csproj" />
   </Folder>
   <Project Path="OroQuizClash.AppHost/OroQuizClash.AppHost.csproj" />
 </Solution>

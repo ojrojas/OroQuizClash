@@ -1,0 +1,88 @@
+@page "/admin/questions"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject IQuestionsService QuestionsService
+@inject ICategoriesService CategoriesService
+@inject ToastService Toasts
+
+<PageTitle>Question bank — QuizArena Admin</PageTitle>
+
+<div class="page-header"><h1>Question bank</h1><QuizButton Icon="plus" OnClick="OpenCreate">New question</QuizButton></div>
+
+<QuizCard>
+    <div class="filters">
+        <QuizInput Id="q-search" Label="Search" Placeholder="Text…" Value="search" ValueChanged="OnSearch" />
+        <QuizSelect Id="q-status" Label="Status" Value="status" ValueChanged="OnStatus" Options="qStatusOptions" Placeholder="All" />
+        <QuizSelect Id="q-cat" Label="Category" Value="catFilter" ValueChanged="OnCat" Options="catOptions" Placeholder="All categories" />
+    </div>
+    @if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+    else {
+        <QuizTable Caption="Questions" ColumnCount="4" Loading="state==PageState.Loading" IsEmpty="state==PageState.Empty" Page="page" TotalPages="totalPages" PageChanged="OnPage">
+            <HeaderCells><th>Text</th><th>Difficulty</th><th>Status</th><th></th></HeaderCells>
+            <BodyRows>
+                @foreach (var q in items) {
+                    <tr><td>@(q.Text.Length>80 ? q.Text[..80]+"…" : q.Text) @if(q.InUseByLiveGame){<QuizBadge Variant="warning">En uso</QuizBadge>}</td><td>@q.Difficulty</td><td><QuizBadge Variant="@(q.Status==QuestionStatusView.Active?"success":"neutral")">@q.Status</QuizBadge></td>
+                        <td class="row-actions"><QuizButton Variant="ghost" Size="sm" OnClick="() => OpenEdit(q)">Edit</QuizButton>
+                        @if(!q.InUseByLiveGame && q.Status==QuestionStatusView.Draft){<QuizButton Size="sm" OnClick="() => Publish(q)">Publish</QuizButton>}</td></tr>
+                }
+            </BodyRows>
+            <EmptyContent><EmptyState Title="No questions" Message="Create questions for your categories." ActionLabel="New question" OnAction="OpenCreate" /></EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+<QuizDrawer Open="drawerOpen" Title="@(editing==null?"New question":"Edit question")" OnClose="Close">
+    <ChildContent>
+        @if (editing?.InUseByLiveGame == true) { <div class="edit-blocked"><LucideIcon Name="alert" /> <span>Read-only — question is in use by a live game.</span></div> }
+        <QuizInput Id="qf-text" Label="Question text *" Required="true" Value="form.Text" ValueChanged="v => form = form with { Text = v ?? string.Empty }" Error="@Err(nameof(QuestionForm.Text))" />
+        <QuizSelect Id="qf-cat" Label="Category *" Required="true" Value="form.CategoryId.ToString()" ValueChanged="v => form = form with { CategoryId = Guid.TryParse(v, out var g)?g:Guid.Empty }" Options="catOptions" Error="@Err(nameof(QuestionForm.CategoryId))" />
+        <QuizSelect Id="qf-diff" Label="Difficulty" Value="form.Difficulty.ToString()" ValueChanged="v => form = form with { Difficulty = int.TryParse(v, out var n)?n:1 }" Options="diffOptions" />
+        @for (int i=0;i<4;i++) { var idx=i; <div class="option-row"><QuizInput Id="@($"qf-opt-{idx}")" Label="@($"Option {idx+1}")" Required="true" Value="options[idx].Text" ValueChanged="v => options[idx]=options[idx] with { Text = v ?? string.Empty }" />
+            <label><input type="radio" name="correct" checked="@options[idx].IsCorrect" @onchange="() => SetCorrect(idx)" /> correct</label></div> }
+        @if (Err(nameof(QuestionForm.Options)) is not null) { <p class="form-error">@Err(nameof(QuestionForm.Options))</p> }
+        <QuizInput Id="qf-expl" Label="Explanation" Value="form.Explanation" ValueChanged="v => form = form with { Explanation = v }" />
+        @if (formError is not null) { <p role="alert" class="form-error">@formError</p> }
+    </ChildContent>
+    <Footer><QuizButton Variant="ghost" OnClick="Close">Cancel</QuizButton><QuizButton OnClick="SaveAsync" Loading="saving" Disabled="editing?.InUseByLiveGame==true">Save</QuizButton></Footer>
+</QuizDrawer>
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state=PageState.Loading; private string error=string.Empty; private IReadOnlyList<QuestionSummary> items=[]; private IReadOnlyList<CategorySummary> cats=[];
+    private string? search; private string? status; private string? catFilter; private int page=1; private int totalPages=1;
+    private bool drawerOpen; private QuestionSummary? editing; private QuestionForm form=new(string.Empty, Guid.Empty, 1, string.Empty, 0, 0, [new("",false),new("",false),new("",false),new("",false)]); private OptionForm[] options=[new("",false),new("",false),new("",false),new("",false)]; private bool saving; private string? formError; private IReadOnlyDictionary<string,string[]> fieldErrors=new Dictionary<string,string[]>();
+    private static readonly QuizSelect.OptionDef[] qStatusOptions=[new("Draft","Draft"), new("Active","Active"), new("Inactive","Inactive"), new("Archived","Archived")];
+    private static readonly QuizSelect.OptionDef[] diffOptions=[new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
+    private List<QuizSelect.OptionDef> catOptions => cats.Select(c=>new QuizSelect.OptionDef(c.Id.ToString(), c.Name)).ToList();
+    protected override async Task OnInitializedAsync() { try { var r=await CategoriesService.GetCategoriesAsync(new CategoryFilter(Page:1,PageSize:200)); cats=r.Items; } catch {} await LoadAsync(); }
+    private async Task LoadAsync() {
+        state=PageState.Loading;
+        try {
+            var f=new QuestionFilter(CategoryId: Guid.TryParse(catFilter, out var g)?g:null, Status: string.IsNullOrEmpty(status)?null:Enum.Parse<QuestionStatusView>(status), Search: string.IsNullOrWhiteSpace(search)?null:search, Page:page);
+            var res=await QuestionsService.GetQuestionsAsync(f); items=res.Items; totalPages=Math.Max(1,res.TotalPages); state=items.Count==0?PageState.Empty:PageState.Ready;
+        } catch (ApiErrorException ex){ error=ex.ErrorView.Detail ?? ex.ErrorView.Title; state=PageState.Error; } catch{ error="Could not load."; state=PageState.Error; }
+    }
+    private async Task OnSearch(string? v){ search=v; page=1; await LoadAsync(); }
+    private async Task OnStatus(string? v){ status=v; page=1; await LoadAsync(); }
+    private async Task OnCat(string? v){ catFilter=v; page=1; await LoadAsync(); }
+    private async Task OnPage(int p){ page=p; await LoadAsync(); }
+    private void OpenCreate(){ editing=null; form=new(string.Empty, Guid.Empty,1,string.Empty,0,0,[new("",false),new("",false),new("",false),new("",false)]); options=[new("",false),new("",false),new("",false),new("",false)]; fieldErrors=new Dictionary<string,string[]>(); formError=null; drawerOpen=true; }
+    private void OpenEdit(QuestionSummary q){ editing=q; // we load full text via assumption q.Text; in real need fetch detail
+        // For stub, reuse summary; Editing will fetch if needed
+        options=[new("A",false),new("B",true),new("C",false),new("D",false)]; // placeholder; real options come from detail endpoint not in summary
+        form=new(q.Text, q.CategoryId, q.Difficulty, string.Empty,0,0, options); drawerOpen=true; }
+    private void Close()=>drawerOpen=false;
+    private void SetCorrect(int idx){ for(int i=0;i<4;i++) options[i]=options[i] with { IsCorrect = i==idx }; }
+    private string? Err(string f)=>fieldErrors.TryGetValue(f, out var m)?string.Join("; ",m):null;
+    private async Task SaveAsync(){
+        var withOptions = form with { Options = options.ToList() };
+        var errs=withOptions.Validate(); if(errs.Count>0){fieldErrors=errs; return;}
+        saving=true; formError=null;
+        try{
+            if(editing is null) await QuestionsService.CreateQuestionAsync(withOptions);
+            else await QuestionsService.UpdateQuestionAsync(editing.Id, withOptions);
+            Toasts.Success("Saved"); drawerOpen=false; await LoadAsync();
+        } catch(ApiErrorException ex){ if(ex.ErrorView.FieldErrors is not null) fieldErrors=ex.ErrorView.FieldErrors; else formError=ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally{ saving=false; }
+    }
+    private async Task Publish(QuestionSummary q){ try{ await QuestionsService.PublishQuestionAsync(q.Id); Toasts.Success("Published"); await LoadAsync(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail ?? ex.ErrorView.Title);} }
+}

@@ -96,6 +96,23 @@ var api = builder.AddProject<Projects.OroQuizClash_Api>("oroclash-api")
     .WithHttpHealthCheck("/health");
 
 // ---------------------------------------------------------------------------
+// QuizArena.Admin — Blazor Web App Auto (BFF, SPEC-017)
+// - Único origen del navegador: forwarder YARP /bff/{**} → oroclash-api /api/{**}
+//   adjuntando el access_token de la cookie OIDC (tokens nunca en el navegador).
+// - OIDC authorization_code + refresh_token contra identity-api (Principio VI).
+// - Sin acceso a base de datos (FR-030): todo dato llega vía BFF.
+// ---------------------------------------------------------------------------
+
+var adminOidcSecret = builder.AddParameter("quizarena-admin-oidc-secret", secret: true);
+
+var admin = builder.AddProject<Projects.QuizArena_Admin>("quizarena-admin")
+    .WithReference(api).WaitFor(api)
+    .WithEnvironment("Identity__Authority", identityServer.GetEndpoint("http"))
+    .WithEnvironment("Identity__ClientSecret", adminOidcSecret)
+    .WithEnvironment("Identity__ApiScope", "admin")
+    .WithHttpHealthCheck("/health");
+
+// ---------------------------------------------------------------------------
 // Notas para `aspire start` / `aspire deploy`:
 // - Local:  `aspire start` levanta sqlserver + postgres (pgAdmin) + redis + rabbitmq (management)
 //           + identity-server (5080/5086) + oroclash-api. Dashboard en https://localhost:17113

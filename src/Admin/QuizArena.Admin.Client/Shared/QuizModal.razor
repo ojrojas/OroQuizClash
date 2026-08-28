@@ -1,0 +1,109 @@
+@namespace QuizArena.Admin.Client.Shared
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@if (Open)
+{
+    <div class="quiz-modal-overlay" @onclick="OnOverlayClick">
+        <div class="quiz-modal quiz-modal-@Size" role="dialog" aria-modal="true"
+             aria-labelledby="@titleId" @onkeydown="OnKeyDown" @ref="dialogRef">
+            <header class="quiz-modal-header">
+                <h2 class="quiz-modal-title" id="@titleId">@Title</h2>
+                <button type="button" class="quiz-modal-close" aria-label="Close dialog" @onclick="CloseAsync">
+                    <LucideIcon Name="close" />
+                </button>
+            </header>
+            <div class="quiz-modal-body">
+                @ChildContent
+            </div>
+            @if (Footer is not null)
+            {
+                <footer class="quiz-modal-footer">
+                    @Footer
+                </footer>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private ElementReference dialogRef;
+    private IJSObjectReference? module;
+    private readonly string titleId = $"modal-title-{Guid.NewGuid():N}";
+    private bool wasOpen;
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Size { get; set; } = "md";
+    [Parameter] public bool CloseOnOverlay { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Open && !wasOpen)
+        {
+            wasOpen = true;
+            try
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>(
+                    "import", "./_content/QuizArena.Admin.Client/js/quiz-modal.js");
+                await module.InvokeVoidAsync("activate", dialogRef);
+            }
+            catch (JSException)
+            {
+                // Prerendering / circuit not ready; focus trap activates on next render.
+            }
+        }
+        else if (!Open && wasOpen)
+        {
+            wasOpen = false;
+            if (module is not null)
+            {
+                try
+                {
+                    await module.InvokeVoidAsync("deactivate");
+                }
+                catch (JSException)
+                {
+                }
+            }
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task OnOverlayClick(Microsoft.AspNetCore.Components.Web.MouseEventArgs e)
+    {
+        if (CloseOnOverlay)
+        {
+            await CloseAsync();
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CloseAsync();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (module is not null)
+        {
+            try
+            {
+                await module.DisposeAsync();
+            }
+            catch (JSException)
+            {
+            }
+        }
+    }
+}

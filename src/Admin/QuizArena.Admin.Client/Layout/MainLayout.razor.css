@@ -1,0 +1,103 @@
+.admin-shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+    background: var(--color-background);
+}
+
+.admin-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.admin-topbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    height: calc(var(--space-8) + var(--space-6));
+    padding: 0 var(--space-4);
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.topbar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(var(--space-1) * 11);
+    height: calc(var(--space-1) * 11);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    color: var(--color-foreground);
+    cursor: pointer;
+}
+
+.topbar-title {
+    font-family: var(--typography-font-heading);
+    font-weight: 600;
+    font-size: var(--typography-label-m-size);
+    color: var(--color-muted-foreground);
+}
+
+.topbar-user {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.topbar-username {
+    font-size: var(--typography-label-m-size);
+    color: var(--color-foreground);
+}
+
+.logout-form {
+    margin: 0;
+}
+
+.logout-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: calc(var(--space-1) * 11);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    color: var(--color-foreground);
+    font-size: var(--typography-label-m-size);
+    cursor: pointer;
+}
+
+.logout-button:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.admin-content {
+    flex: 1;
+    width: 100%;
+    max-width: calc(var(--space-16) * 22.5);
+    margin: 0 auto;
+    padding: var(--space-4);
+    box-sizing: border-box;
+}
+
+@media (min-width: 64em) {
+    .admin-shell {
+        grid-template-columns: calc(var(--space-12) * 5) 1fr;
+    }
+
+    .admin-topbar {
+        padding: 0 var(--space-6);
+    }
+
+    .admin-content {
+        padding: var(--space-6);
+    }
+}

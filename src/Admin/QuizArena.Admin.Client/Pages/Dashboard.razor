@@ -1,0 +1,40 @@
+@page "/admin/dashboard"
+@attribute [Authorize(Policy = AdminPolicies.AnyAdminRole)]
+@inject IDashboardService DashboardService
+
+<PageTitle>Dashboard — QuizArena Admin</PageTitle>
+
+<h1>Dashboard</h1>
+
+@if (state==PageState.Loading) { <div class="kpi-grid"><LoadingSkeleton Rows="3" /><LoadingSkeleton Rows="3" /><LoadingSkeleton Rows="3" /></div> }
+else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+else if (kpis is not null)
+{
+    <div class="kpi-grid">
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.ActiveGames</div><div class="stat-label">Active games</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.PlayersOnline</div><div class="stat-label">Players online</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.QuestionBankSize</div><div class="stat-label">Questions</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.PendingRedemptions</div><div class="stat-label">Pending redemptions</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.RewardsPaidPeriod.ToString("0.00")</div><div class="stat-label">Rewards paid (period)</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@kpis.GamesPeriod</div><div class="stat-label">Games (period)</div></QuizCard>
+    </div>
+    <div class="shortcuts">
+        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/games"))">Games</QuizButton>
+        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/live"))">Live</QuizButton>
+        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/reports"))">Reports</QuizButton>
+    </div>
+}
+else { <EmptyState Title="No data" Message="Dashboard data is not available." /> }
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+    private enum PageState { Loading, Ready, Error, Empty }
+    private PageState state=PageState.Loading; private string error=string.Empty; private DashboardKpis? kpis;
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private async Task LoadAsync() {
+        state=PageState.Loading;
+        try { kpis = await DashboardService.GetKpisAsync(); state=PageState.Ready; }
+        catch (ApiErrorException ex){ error=ex.ErrorView.Detail??ex.ErrorView.Title; state=PageState.Error; }
+        catch{ error="Could not load dashboard."; state=PageState.Error; }
+    }
+}

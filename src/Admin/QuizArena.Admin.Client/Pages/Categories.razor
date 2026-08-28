@@ -1,0 +1,112 @@
+@page "/admin/categories"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject ICategoriesService CategoriesService
+@inject ToastService Toasts
+
+<PageTitle>Categories — QuizArena Admin</PageTitle>
+
+<div class="page-header">
+    <h1>Categories</h1>
+    <QuizButton Icon="plus" OnClick="OpenCreate">New category</QuizButton>
+</div>
+
+<QuizCard>
+    <div class="filters">
+        <QuizInput Id="cat-search" Label="Search" Placeholder="Search…" Value="search" ValueChanged="OnSearch" />
+        <QuizSelect Id="cat-status" Label="Status" Value="status" ValueChanged="OnStatus" Options="statusOptions" Placeholder="All" />
+    </div>
+    @if (state == PageState.Error)
+    {
+        <ErrorState Message="@error" OnRetry="LoadAsync" />
+    }
+    else
+    {
+        <QuizTable Caption="Categories" Density="compact" ColumnCount="5" Loading="state==PageState.Loading" IsEmpty="state==PageState.Empty" Page="page" TotalPages="totalPages" PageChanged="OnPage">
+            <HeaderCells><th>Name</th><th>Area</th><th>Status</th><th>Questions</th><th></th></HeaderCells>
+            <BodyRows>
+                @foreach (var c in items)
+                {
+                    <tr><td>@c.Name</td><td>@c.KnowledgeArea</td><td><QuizBadge Variant="@Variant(c.Status)">@c.Status</QuizBadge></td><td>@c.ValidQuestionCount</td>
+                        <td class="row-actions">
+                            <QuizButton Variant="ghost" Size="sm" OnClick="() => OpenEdit(c)">Edit</QuizButton>
+                            @if (c.Status == CategoryStatusView.Draft) { <QuizButton Size="sm" OnClick="() => Publish(c)">Publish</QuizButton> }
+                            @if (c.Status == CategoryStatusView.Active) { <QuizButton Size="sm" Variant="ghost" OnClick="() => Deactivate(c)">Deactivate</QuizButton> }
+                        </td>
+                    </tr>
+                }
+            </BodyRows>
+            <EmptyContent><EmptyState Title="No categories" Message="Create one to get started." ActionLabel="New category" OnAction="OpenCreate" /></EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+<QuizDrawer Open="drawerOpen" Title="@(editing is null ? "New category" : "Edit category")" OnClose="CloseDrawer">
+    <ChildContent>
+        <QuizInput Id="cf-name" Label="Name *" Required="true" Value="form.Name" ValueChanged="v => form = form with { Name = v ?? string.Empty }" Error="@Err(nameof(CategoryForm.Name))" />
+        <QuizInput Id="cf-desc" Label="Description" Value="form.Description" ValueChanged="v => form = form with { Description = v }" />
+        <QuizInput Id="cf-area" Label="Knowledge area *" Required="true" Value="form.KnowledgeArea" ValueChanged="v => form = form with { KnowledgeArea = v ?? string.Empty }" Error="@Err(nameof(CategoryForm.KnowledgeArea))" />
+        <QuizInput Id="cf-level" Label="Academic level *" Required="true" Value="form.AcademicLevel" ValueChanged="v => form = form with { AcademicLevel = v ?? string.Empty }" Error="@Err(nameof(CategoryForm.AcademicLevel))" />
+        <QuizInput Id="cf-amin" Label="Age min" Type="number" Value="form.AgeMin.ToString()" ValueChanged="v => form = form with { AgeMin = int.TryParse(v, out var n) ? n : 0 }" />
+        <QuizInput Id="cf-amax" Label="Age max" Type="number" Value="form.AgeMax.ToString()" ValueChanged="v => form = form with { AgeMax = int.TryParse(v, out var n) ? n : 0 }" />
+        <QuizSelect Id="cf-diff" Label="Difficulty" Value="form.Difficulty.ToString()" ValueChanged="v => form = form with { Difficulty = int.TryParse(v, out var n) ? n : 1 }" Options="diffOptions" />
+        <QuizInput Id="cf-tags" Label="Tags (comma separated)" Value="tagsText" ValueChanged="v => tagsText = v" Helper="Max 10 tags" />
+        @if (!string.IsNullOrEmpty(formError)) { <p role="alert" class="form-error">@formError</p> }
+    </ChildContent>
+    <Footer>
+        <QuizButton Variant="ghost" OnClick="CloseDrawer">Cancel</QuizButton>
+        <QuizButton Loading="saving" OnClick="SaveAsync">Save</QuizButton>
+    </Footer>
+</QuizDrawer>
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state = PageState.Loading;
+    private string error = string.Empty;
+    private IReadOnlyList<CategorySummary> items = [];
+    private string? search; private string? status; private int page = 1; private int totalPages = 1;
+    private bool drawerOpen; private CategorySummary? editing; private CategoryForm form = new(string.Empty, null, string.Empty, string.Empty, 0, 0, 1, []); private string? tagsText; private bool saving; private string? formError; private IReadOnlyDictionary<string, string[]> fieldErrors = new Dictionary<string, string[]>();
+    private static readonly QuizSelect.OptionDef[] statusOptions = [new("Draft","Draft"), new("Active","Active"), new("Inactive","Inactive"), new("Archived","Archived")];
+    private static readonly QuizSelect.OptionDef[] diffOptions = [new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try
+        {
+            var filter = new CategoryFilter(Status: string.IsNullOrEmpty(status) ? null : Enum.Parse<CategoryStatusView>(status), Page: page);
+            var result = await CategoriesService.GetCategoriesAsync(filter);
+            // client-side search
+            var filtered = string.IsNullOrWhiteSpace(search) ? result.Items : result.Items.Where(c => c.Name.Contains(search!, StringComparison.OrdinalIgnoreCase)).ToList();
+            items = filtered; totalPages = Math.Max(1, result.TotalPages);
+            state = items.Count==0 ? PageState.Empty : PageState.Ready;
+        } catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; state = PageState.Error; }
+        catch { error = "Could not load categories."; state = PageState.Error; }
+    }
+    private async Task OnSearch(string? v) { search = v; page=1; await LoadAsync(); }
+    private async Task OnStatus(string? v) { status = v; page=1; await LoadAsync(); }
+    private async Task OnPage(int p) { page=p; await LoadAsync(); }
+    private void OpenCreate() { editing=null; form=new(string.Empty,null,string.Empty,string.Empty,0,0,1,[]); tagsText=null; fieldErrors=new Dictionary<string,string[]>(); formError=null; drawerOpen=true; }
+    private void OpenEdit(CategorySummary c) { editing=c; form=new(c.Name,c.Description,c.KnowledgeArea,c.AcademicLevel,c.AgeMin,c.AgeMax,c.Difficulty,c.Tags); tagsText=string.Join(", ", c.Tags); drawerOpen=true; }
+    private void CloseDrawer() => drawerOpen=false;
+    private string? Err(string f) => fieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+    private async Task SaveAsync()
+    {
+        var tags = (tagsText??"").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        var toValidate = form with { Tags = tags };
+        var errs = toValidate.Validate();
+        if (errs.Count>0) { fieldErrors=errs; return; }
+        saving=true; formError=null;
+        try
+        {
+            if (editing is null) await CategoriesService.CreateCategoryAsync(toValidate);
+            else await CategoriesService.UpdateCategoryAsync(editing.Id, toValidate);
+            Toasts.Success("Saved"); drawerOpen=false; await LoadAsync();
+        } catch (ApiErrorException ex) {
+            if (ex.ErrorView.FieldErrors is not null) fieldErrors=ex.ErrorView.FieldErrors;
+            else { formError = ex.ErrorView.Detail ?? ex.ErrorView.Title; if (ex.ErrorView.Code=="publish_gate") formError = $"Missing: {formError}"; }
+        } finally { saving=false; }
+    }
+    private async Task Publish(CategorySummary c) { try { await CategoriesService.PublishCategoryAsync(c.Id); Toasts.Success("Published", c.Name); await LoadAsync(); } catch (ApiErrorException ex) { Toasts.Error("Publish failed", ex.ErrorView.Detail ?? ex.ErrorView.Title); } }
+    private async Task Deactivate(CategorySummary c) { try { await CategoriesService.DeactivateCategoryAsync(c.Id); await LoadAsync(); } catch (ApiErrorException ex) { Toasts.Error("Failed", ex.ErrorView.Detail ?? ex.ErrorView.Title); } }
+    private static string Variant(CategoryStatusView s) => s switch { CategoryStatusView.Active => "success", CategoryStatusView.Draft => "neutral", CategoryStatusView.Inactive => "warning", _ => "neutral" };
+}

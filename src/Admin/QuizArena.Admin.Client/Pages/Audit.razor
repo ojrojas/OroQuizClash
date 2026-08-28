@@ -1,0 +1,52 @@
+@page "/admin/audit"
+@attribute [Authorize(Policy = AdminPolicies.AdminOnly)]
+@inject IAuditService AuditService
+
+<PageTitle>Audit — QuizArena Admin</PageTitle>
+
+<h1>Audit trail</h1>
+
+<QuizCard>
+    <div class="filters">
+        <QuizInput Id="audit-actor" Label="Actor" Value="actor" ValueChanged="v => actor = v" Placeholder="Actor ID" />
+        <QuizInput Id="audit-action" Label="Action" Value="action" ValueChanged="v => action = v" Placeholder="Action" />
+        <QuizInput Id="audit-from" Label="From" Type="date" Value="fromStr" ValueChanged="v => fromStr = v" />
+        <QuizInput Id="audit-to" Label="To" Type="date" Value="toStr" ValueChanged="v => toStr = v" />
+        <QuizButton OnClick="LoadAsync">Search</QuizButton>
+    </div>
+    @if (state==PageState.Loading) { <LoadingSkeleton Rows="5" /> }
+    else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+    else {
+        <QuizTable Caption="Audit" ColumnCount="5" IsEmpty="items.Count==0" Page="page" TotalPages="totalPages" PageChanged="OnPage">
+            <HeaderCells><th>Time</th><th>Actor</th><th>Action</th><th>Result</th><th></th></HeaderCells>
+            <BodyRows>
+                @foreach (var e in items) {
+                    <tr><td>@e.Timestamp.ToString("yyyy-MM-dd HH:mm")</td><td>@e.ActorId</td><td>@e.Action</td><td><QuizBadge Variant="@(e.Result=="Success"?"success":"error")">@e.Result</QuizBadge></td>
+                        <td><QuizButton Size="sm" Variant="ghost" OnClick="() => expanded = expanded==e.Id ? null : e.Id">Detail</QuizButton></td></tr>
+                    @if (expanded==e.Id) {
+                        <tr><td colspan="5"><pre class="audit-detail">@(e.DetailJson ?? e.Summary ?? "-")</pre></td></tr>
+                    }
+                }
+            </BodyRows>
+            <EmptyContent><EmptyState Title="No entries" Message="No audit entries match the filters." /></EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state=PageState.Loading; private string error=string.Empty;
+    private IReadOnlyList<AuditEntry> items=[]; private int page=1; private int totalPages=1; private Guid? expanded;
+    private string? actor; private string? action; private string? fromStr; private string? toStr;
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private async Task LoadAsync(){
+        state=PageState.Loading;
+        try{
+            DateTimeOffset? from = TryDate(fromStr); DateTimeOffset? to = TryDate(toStr);
+            var filter=new AuditFilter(ActorId: string.IsNullOrWhiteSpace(actor)?null:actor, Action: string.IsNullOrWhiteSpace(action)?null:action, From: from, To: to, Page: page);
+            var res=await AuditService.GetAuditAsync(filter); items=res.Items; totalPages=Math.Max(1,res.TotalPages); state=items.Count==0?PageState.Empty:PageState.Ready;
+        } catch(ApiErrorException ex){ error=ex.ErrorView.Detail??ex.ErrorView.Title; state=PageState.Error; } catch{ error="Could not load."; state=PageState.Error; }
+    }
+    private async Task OnPage(int p){ page=p; await LoadAsync(); }
+    private static DateTimeOffset? TryDate(string? s){ if(string.IsNullOrWhiteSpace(s)) return null; return DateTimeOffset.TryParse(s, out var d)?d:null; }
+}

@@ -1,0 +1,20 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-skeleton" role="status" aria-busy="true" aria-label="Loading">
+    @for (var i = 0; i < Rows; i++)
+    {
+        <div class="quiz-skeleton-row" style="width: @WidthFor(i)"></div>
+    }
+    <span class="visually-hidden">Loading…</span>
+</div>
+
+@code {
+    [Parameter] public int Rows { get; set; } = 3;
+
+    private string WidthFor(int index) => (index % 3) switch
+    {
+        0 => "92%",
+        1 => "78%",
+        _ => "85%"
+    };
+}

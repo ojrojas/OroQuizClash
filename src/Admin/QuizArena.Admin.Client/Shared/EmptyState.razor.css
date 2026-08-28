@@ -1,0 +1,23 @@
+.quiz-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    color: var(--color-muted-foreground);
+}
+
+.quiz-empty-title {
+    font-family: var(--typography-font-heading);
+    font-size: var(--typography-title-m-size);
+    font-weight: 600;
+    margin: 0;
+    color: var(--color-foreground);
+}
+
+.quiz-empty-message {
+    margin: 0;
+    font-size: var(--typography-label-m-size);
+    max-width: calc(var(--space-16) * 8);
+}

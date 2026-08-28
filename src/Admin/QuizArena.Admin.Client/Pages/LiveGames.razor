@@ -1,0 +1,115 @@
+@page "/admin/live"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject ILiveGamesService LiveGamesService
+@inject ToastService Toasts
+@implements IAsyncDisposable
+
+<PageTitle>Live games — QuizArena Admin</PageTitle>
+
+<h1>Live games</h1>
+
+@if (connectionState == LiveConnectionView.Reconnecting)
+{
+    <div class="connection-banner" role="status" aria-live="polite" aria-busy="true">
+        <LucideIcon Name="refresh" /> Reconnecting… live data is paused.
+    </div>
+}
+
+<QuizCard>
+    @if (state == PageState.Loading) { <LoadingSkeleton Rows="4" /> }
+    else if (state == PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+    else
+    {
+        <QuizTable Caption="Live games" ColumnCount="5" IsEmpty="items.Count==0" Page="1" TotalPages="1">
+            <HeaderCells><th>Game</th><th>Players</th><th>Rounds</th><th>Status</th><th></th></HeaderCells>
+            <BodyRows>
+                @foreach (var g in items)
+                {
+                    <tr><td>@g.Name</td><td>@g.PlayerCount</td><td>@g.RoundCount</td>
+                        <td><QuizBadge Variant="@(g.Status==GameStatusView.Active?"success":"info")">@g.Status</QuizBadge> <QuizBadge Variant="@ConnectionVariant(g.ConnectionState)">@g.ConnectionState</QuizBadge></td>
+                        <td class="row-actions">
+                            @if (subscribedGame == g.GameId) { <QuizButton Size="sm" Variant="ghost" OnClick="Unsubscribe">Unsubscribe</QuizButton> }
+                            else { <QuizButton Size="sm" OnClick="() => Subscribe(g.GameId)">Subscribe</QuizButton> }
+                            <QuizButton Size="sm" Variant="destructive" OnClick="() => OpenStop(g)">Stop game</QuizButton>
+                        </td></tr>
+                }
+            </BodyRows>
+            <EmptyContent><EmptyState Title="No live games" Message="Active games will appear here." /></EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+@if (subscribedGame is not null)
+{
+    <QuizCard Title="Live events">
+        <p>Subscribed to @subscribedGame</p>
+        <p>Connection: @connectionState</p>
+        @if (events.Count==0) { <EmptyState Title="Waiting for events" Message="Game events will appear here." /> }
+        else { <ul>@foreach (var e in events) { <li>@e</li> }</ul> }
+    </QuizCard>
+}
+
+<QuizModal Open="stopOpen" Title="Stop game" OnClose="() => stopOpen=false">
+    <ChildContent><p>Stop this live game? Active players will be notified.</p><QuizInput Id="stop-reason" Label="Reason *" Required="true" Value="stopReason" ValueChanged="v => stopReason = v" /></ChildContent>
+    <Footer><QuizButton Variant="ghost" OnClick="() => stopOpen=false">Cancel</QuizButton><QuizButton Variant="destructive" OnClick="StopAsync">Stop</QuizButton></Footer>
+</QuizModal>
+
+@code {
+    private enum PageState { Loading, Ready, Error, Empty }
+    private PageState state = PageState.Loading;
+    private string error = string.Empty;
+    private IReadOnlyList<LiveGameSummary> items = [];
+    private LiveGameSubscription? subscription;
+    private Guid? subscribedGame;
+    private LiveConnectionView connectionState = LiveConnectionView.Disconnected;
+    private List<string> events = [];
+    private bool stopOpen; private Guid? stopGame; private string? stopReason;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try { var res = await LiveGamesService.GetLiveGamesAsync(); items = res.Items; state = items.Count==0?PageState.Empty:PageState.Ready; }
+        catch (ApiErrorException ex) { error=ex.ErrorView.Detail??ex.ErrorView.Title; state=PageState.Error; }
+        catch { error="Could not load."; state=PageState.Error; }
+    }
+
+    private async Task Subscribe(Guid gameId)
+    {
+        await Unsubscribe();
+        try
+        {
+            subscription = await LiveGamesService.SubscribeAsync(gameId);
+            subscribedGame = gameId;
+            connectionState = LiveConnectionView.Connected;
+            subscription.LiveEventReceived += OnLiveEvent;
+            subscription.ConnectionStateChanged += OnConnectionChanged;
+            subscription.ResyncRequested += OnResync;
+        } catch (Exception ex) { Toasts.Error("Subscribe failed", ex.Message); }
+    }
+
+    private async Task Unsubscribe()
+    {
+        if (subscription is not null) { subscription.LiveEventReceived -= OnLiveEvent; subscription.ConnectionStateChanged -= OnConnectionChanged; subscription.ResyncRequested -= OnResync; await subscription.DisposeAsync(); subscription=null; }
+        subscribedGame=null; events.Clear(); connectionState = LiveConnectionView.Disconnected;
+    }
+
+    private void OnLiveEvent(string type)
+    {
+        InvokeAsync(() => { events.Insert(0, $"{DateTimeOffset.Now:HH:mm:ss} {type}"); if(events.Count>50) events.RemoveAt(events.Count-1); StateHasChanged(); });
+    }
+    private void OnConnectionChanged(LiveConnectionView s) => InvokeAsync(() => { connectionState = s; StateHasChanged(); });
+    private Task OnResync() => InvokeAsync(async () => { await LoadAsync(); StateHasChanged(); });
+
+    private void OpenStop(LiveGameSummary g) { stopGame=g.GameId; stopReason=null; stopOpen=true; }
+    private async Task StopAsync()
+    {
+        if (stopGame is null || string.IsNullOrWhiteSpace(stopReason)) return;
+        try { await LiveGamesService.StopGameAsync(stopGame.Value, stopReason!); Toasts.Success("Stopping"); stopOpen=false; await LoadAsync(); } catch (ApiErrorException ex) { Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title); }
+    }
+
+    public async ValueTask DisposeAsync() => await Unsubscribe();
+
+    private static string ConnectionVariant(LiveConnectionView v) => v switch { LiveConnectionView.Connected => "success", LiveConnectionView.Reconnecting => "warning", _ => "neutral" };
+}

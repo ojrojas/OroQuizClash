@@ -1,0 +1,58 @@
+@page "/admin/players"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject IGamesAdminService GamesService
+@inject IPlayersService PlayersService
+@inject ToastService Toasts
+
+<PageTitle>Players — QuizArena Admin</PageTitle>
+
+<h1>Players</h1>
+
+<QuizCard>
+    <QuizSelect Id="player-game" Label="Game" Value="selectedGame" ValueChanged="OnGameChanged" Options="gameOptions" Placeholder="Select a game" />
+    @if (selectedGame is null) { <EmptyState Title="Select a game" Message="Choose a game to see its players." /> }
+    else if (state==PageState.Loading) { <LoadingSkeleton Rows="4" /> }
+    else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadPlayers" /> }
+    else {
+        <QuizTable Caption="Players" ColumnCount="4" IsEmpty="items.Count==0">
+            <HeaderCells><th>Player</th><th>State</th><th>Points</th><th></th></HeaderCells>
+            <BodyRows>
+                @foreach (var p in items) {
+                    <tr><td>@(p.DisplayName ?? p.PlayerId.ToString()[..8])</td><td><QuizBadge Variant="neutral">@p.State</QuizBadge></td><td>@p.SecuredPoints (@p.CurrentPoints)</td>
+                        <td><QuizButton Size="sm" Variant="ghost" OnClick="() => ShowHistory(p)">History</QuizButton></td></tr>
+                }
+            </BodyRows>
+            <EmptyContent><EmptyState Title="No players" Message="No players have joined this game yet." /></EmptyContent>
+        </QuizTable>
+    }
+</QuizCard>
+
+<QuizDrawer Open="historyOpen" Title="Consolation history" OnClose="() => historyOpen=false">
+    <ChildContent>
+        @if (history is null) { <LoadingSkeleton Rows="3" /> }
+        else if (history.Count==0) { <EmptyState Title="No history" Message="No consolation entries." /> }
+        else { <ul>@foreach (var h in history) { <li>@h.GameName — @h.Policy (@h.Points pts) @h.Timestamp.ToString("yyyy-MM-dd")</li> }</ul> }
+    </ChildContent>
+</QuizDrawer>
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state=PageState.Loading; private string error=string.Empty;
+    private IReadOnlyList<GameSummary> games=[]; private string? selectedGame;
+    private IReadOnlyList<PlayerStatusView> items=[]; private bool historyOpen; private IReadOnlyList<ConsolationHistoryEntry>? history;
+    private List<QuizSelect.OptionDef> gameOptions => games.Select(g=>new QuizSelect.OptionDef(g.Id.ToString(), g.Name)).ToList();
+    protected override async Task OnInitializedAsync() {
+        try { var r=await GamesService.GetGamesAsync(new GameFilter(PageSize:100)); games=r.Items; } catch {}
+    }
+    private async Task OnGameChanged(string? v) { selectedGame=v; if(v is null) return; await LoadPlayers(); }
+    private async Task LoadPlayers() {
+        if(!Guid.TryParse(selectedGame, out var gid)) return;
+        state=PageState.Loading;
+        try { var res=await PlayersService.GetGamePlayersAsync(gid); items=res.Items; state=items.Count==0?PageState.Empty:PageState.Ready; }
+        catch (ApiErrorException ex){ error=ex.ErrorView.Detail??ex.ErrorView.Title; state=PageState.Error; } catch{ error="Could not load."; state=PageState.Error; }
+    }
+    private async Task ShowHistory(PlayerStatusView p) {
+        historyOpen=true; history=null;
+        try { history = await PlayersService.GetConsolationHistoryAsync(p.PlayerId); } catch { history = []; }
+    }
+}

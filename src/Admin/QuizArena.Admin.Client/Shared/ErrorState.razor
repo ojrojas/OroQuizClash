@@ -1,0 +1,16 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-error-state" role="alert">
+    <LucideIcon Name="alert" />
+    <h3 class="quiz-error-title">Something went wrong</h3>
+    <p class="quiz-error-message">@Message</p>
+    @if (OnRetry.HasDelegate)
+    {
+        <QuizButton Variant="secondary" Size="sm" Icon="refresh" OnClick="OnRetry">Retry</QuizButton>
+    }
+</div>
+
+@code {
+    [Parameter] public string Message { get; set; } = "The request could not be completed. Please try again.";
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

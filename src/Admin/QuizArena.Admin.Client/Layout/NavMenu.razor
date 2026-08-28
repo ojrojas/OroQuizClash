@@ -1,0 +1,83 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Navigation
+@using QuizArena.Admin.Client.Shared
+@inject NavigationManager Navigation
+
+<nav class="admin-sidebar @(Open ? "open" : string.Empty)" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-brand">
+        <span class="brand-mark" aria-hidden="true">QA</span>
+        <span class="brand-name">QuizArena</span>
+    </div>
+
+    <AuthorizeView>
+        <Authorized>
+            @{
+                var user = AdminUserState.FromPrincipal(context.User);
+                var sections = AdminNavigation.VisibleSections(user);
+            }
+            <ul class="sidebar-sections">
+                @foreach (var section in sections)
+                {
+                    var isActive = currentPath == section.Href ||
+                        (section.Href.StartsWith("/admin/games", StringComparison.Ordinal) &&
+                         currentPath.StartsWith(section.Href, StringComparison.Ordinal));
+                    <li>
+                        <NavLink class="sidebar-link" href="@section.Href" Match="NavLinkMatch.All"
+                                 aria-current="@(isActive ? "page" : null)">
+                            <LucideIcon Name="@section.Icon" />
+                            <span>@section.Title</span>
+                        </NavLink>
+                    </li>
+                }
+            </ul>
+            @if (user.Roles.Count > 0)
+            {
+                <div class="sidebar-roles" aria-label="Assigned roles">
+                    @foreach (var role in user.Roles)
+                    {
+                        <span class="role-chip">@role.Replace("_", " ")</span>
+                    }
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+</nav>
+
+@if (Open)
+{
+    <div class="sidebar-backdrop" @onclick="Close" aria-hidden="true"></div>
+}
+
+@code {
+    [Parameter]
+    public bool Open { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OpenChanged { get; set; }
+
+    private string currentPath = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        currentPath = "/" + Navigation.ToBaseRelativePath(Navigation.Uri);
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentPath = "/" + Navigation.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    private async Task Close()
+    {
+        Open = false;
+        await OpenChanged.InvokeAsync(false);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\OroQuizClash.Api\OroQuizClash.Api.csproj" />
+    <ProjectReference Include="..\src\Admin\QuizArena.Admin\QuizArena.Admin.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,112 @@
+@page "/admin/rewards"
+@attribute [Authorize(Policy = AdminPolicies.RewardManagerOrAdmin)]
+@inject IRewardsService RewardsService
+@inject IRedemptionsService RedemptionsService
+@inject ToastService Toasts
+
+<PageTitle>Rewards — QuizArena Admin</PageTitle>
+
+<h1>Rewards</h1>
+
+<QuizTabs Tabs="tabs" ActiveId="activeTab" ActiveIdChanged="v => activeTab = v" AriaLabel="Rewards sections">
+    <ChildContent>
+        @if (activeTab == "catalog")
+        {
+            <div class="page-header"><h2>Catalog</h2><QuizButton Icon="plus" OnClick="OpenCreate">New reward</QuizButton></div>
+            @if (catalogState==PageState.Loading) { <LoadingSkeleton Rows="3" /> }
+            else if (catalogState==PageState.Error) { <ErrorState Message="@catalogError" OnRetry="LoadCatalog" /> }
+            else {
+                <QuizTable Caption="Rewards" ColumnCount="4" IsEmpty="rewards.Count==0">
+                    <HeaderCells><th>Name</th><th>Cost</th><th>Stock</th><th>Status</th><th></th></HeaderCells>
+                    <BodyRows>
+                        @foreach (var r in rewards) {
+                            <tr><td>@r.Name</td><td>@r.PointCost</td><td>@r.Stock</td><td><QuizBadge Variant="@(r.Status==RewardStatusView.Active?"success":"neutral")">@r.Status</QuizBadge></td>
+                                <td class="row-actions">
+                                    <QuizButton Size="sm" Variant="ghost" OnClick="() => OpenEdit(r)">Edit</QuizButton>
+                                    @if (r.Status==RewardStatusView.Inactive) { <QuizButton Size="sm" OnClick="() => Activate(r)">Activate</QuizButton> }
+                                    else { <QuizButton Size="sm" Variant="ghost" OnClick="() => Deactivate(r)">Deactivate</QuizButton> }
+                                </td></tr>
+                        }
+                    </BodyRows>
+                </QuizTable>
+            }
+        }
+        else
+        {
+            <h2>Redemptions</h2>
+            <QuizSelect Id="red-status" Label="Filter by status" Value="redemptionStatus" ValueChanged="OnRedemptionStatus" Options="redemptionOptions" Placeholder="All" />
+            @if (redemptionState==PageState.Loading) { <LoadingSkeleton Rows="3" /> }
+            else {
+                <QuizTable Caption="Redemptions" ColumnCount="5" IsEmpty="redemptions.Count==0">
+                    <HeaderCells><th>Reward</th><th>Player</th><th>Cost</th><th>Status</th><th></th></HeaderCells>
+                    <BodyRows>
+                        @foreach (var rd in redemptions) {
+                            <tr><td>@(rd.RewardName?? rd.RewardId.ToString()[..8])</td><td>@(rd.PlayerName?? rd.PlayerId.ToString()[..8])</td><td>@rd.PointCost</td>
+                                <td><QuizBadge Variant="@RedemptionVariant(rd.Status)">@rd.Status</QuizBadge></td>
+                                <td class="row-actions">
+                                    @if (rd.Status==RedemptionStatusView.Pending) {
+                                        <QuizButton Size="sm" OnClick="() => Approve(rd)">Approve</QuizButton>
+                                        <QuizButton Size="sm" Variant="ghost" OnClick="() => Reject(rd)">Reject</QuizButton>
+                                        <QuizButton Size="sm" Variant="destructive" OnClick="() => Cancel(rd)">Cancel</QuizButton>
+                                    }
+                                    @if (rd.Status==RedemptionStatusView.Approved) { <QuizButton Size="sm" OnClick="() => Deliver(rd)">Deliver</QuizButton> }
+                                </td></tr>
+                        }
+                    </BodyRows>
+                </QuizTable>
+            }
+        }
+    </ChildContent>
+</QuizTabs>
+
+<QuizDrawer Open="drawerOpen" Title="@(editing==null?"New reward":"Edit reward")" OnClose="() => drawerOpen=false">
+    <ChildContent>
+        <QuizInput Id="rw-name" Label="Name *" Required="true" Value="form.Name" ValueChanged="v => form = form with { Name = v ?? string.Empty }" Error="@Err(nameof(RewardForm.Name))" />
+        <QuizInput Id="rw-desc" Label="Description" Value="form.Description" ValueChanged="v => form = form with { Description = v ?? string.Empty }" />
+        <QuizInput Id="rw-cost" Label="Point cost *" Required="true" Type="number" Value="form.PointCost.ToString()" ValueChanged="v => form = form with { PointCost = int.TryParse(v, out var n)?n:0 }" Error="@Err(nameof(RewardForm.PointCost))" />
+        <QuizInput Id="rw-stock" Label="Stock" Type="number" Value="@(form.Stock?.ToString()??"")" ValueChanged="v => form = form with { Stock = string.IsNullOrWhiteSpace(v)?null:int.TryParse(v,out var n)?n:null }" />
+        @if (formError is not null) { <p class="form-error">@formError</p> }
+    </ChildContent>
+    <Footer><QuizButton Variant="ghost" OnClick="() => drawerOpen=false">Cancel</QuizButton><QuizButton OnClick="SaveAsync" Loading="saving">Save</QuizButton></Footer>
+</QuizDrawer>
+
+@code {
+    private string activeTab="catalog";
+    private List<QuizTabs.TabDef> tabs=[new("catalog","Catalog"), new("redemptions","Redemptions")];
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState catalogState=PageState.Loading; private string catalogError=string.Empty; private IReadOnlyList<RewardSummary> rewards=[];
+    private PageState redemptionState=PageState.Loading; private IReadOnlyList<RedemptionSummary> redemptions=[];
+    private string? redemptionStatus; private int redPage=1;
+    private bool drawerOpen; private RewardSummary? editing; private RewardForm form=new(string.Empty,string.Empty,0,null); private bool saving; private string? formError; private IReadOnlyDictionary<string,string[]> fieldErrors=new Dictionary<string,string[]>();
+    private static readonly QuizSelect.OptionDef[] redemptionOptions=[new("Pending","Pending"), new("Approved","Approved"), new("Rejected","Rejected"), new("Delivered","Delivered"), new("Cancelled","Cancelled")];
+    protected override async Task OnInitializedAsync() { await LoadCatalog(); await LoadRedemptions(); }
+    private async Task LoadCatalog() {
+        catalogState=PageState.Loading;
+        try { var res=await RewardsService.GetRewardsAsync(); rewards=res.Items; catalogState=rewards.Count==0?PageState.Empty:PageState.Ready; }
+        catch (ApiErrorException ex){ catalogError=ex.ErrorView.Detail??ex.ErrorView.Title; catalogState=PageState.Error; } catch{ catalogError="Could not load."; catalogState=PageState.Error; }
+    }
+    private async Task LoadRedemptions() {
+        redemptionState=PageState.Loading;
+        RedemptionStatusView? status = string.IsNullOrEmpty(redemptionStatus) ? null : Enum.Parse<RedemptionStatusView>(redemptionStatus);
+        try { var res=await RedemptionsService.GetRedemptionsAsync(new RedemptionFilter(Status: status, Page: redPage)); redemptions=res.Items; redemptionState=PageState.Ready; }
+        catch { redemptionState=PageState.Ready; redemptions=[]; }
+    }
+    private async Task OnRedemptionStatus(string? v){ redemptionStatus=v; redPage=1; await LoadRedemptions(); }
+    private void OpenCreate(){ editing=null; form=new(string.Empty,string.Empty,0,null); fieldErrors=new Dictionary<string,string[]>(); formError=null; drawerOpen=true; }
+    private void OpenEdit(RewardSummary r){ editing=r; form=new(r.Name,r.Description,r.PointCost,r.Stock); drawerOpen=true; }
+    private string? Err(string f)=>fieldErrors.TryGetValue(f, out var m)?string.Join("; ",m):null;
+    private async Task SaveAsync(){
+        var errs=form.Validate(); if(errs.Count>0){ fieldErrors=errs; return; }
+        saving=true; try{
+            if(editing is null) await RewardsService.CreateRewardAsync(form); else await RewardsService.UpdateRewardAsync(editing.Id, form);
+            Toasts.Success("Saved"); drawerOpen=false; await LoadCatalog();
+        } catch(ApiErrorException ex){ if(ex.ErrorView.FieldErrors is not null) fieldErrors=ex.ErrorView.FieldErrors; else formError=ex.ErrorView.Detail??ex.ErrorView.Title; } finally{ saving=false; }
+    }
+    private async Task Activate(RewardSummary r){ try{ await RewardsService.ActivateRewardAsync(r.Id); await LoadCatalog(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private async Task Deactivate(RewardSummary r){ try{ await RewardsService.DeactivateRewardAsync(r.Id); await LoadCatalog(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private async Task Approve(RedemptionSummary rd){ try{ await RedemptionsService.ApproveAsync(rd.Id); await LoadRedemptions(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private async Task Reject(RedemptionSummary rd){ try{ await RedemptionsService.RejectAsync(rd.Id); await LoadRedemptions(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private async Task Cancel(RedemptionSummary rd){ try{ await RedemptionsService.CancelAsync(rd.Id); await LoadRedemptions(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private async Task Deliver(RedemptionSummary rd){ try{ await RedemptionsService.DeliverAsync(rd.Id); await LoadRedemptions(); } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title);} }
+    private static string RedemptionVariant(RedemptionStatusView s) => s switch { RedemptionStatusView.Pending => "warning", RedemptionStatusView.Approved => "info", RedemptionStatusView.Delivered => "success", _ => "neutral" };
+}

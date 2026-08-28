@@ -1,0 +1,57 @@
+﻿@using QuizArena.Admin.Client.Models
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <AuthorizeView>
+                    <Authorized Context="innerAuth">
+                        <RedirectToAccessDenied />
+                    </Authorized>
+                    <NotAuthorized Context="innerAuth">
+                        <RedirectToLogin />
+                    </NotAuthorized>
+                </AuthorizeView>
+            </NotAuthorized>
+            <Authorizing>
+                <div class="auth-checking" role="status" aria-busy="true">
+                    <p>Checking session…</p>
+                </div>
+            </Authorizing>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // must_change_password gating (FR-004, contracts/oidc-config.md §5): block all
+        // administrative navigation until the operator changes the password at the provider.
+        if (AuthState is null)
+        {
+            return;
+        }
+
+        var authState = await AuthState;
+        var user = AdminUserState.FromPrincipal(authState.User);
+        if (!user.IsAuthenticated || !user.MustChangePassword)
+        {
+            return;
+        }
+
+        var authority = Configuration["Identity:Authority"]?.TrimEnd('/');
+        if (string.IsNullOrEmpty(authority))
+        {
+            return;
+        }
+
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"{authority}/Account/ChangePassword?returnUrl={returnUrl}", forceLoad: true);
+    }
+}

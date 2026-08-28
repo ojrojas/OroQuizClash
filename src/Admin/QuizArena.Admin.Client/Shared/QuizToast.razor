@@ -1,0 +1,47 @@
+@namespace QuizArena.Admin.Client.Shared
+@implements IDisposable
+@inject ToastService Toasts
+
+<div class="quiz-toast-region" role="region" aria-label="Notifications" aria-live="polite">
+    @foreach (var toast in Toasts.Toasts)
+    {
+        <div class="quiz-toast quiz-toast-@toast.Variant" role="status">
+            <LucideIcon Name="@IconFor(toast.Variant)" />
+            <div class="quiz-toast-content">
+                <strong class="quiz-toast-title">@toast.Title</strong>
+                @if (!string.IsNullOrEmpty(toast.Message))
+                {
+                    <p class="quiz-toast-message">@toast.Message</p>
+                }
+            </div>
+            <button type="button" class="quiz-toast-close" aria-label="Dismiss notification"
+                    @onclick="() => Dismiss(toast.Id)">
+                <LucideIcon Name="close" />
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Toasts.OnChange += HandleChange;
+    }
+
+    private void HandleChange() => InvokeAsync(StateHasChanged);
+
+    private void Dismiss(Guid id) => Toasts.Dismiss(id);
+
+    private static string IconFor(string variant) => variant switch
+    {
+        "success" => "check",
+        "error" => "alert",
+        "warning" => "alert",
+        _ => "info"
+    };
+
+    public void Dispose()
+    {
+        Toasts.OnChange -= HandleChange;
+    }
+}

@@ -1,0 +1,46 @@
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+.page-header h1 {
+    font-family: var(--typography-font-heading);
+    font-size: var(--typography-heading-m-size);
+    font-weight: 600;
+    margin: 0;
+}
+
+.games-filters {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+}
+
+@media (min-width: 48em) {
+    .games-filters {
+        grid-template-columns: 2fr 1fr 1fr;
+    }
+}
+
+.row-actions {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

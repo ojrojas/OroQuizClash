@@ -1,0 +1,19 @@
+@page "/access-denied"
+@layout MainLayout
+
+<PageTitle>Access denied — QuizArena Admin</PageTitle>
+
+<QuizCard>
+    <EmptyState Icon="alert"
+                Title="Access denied"
+                Message="Your account does not have permission to view that section. If you believe this is a mistake, contact an administrator."
+                ActionLabel="Go to dashboard"
+                OnAction="GoHome" />
+</QuizCard>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private void GoHome() => Navigation.NavigateTo("/admin/dashboard");
+}

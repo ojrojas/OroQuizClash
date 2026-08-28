@@ -1,0 +1,76 @@
+.components-reconnect-first-attempt-visible,
+.components-reconnect-repeated-attempt-visible,
+.components-reconnect-failed-visible,
+.components-pause-visible,
+.components-resume-failed-visible,
+.components-rejoining-animation {
+    display: none;
+}
+
+#components-reconnect-modal.components-reconnect-show .components-reconnect-first-attempt-visible,
+#components-reconnect-modal.components-reconnect-show .components-rejoining-animation,
+#components-reconnect-modal.components-reconnect-paused .components-pause-visible,
+#components-reconnect-modal.components-reconnect-resume-failed .components-resume-failed-visible,
+#components-reconnect-modal.components-reconnect-retrying,
+#components-reconnect-modal.components-reconnect-retrying .components-reconnect-repeated-attempt-visible,
+#components-reconnect-modal.components-reconnect-retrying .components-rejoining-animation,
+#components-reconnect-modal.components-reconnect-failed,
+#components-reconnect-modal.components-reconnect-failed .components-reconnect-failed-visible {
+    display: block;
+}
+
+#components-reconnect-modal {
+    background-color: var(--color-card);
+    color: var(--color-card-foreground);
+    width: min(90vw, calc(var(--space-16) * 6));
+    margin: 20vh auto;
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--elevation-4);
+}
+
+#components-reconnect-modal p {
+    margin: var(--space-3) 0;
+}
+
+#components-reconnect-modal button {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border: 0;
+    border-radius: var(--radius-lg);
+    padding: var(--space-2) var(--space-6);
+    min-height: calc(var(--space-1) * 11);
+    cursor: pointer;
+    font-size: var(--typography-label-m-size);
+}
+
+#components-reconnect-modal button:focus-visible {
+    outline: none;
+    box-shadow: var(--component-button-focus-ring);
+}
+
+.components-rejoining-animation {
+    position: relative;
+    height: var(--space-6);
+}
+
+.components-rejoining-animation div {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--space-1);
+    border-radius: var(--radius-sm);
+    background: var(--color-primary);
+    animation: reconnect-slide var(--motion-duration-800) var(--motion-ease-in-out) infinite alternate;
+}
+
+.components-rejoining-animation div:last-child {
+    opacity: 0.5;
+    animation-delay: var(--motion-duration-300);
+}
+
+@keyframes reconnect-slide {
+    from { transform: translateX(calc(var(--space-8) * -1)); }
+    to { transform: translateX(var(--space-8)); }
+}

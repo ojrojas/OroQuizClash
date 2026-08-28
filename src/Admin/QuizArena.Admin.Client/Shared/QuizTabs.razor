@@ -1,0 +1,59 @@
+@namespace QuizArena.Admin.Client.Shared
+
+<div class="quiz-tabs">
+    <div role="tablist" class="quiz-tabs-list" aria-label="@AriaLabel">
+        @foreach (var tab in Tabs)
+        {
+            var selected = tab.Id == ActiveId;
+            <button type="button" role="tab" id="tab-@tab.Id"
+                    aria-selected="@selected.ToString().ToLowerInvariant()"
+                    aria-controls="panel-@tab.Id"
+                    tabindex="@(selected ? 0 : -1)"
+                    class="quiz-tab @(selected ? "is-active" : string.Empty)"
+                    @onclick="() => Select(tab.Id)"
+                    @onkeydown="e => OnKeyDown(e, tab.Id)">
+                @tab.Label
+            </button>
+        }
+    </div>
+    <div role="tabpanel" id="panel-@ActiveId" aria-labelledby="tab-@ActiveId" class="quiz-tabs-panel">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    public sealed record TabDef(string Id, string Label);
+
+    [Parameter] public IReadOnlyList<TabDef> Tabs { get; set; } = [];
+    [Parameter] public string ActiveId { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ActiveIdChanged { get; set; }
+    [Parameter] public string AriaLabel { get; set; } = "Sections";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task Select(string id)
+    {
+        if (id == ActiveId)
+        {
+            return;
+        }
+        ActiveId = id;
+        await ActiveIdChanged.InvokeAsync(id);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e, string currentId)
+    {
+        var index = Tabs.ToList().FindIndex(t => t.Id == currentId);
+        var next = e.Key switch
+        {
+            "ArrowRight" => Tabs[(index + 1) % Tabs.Count],
+            "ArrowLeft" => Tabs[(index - 1 + Tabs.Count) % Tabs.Count],
+            "Home" => Tabs[0],
+            "End" => Tabs[^1],
+            _ => null
+        };
+        if (next is not null)
+        {
+            await Select(next.Id);
+        }
+    }
+}

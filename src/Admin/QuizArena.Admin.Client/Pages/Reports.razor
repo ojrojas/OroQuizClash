@@ -1,0 +1,53 @@
+@page "/admin/reports"
+@attribute [Authorize(Policy = AdminPolicies.AnyAdminRole)]
+@inject IReportsService ReportsService
+@inject ToastService Toasts
+
+<PageTitle>Reports — QuizArena Admin</PageTitle>
+
+<h1>Reports</h1>
+
+<QuizCard>
+    <div class="filters">
+        <QuizSelect Id="rep-type" Label="Report type" Value="reportType" ValueChanged="OnType" Options="typeOptions" Placeholder="Select type" />
+        <QuizInput Id="rep-from" Label="From (optional)" Type="date" Value="fromStr" ValueChanged="v => fromStr = v" />
+        <QuizInput Id="rep-to" Label="To (optional)" Type="date" Value="toStr" ValueChanged="v => toStr = v" />
+        <QuizButton OnClick="Generate" Loading="loading">Generate</QuizButton>
+    </div>
+    @if (loading) { <LoadingSkeleton Rows="4" /> }
+    else if (result is not null) {
+        <h3>@result.Title</h3>
+        @if (result.Rows.Count==0) { <EmptyState Title="No data" Message="No rows for the selected period/filters." /> }
+        else {
+            <QuizTable Caption="@result.Title" ColumnCount="@result.Columns.Count" IsEmpty="false">
+                <HeaderCells>@foreach (var c in result.Columns) { <th>@c</th> }</HeaderCells>
+                <BodyRows>@foreach (var row in result.Rows) { <tr>@foreach (var cell in row) { <td>@(cell?.ToString() ?? "-")</td> }</tr> }</BodyRows>
+            </QuizTable>
+        }
+    }
+</QuizCard>
+
+@code {
+    private string? reportType; private string? fromStr; private string? toStr; private bool loading; private ReportResult? result;
+    private static readonly QuizSelect.OptionDef[] typeOptions=[
+        new("game","Game"), new("category","Category"), new("question","Question"), new("player","Player"), new("rewards","Rewards"), new("leaderboard","Leaderboard")];
+    private string? selectedId; // For game/category/question/player reports a second selector would be needed; keep simple: use dummy GUID for demo? But contract requires id.
+    // For game/category/question/player we require an ID; ask via text input when selected type needs it.
+    private async Task OnType(string? v){ reportType=v; result=null; }
+    private async Task Generate(){
+        if(string.IsNullOrEmpty(reportType)){ Toasts.Warning("Select a type"); return; }
+        loading=true; result=null;
+        try{
+            TryDate(fromStr, out var f);
+            TryDate(toStr, out var t);
+            var period = (f is not null || t is not null) ? new DateRange(f, t) : null;
+            result = reportType switch {
+                "rewards" => await ReportsService.GetRewardsReportAsync(period),
+                "leaderboard" => await ReportsService.GetLeaderboardReportAsync(period),
+                _ => new ReportResult("Select rewards or leaderboard for now", period, ["Info"], [["This report type requires an entity ID — use the API directly."]])
+            };
+        } catch(ApiErrorException ex){ Toasts.Error("Failed", ex.ErrorView.Detail??ex.ErrorView.Title); }
+        finally{ loading=false; }
+    }
+    private static bool TryDate(string? s, out DateTimeOffset? d){ d=null; if(string.IsNullOrWhiteSpace(s)) return false; if(DateTimeOffset.TryParse(s, out var p)){ d=p; return true; } return false; }
+}

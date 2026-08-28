@@ -1,0 +1,200 @@
+@page "/admin/games/configuration"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@inject IGamesAdminService GamesService
+@inject ICategoriesService Categories
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>New game — QuizArena Admin</PageTitle>
+
+<h1>New game</h1>
+
+@if (state == PageState.Error)
+{
+    <ErrorState Message="@errorMessage" OnRetry="() => state = PageState.Ready" />
+}
+else
+{
+    <QuizCard>
+        <EditForm Model="form" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-grid">
+                <QuizInput Id="gc-name" Label="Name *" Required="true"
+                           Value="form.Name" ValueChanged="v => form = form with { Name = v ?? string.Empty }"
+                           Error="@GetError(nameof(GameConfigurationForm.Name))" />
+
+                <QuizInput Id="gc-desc" Label="Description"
+                           Value="form.Description" ValueChanged="v => form = form with { Description = v }"
+                           Error="@GetError(nameof(GameConfigurationForm.Description))" />
+
+                <QuizSelect Id="gc-category" Label="Category *" Required="true"
+                            Value="form.CategoryId.ToString()" ValueChanged="v => form = form with { CategoryId = Guid.TryParse(v, out var g) ? g : Guid.Empty }"
+                            Options="categoryOptions" Placeholder="Select a category"
+                            Error="@GetError(nameof(GameConfigurationForm.CategoryId))" />
+
+                <QuizSelect Id="gc-difficulty" Label="Difficulty (1–5) *" Required="true"
+                            Value="form.Difficulty.ToString()" ValueChanged="v => form = form with { Difficulty = int.TryParse(v, out var n) ? n : 1 }"
+                            Options="difficultyOptions" Placeholder="Select difficulty"
+                            Error="@GetError(nameof(GameConfigurationForm.Difficulty))" />
+
+                <QuizInput Id="gc-rounds" Label="Rounds (5–10) *" Required="true" Type="number"
+                           Value="form.Rounds.ToString()" ValueChanged="v => form = form with { Rounds = int.TryParse(v, out var n) ? n : 5 }"
+                           Error="@GetError(nameof(GameConfigurationForm.Rounds))" />
+
+                <QuizInput Id="gc-qpr" Label="Questions per round (1–20) *" Required="true" Type="number"
+                           Value="form.QuestionsPerRound.ToString()" ValueChanged="v => form = form with { QuestionsPerRound = int.TryParse(v, out var n) ? n : 5 }"
+                           Error="@GetError(nameof(GameConfigurationForm.QuestionsPerRound))" />
+
+                <QuizInput Id="gc-time" Label="Time limit per round (5–300s) *" Required="true" Type="number"
+                           Value="form.TimeLimitSeconds.ToString()" ValueChanged="v => form = form with { TimeLimitSeconds = int.TryParse(v, out var n) ? n : 60 }"
+                           Error="@GetError(nameof(GameConfigurationForm.TimeLimitSeconds))" />
+
+                <QuizInput Id="gc-minp" Label="Minimum players (≥1) *" Required="true" Type="number"
+                           Value="form.MinPlayers.ToString()" ValueChanged="v => form = form with { MinPlayers = int.TryParse(v, out var n) ? n : 1 }"
+                           Error="@GetError(nameof(GameConfigurationForm.MinPlayers))" />
+
+                <QuizInput Id="gc-maxp" Label="Maximum players (≥min) *" Required="true" Type="number"
+                           Value="form.MaxPlayers.ToString()" ValueChanged="v => form = form with { MaxPlayers = int.TryParse(v, out var n) ? n : 2 }"
+                           Error="@GetError(nameof(GameConfigurationForm.MaxPlayers))" />
+
+                <QuizInput Id="gc-fee" Label="Entry fee" Type="number" Step="0.01"
+                           Value="@(form.EntryFee?.ToString("0.00") ?? "")"
+                           ValueChanged="v => form = form with { EntryFee = string.IsNullOrWhiteSpace(v) ? null : decimal.TryParse(v, out var d) ? d : null }"
+                           Error="@GetError(nameof(GameConfigurationForm.EntryFee))" />
+
+                <QuizInput Id="gc-pool" Label="Reward pool" Type="number" Step="0.01"
+                           Value="@(form.RewardPool?.ToString("0.00") ?? "")"
+                           ValueChanged="v => form = form with { RewardPool = string.IsNullOrWhiteSpace(v) ? null : decimal.TryParse(v, out var d) ? d : null }"
+                           Error="@GetError(nameof(GameConfigurationForm.RewardPool))" />
+            </div>
+
+            <QuizCard Title="Game policies" Variant="compact">
+                <div class="form-grid">
+                    <QuizSelect Id="gc-diffstrat" Label="Difficulty strategy" Required="true"
+                                Value="form.DifficultyStrategy" ValueChanged="v => form = form with { DifficultyStrategy = v ?? string.Empty }"
+                                Options="difficultyStrategyOptions" Placeholder="Select strategy" />
+
+                    <QuizSelect Id="gc-scoring" Label="Scoring system" Required="true"
+                                Value="form.ScoringSystem" ValueChanged="v => form = form with { ScoringSystem = v ?? string.Empty }"
+                                Options="scoringSystemOptions" Placeholder="Select system" />
+
+                    <QuizSelect Id="gc-losspolicy" Label="Loss policy" Required="true"
+                                Value="form.LossPolicy" ValueChanged="v => form = form with { LossPolicy = v ?? string.Empty }"
+                                Options="lossPolicyOptions" Placeholder="Select policy" />
+
+                    <QuizSelect Id="gc-withdraw" Label="Withdrawal policy" Required="true"
+                                Value="form.WithdrawalPolicy" ValueChanged="v => form = form with { WithdrawalPolicy = v ?? string.Empty }"
+                                Options="withdrawalPolicyOptions" Placeholder="Select policy" />
+
+                    <QuizSelect Id="gc-consolation" Label="Consolation policy" Required="true"
+                                Value="form.ConsolationPolicy" ValueChanged="v => form = form with { ConsolationPolicy = v ?? string.Empty }"
+                                Options="consolationPolicyOptions" Placeholder="Select policy" />
+
+                    <QuizSelect Id="gc-rewardtype" Label="Reward type" Required="true"
+                                Value="form.RewardType" ValueChanged="v => form = form with { RewardType = v ?? string.Empty }"
+                                Options="rewardTypeOptions" Placeholder="Select type" />
+
+                    <QuizInput Id="gc-rewardthr" Label="Reward threshold" Type="number"
+                               Value="form.RewardThreshold.ToString()"
+                               ValueChanged="v => form = form with { RewardThreshold = int.TryParse(v, out var n) ? n : 0 }" />
+                </div>
+            </QuizCard>
+
+            <div class="form-actions">
+                <QuizButton Variant="ghost" OnClick="GoBack">Cancel</QuizButton>
+                <QuizButton Type="submit" Loading="saving" Disabled="saving">Create game</QuizButton>
+            </div>
+        </EditForm>
+    </QuizCard>
+}
+
+@code {
+    private enum PageState { Ready, Error }
+
+    private PageState state = PageState.Ready;
+    private string errorMessage = string.Empty;
+    private bool saving;
+
+    private GameConfigurationForm form = new(string.Empty, null, Guid.Empty, 1, 5, 5, 60, 1, 2, null, null);
+    private IReadOnlyList<CategorySummary> categories = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var result = await Categories.GetCategoriesAsync(new CategoryFilter(Page: 1, PageSize: 200));
+            categories = result.Items;
+        }
+        catch (Exception)
+        {
+            // The form will show an empty category dropdown; submit will validate CategoryId as required.
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var errors = form.Validate();
+        if (errors.Count > 0)
+        {
+            fieldErrors = errors;
+            return;
+        }
+
+        saving = true;
+        fieldErrors = new Dictionary<string, string[]>();
+
+        try
+        {
+            var created = await GamesService.CreateGameAsync(form);
+            Toasts.Success("Game created", created.Name);
+            Navigation.NavigateTo($"/admin/games/{created.Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            errorMessage = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            state = PageState.Error;
+        }
+        catch (Exception)
+        {
+            errorMessage = "The game could not be created. Try again.";
+            state = PageState.Error;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private IReadOnlyDictionary<string, string[]> fieldErrors = new Dictionary<string, string[]>();
+
+    private string? GetError(string field) =>
+        fieldErrors.TryGetValue(field, out var msgs) ? string.Join("; ", msgs) : null;
+
+    private List<QuizSelect.OptionDef> categoryOptions =>
+        categories.Select(c => new QuizSelect.OptionDef(c.Id.ToString(), c.Name)).ToList();
+
+    private static readonly QuizSelect.OptionDef[] difficultyOptions =
+        [new("1", "1"), new("2", "2"), new("3", "3"), new("4", "4"), new("5", "5")];
+
+    private static readonly QuizSelect.OptionDef[] difficultyStrategyOptions =
+        GameConfigurationForm.DifficultyStrategies.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private static readonly QuizSelect.OptionDef[] scoringSystemOptions =
+        GameConfigurationForm.ScoringSystems.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private static readonly QuizSelect.OptionDef[] lossPolicyOptions =
+        GameConfigurationForm.LossPolicies.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private static readonly QuizSelect.OptionDef[] withdrawalPolicyOptions =
+        GameConfigurationForm.WithdrawalPolicies.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private static readonly QuizSelect.OptionDef[] consolationPolicyOptions =
+        GameConfigurationForm.ConsolationPolicies.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private static readonly QuizSelect.OptionDef[] rewardTypeOptions =
+        new[] { "None", "Badge", "Points", "Item", "Custom" }.Select(s => new QuizSelect.OptionDef(s, s)).ToArray();
+
+    private void GoBack() => Navigation.NavigateTo("/admin/games");
+}
