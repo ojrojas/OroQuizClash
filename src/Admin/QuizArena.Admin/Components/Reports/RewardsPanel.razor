@@ -1,0 +1,31 @@
+@using ReportsModels = QuizArena.Admin.Client.Models.Reports
+
+<div class="rewards-panel" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-4);">
+    @if (IsLoading)
+    {
+        <div style="grid-column:1/-1;"><LoadingSkeleton Rows="4" /></div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div style="grid-column:1/-1;"><ErrorState Message="@Error" OnRetry="OnRetry" /></div>
+    }
+    else if (Metrics is null)
+    {
+        <div style="grid-column:1/-1;"><EmptyState Title="Sin datos" Message="No hay métricas de recompensas." /></div>
+    }
+    else
+    {
+        <MetricCard Title="Premios" Value="@Metrics.Rewards.TotalRewards.ToString()" Subtitle="6 tipos, 3 estados" Details="@Metrics.Rewards.ByType" />
+        <MetricCard Title="Canjes" Value="@Metrics.Redemptions.TotalRedemptions.ToString()" Subtitle="@($"Coste: {Metrics.Redemptions.TotalCost} pts")" Details="@Metrics.Redemptions.ByStatus" />
+        <MetricCard Title="Consolación" Value="@Metrics.Consolations.TotalConsolations.ToString()" Subtitle="@($"Coste: {Metrics.Consolations.TotalCostConsolation} pts")" Details="@Metrics.Consolations.ByEligibility">
+            <ChildContent><div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);margin-top:var(--space-2);">IsConsolation:true separado, no cuenta como premio normal</div></ChildContent>
+        </MetricCard>
+    }
+</div>
+
+@code {
+    [Parameter] public ReportsModels.RewardsMetrics? Metrics { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

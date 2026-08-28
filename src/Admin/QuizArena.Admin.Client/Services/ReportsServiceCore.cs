@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using QuizArena.Admin.Client.Models;
+using ReportsModels = QuizArena.Admin.Client.Models.Reports;
 
 namespace QuizArena.Admin.Client.Services;
 
@@ -41,6 +42,54 @@ public class ReportsServiceCore(HttpClient http, string prefix) : IReportsServic
         Guid PlayerId, string? DisplayName, int Rank, int Points,
         int CorrectAnswers, int? CurrentLevel, string Status, int SecuredPoints);
     private sealed record ApiLeaderboard(Guid GameId, IReadOnlyList<ApiLeaderboardEntry> Players);
+
+    private sealed record ApiOperationalMetrics(
+        int TotalGames,
+        IReadOnlyDictionary<string,int> ByStatus,
+        int UniquePlayers,
+        int ActivePlayers,
+        IReadOnlyDictionary<string,int> DistributionByTenant,
+        int TotalQuestions,
+        IReadOnlyDictionary<string,int> ByCategory,
+        IReadOnlyDictionary<int,int> ByLevel,
+        int TotalCategories,
+        int CategoriesInUse,
+        IReadOnlyDictionary<string,int> QuestionsPerCategory);
+    private sealed record ApiPerformanceMetrics(
+        int TotalAnswers,
+        int CorrectAnswers,
+        int IncorrectAnswers,
+        double AccuracyRate,
+        int TotalPoints,
+        double AverageScore,
+        IReadOnlyDictionary<string,int> Distribution,
+        IReadOnlyDictionary<string,int> ByTransactionType,
+        int TotalWithdrawals,
+        IReadOnlyDictionary<string,int> ByPolicy,
+        double Rate);
+    private sealed record ApiRewardsMetrics(
+        int TotalRewards,
+        IReadOnlyDictionary<string,int> ByType,
+        IReadOnlyDictionary<string,int> ByStatus,
+        int TotalRedemptions,
+        IReadOnlyDictionary<string,int> RedemptionByStatus,
+        IReadOnlyDictionary<string,int> RedemptionByType,
+        int TotalCost,
+        int TotalConsolations,
+        int TotalCostConsolation,
+        IReadOnlyDictionary<string,int> ByEligibility);
+    private sealed record ApiReportSnapshot(
+        ApiOperationalMetrics Operational,
+        ApiPerformanceMetrics Performance,
+        ApiRewardsMetrics Rewards,
+        int TotalCount,
+        DateTimeOffset CalculatedAt);
+    private sealed record ApiReportSnapshotResponse(
+        ApiOperationalMetrics Operational,
+        ApiPerformanceMetrics Performance,
+        ApiRewardsMetrics Rewards,
+        int TotalCount,
+        DateTimeOffset CalculatedAt);
 
     public async Task<ReportResult> GetGameReportAsync(Guid gameId, CancellationToken ct = default)
     {
@@ -138,5 +187,92 @@ public class ReportsServiceCore(HttpClient http, string prefix) : IReportsServic
                 p.Rank, p.DisplayName ?? p.PlayerId.ToString(), p.Points,
                 p.CorrectAnswers, p.SecuredPoints, p.Status
             }).ToList());
+    }
+
+    // 025 Admin Reporting — 12 métricas + 6 filtros
+    public async Task<ReportsModels.ReportSnapshot> GetOperationalAsync(ReportsModels.ReportFilter filter, CancellationToken ct = default)
+    {
+        var validation = filter.Validate();
+        if (validation.Count > 0) throw new ApiErrorException(new ApiErrorView("InvalidFilter", "Invalid filter", null, validation));
+        var query = BuildReportQuery(filter);
+        var response = await http.GetFromJsonAsync<ApiReportSnapshotResponse>($"{prefix}/reports/operational{query}", ct)
+            ?? throw new ApiErrorException(ApiErrorView.Unknown);
+        return MapSnapshot(filter, response);
+    }
+
+    public async Task<ReportsModels.ReportSnapshot> GetPerformanceAsync(ReportsModels.ReportFilter filter, CancellationToken ct = default)
+    {
+        var validation = filter.Validate();
+        if (validation.Count > 0) throw new ApiErrorException(new ApiErrorView("InvalidFilter", "Invalid filter", null, validation));
+        var query = BuildReportQuery(filter);
+        var response = await http.GetFromJsonAsync<ApiReportSnapshotResponse>($"{prefix}/reports/performance{query}", ct)
+            ?? throw new ApiErrorException(ApiErrorView.Unknown);
+        return MapSnapshot(filter, response);
+    }
+
+    public async Task<ReportsModels.ReportSnapshot> GetRewardsAsync(ReportsModels.ReportFilter filter, CancellationToken ct = default)
+    {
+        var validation = filter.Validate();
+        if (validation.Count > 0) throw new ApiErrorException(new ApiErrorView("InvalidFilter", "Invalid filter", null, validation));
+        var query = BuildReportQuery(filter);
+        var response = await http.GetFromJsonAsync<ApiReportSnapshotResponse>($"{prefix}/reports/rewards{query}", ct)
+            ?? throw new ApiErrorException(ApiErrorView.Unknown);
+        return MapSnapshot(filter, response);
+    }
+
+    public async Task<ReportsModels.ReportSnapshot> GetFullAsync(ReportsModels.ReportFilter filter, CancellationToken ct = default)
+    {
+        var validation = filter.Validate();
+        if (validation.Count > 0) throw new ApiErrorException(new ApiErrorView("InvalidFilter", "Invalid filter", null, validation));
+        var query = BuildReportQuery(filter);
+        var response = await http.GetFromJsonAsync<ApiReportSnapshotResponse>($"{prefix}/reports/full{query}", ct)
+            ?? throw new ApiErrorException(ApiErrorView.Unknown);
+        return MapSnapshot(filter, response);
+    }
+
+    public async Task<PagedResult<ReportsModels.GameMetric>> GetOperationalRowsAsync(ReportsModels.ReportFilter filter, CancellationToken ct = default)
+    {
+        var validation = filter.Validate();
+        if (validation.Count > 0) throw new ApiErrorException(new ApiErrorView("InvalidFilter", "Invalid filter", null, validation));
+        var query = BuildReportQuery(filter);
+        var response = await http.GetFromJsonAsync<ApiReportSnapshotResponse>($"{prefix}/reports/operational{query}", ct)
+            ?? throw new ApiErrorException(ApiErrorView.Unknown);
+        var snapshot = MapSnapshot(filter, response);
+        var items = new List<ReportsModels.GameMetric> { snapshot.Operational.Games };
+        return new PagedResult<ReportsModels.GameMetric>(items, snapshot.TotalCount, filter.Page, filter.PageSize);
+    }
+
+    private static string BuildReportQuery(ReportsModels.ReportFilter filter) => QueryString.Build(new Dictionary<string, string?>
+    {
+        ["from"] = filter.From?.ToString("O"),
+        ["to"] = filter.To?.ToString("O"),
+        ["categoryId"] = filter.CategoryId?.ToString(),
+        ["categoryName"] = filter.CategoryName,
+        ["gameId"] = filter.GameId?.ToString(),
+        ["gameName"] = filter.GameName,
+        ["playerId"] = filter.PlayerId?.ToString(),
+        ["playerSearch"] = filter.PlayerSearch,
+        ["level"] = filter.Level?.ToString(),
+        ["result"] = filter.Result,
+        ["page"] = filter.Page.ToString(),
+        ["pageSize"] = filter.PageSize.ToString()
+    });
+
+    private static ReportsModels.ReportSnapshot MapSnapshot(ReportsModels.ReportFilter filter, ApiReportSnapshotResponse r)
+    {
+        var operational = new ReportsModels.OperationalMetrics(
+            new ReportsModels.GameMetric(r.Operational.TotalGames, r.Operational.ByStatus),
+            new ReportsModels.PlayerMetric(r.Operational.UniquePlayers, r.Operational.ActivePlayers, r.Operational.DistributionByTenant),
+            new ReportsModels.QuestionMetric(r.Operational.TotalQuestions, r.Operational.ByCategory, r.Operational.ByLevel),
+            new ReportsModels.CategoryMetric(r.Operational.TotalCategories, r.Operational.CategoriesInUse, r.Operational.QuestionsPerCategory));
+        var performance = new ReportsModels.PerformanceMetrics(
+            new ReportsModels.AnswerMetric(r.Performance.TotalAnswers, r.Performance.CorrectAnswers, r.Performance.IncorrectAnswers, r.Performance.AccuracyRate),
+            new ReportsModels.ScoreMetric(r.Performance.TotalPoints, r.Performance.AverageScore, r.Performance.Distribution, r.Performance.ByTransactionType),
+            new ReportsModels.WithdrawalMetric(r.Performance.TotalWithdrawals, r.Performance.ByPolicy, r.Performance.Rate));
+        var rewards = new ReportsModels.RewardsMetrics(
+            new ReportsModels.RewardMetric(r.Rewards.TotalRewards, r.Rewards.ByType, r.Rewards.ByStatus),
+            new ReportsModels.RedemptionMetric(r.Rewards.TotalRedemptions, r.Rewards.RedemptionByStatus, r.Rewards.RedemptionByType, r.Rewards.TotalCost),
+            new ReportsModels.ConsolationMetric(r.Rewards.TotalConsolations, r.Rewards.TotalCostConsolation, r.Rewards.ByEligibility));
+        return new ReportsModels.ReportSnapshot(filter, operational, performance, rewards, r.TotalCount, r.CalculatedAt);
     }
 }

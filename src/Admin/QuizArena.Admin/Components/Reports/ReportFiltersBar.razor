@@ -1,0 +1,48 @@
+@using ReportsModels = QuizArena.Admin.Client.Models.Reports
+@using QuizArena.Admin.Client.Services
+
+<div class="report-filters-bar" role="form" aria-label="Filtros de reporte" style="display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:end;padding:var(--space-3);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);margin-bottom:var(--space-4);">
+    <QuizInput Id="filter-from" Label="Desde" Type="date" Value="@FromStr" ValueChanged="@(v => FromStr = v ?? string.Empty)" Error="@Err("DateRange")" />
+    <QuizInput Id="filter-to" Label="Hasta" Type="date" Value="@ToStr" ValueChanged="@(v => ToStr = v ?? string.Empty)" Error="@Err("DateRange")" />
+    <QuizInput Id="filter-category" Label="Categoría" Value="@CategoryName" ValueChanged="@(v => CategoryName = v ?? string.Empty)" Placeholder="Historia" />
+    <QuizInput Id="filter-game" Label="Juego" Value="@GameName" ValueChanged="@(v => GameName = v ?? string.Empty)" Placeholder="Quiz 001" />
+    <QuizInput Id="filter-player" Label="Jugador" Value="@PlayerSearch" ValueChanged="@(v => PlayerSearch = v ?? string.Empty)" Placeholder="ana" />
+    <QuizSelect Id="filter-level" Label="Nivel" Value="@LevelStr" ValueChanged="@(v => LevelStr = v ?? string.Empty)" Options="@levelOptions" Placeholder="Todos" Error="@Err(nameof(ReportsModels.ReportFilter.Level))" />
+    <QuizSelect Id="filter-result" Label="Resultado" Value="@Result" ValueChanged="@(v => Result = v ?? string.Empty)" Options="@resultOptions" Placeholder="Todos" Error="@Err(nameof(ReportsModels.ReportFilter.Result))" />
+    <QuizButton Variant="primary" OnClick="Apply" style="min-height:44px;min-width:44px;" aria-label="Aplicar filtros">Aplicar</QuizButton>
+    <QuizButton Variant="ghost" OnClick="Clear" style="min-height:44px;">Limpiar</QuizButton>
+</div>
+
+@if (FieldErrors.Count>0)
+{
+    <div role="alert" aria-live="assertive" style="color:var(--color-destructive-text);font-size:var(--typography-caption);margin-bottom:var(--space-3);">
+        @foreach(var kv in FieldErrors){<div>@kv.Key: @string.Join(", ", kv.Value)</div>}
+    </div>
+}
+
+@code {
+    [Parameter] public string FromStr { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> FromStrChanged { get; set; }
+    [Parameter] public string ToStr { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ToStrChanged { get; set; }
+    [Parameter] public string? CategoryName { get; set; }
+    [Parameter] public EventCallback<string?> CategoryNameChanged { get; set; }
+    [Parameter] public string? GameName { get; set; }
+    [Parameter] public EventCallback<string?> GameNameChanged { get; set; }
+    [Parameter] public string? PlayerSearch { get; set; }
+    [Parameter] public EventCallback<string?> PlayerSearchChanged { get; set; }
+    [Parameter] public string? LevelStr { get; set; }
+    [Parameter] public EventCallback<string?> LevelStrChanged { get; set; }
+    [Parameter] public string? Result { get; set; }
+    [Parameter] public EventCallback<string?> ResultChanged { get; set; }
+    [Parameter] public IReadOnlyDictionary<string,string[]> FieldErrors { get; set; } = new Dictionary<string,string[]>();
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    private IReadOnlyList<QuizSelect.OptionDef> levelOptions = ReportCatalogs.Levels.Select(l => new QuizSelect.OptionDef(l.ToString(), $"Nivel {l}")).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> resultOptions = ReportCatalogs.Results.Select(r => new QuizSelect.OptionDef(r, r)).ToList();
+
+    private string? Err(string f) => FieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+    private Task Apply() => OnApply.InvokeAsync();
+    private Task Clear() => OnClear.InvokeAsync();
+}

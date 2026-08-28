@@ -1,0 +1,26 @@
+<div class="metric-card" style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);min-height:120px;display:flex;flex-direction:column;gap:var(--space-2);">
+    <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);text-transform:uppercase;letter-spacing:0.05em;">@Title</div>
+    <div style="font-size:var(--typography-heading-l);font-weight:700;color:var(--color-card-foreground);" aria-live="polite">@Value</div>
+    @if (Subtitle is not null)
+    {
+        <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">@Subtitle</div>
+    }
+    @if (Details is not null && Details.Count>0)
+    {
+        <div style="font-size:var(--typography-caption);display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:var(--space-2);">
+            @foreach(var kv in Details){<span style="background:var(--color-muted);padding:2px 6px;border-radius:var(--radius-sm);">@kv.Key: @kv.Value</span>}
+        </div>
+    }
+    @if (ChildContent is not null)
+    {
+        <div style="margin-top:var(--space-2);">@ChildContent</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public IReadOnlyDictionary<string,int>? Details { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

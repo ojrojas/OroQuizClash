@@ -1,0 +1,151 @@
+@page "/admin/reports"
+@attribute [Authorize(Policy = AdminPolicies.AnyAdminRole)]
+@using ReportsModels = QuizArena.Admin.Client.Models.Reports
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Reports
+@inject IReportsService ReportsService
+@inject ToastService Toasts
+
+<PageTitle>Reportes — QuizArena Admin</PageTitle>
+
+<h1>Reportes analíticos</h1>
+
+<ReportFiltersBar FromStr="@fromStr" ToStr="@toStr" CategoryName="@categoryName" GameName="@gameName" PlayerSearch="@playerSearch" LevelStr="@levelStr" Result="@resultStr" FieldErrors="@fieldErrors" OnApply="ApplyFilters" OnClear="ClearFilters" />
+
+<div style="margin-bottom:var(--space-3);font-size:var(--typography-caption);color:var(--color-muted-foreground);" aria-live="polite">
+    Filtros combinados AND — Fecha, Categoría, Juego, Jugador, Nivel, Resultado — paginados server-side
+</div>
+
+<ReportsDashboard ActiveTab="@activeTab" ActiveTabChanged="OnTabChanged">
+    <OperationalContent>
+        @if (operationalState==State.Loading) { <LoadingSkeleton Rows="4" /> }
+        else if (operationalState==State.Error) { <ErrorState Message="@operationalError" OnRetry="LoadOperational" /> }
+        else if (operationalMetrics is null) { <EmptyState Title="Sin datos" Message="No hay datos operativos para el rango." /> }
+        else {
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-4);margin-bottom:var(--space-4);">
+                <MetricCard Title="Juegos" Value="@operationalMetrics.Games.TotalGames.ToString()" Details="@operationalMetrics.Games.ByStatus" />
+                <MetricCard Title="Jugadores" Value="@operationalMetrics.Players.UniquePlayers.ToString()" Subtitle="@($"Activos: {operationalMetrics.Players.ActivePlayers}")" Details="@operationalMetrics.Players.DistributionByTenant" />
+                <MetricCard Title="Preguntas" Value="@operationalMetrics.Questions.TotalQuestions.ToString()" Details="@operationalMetrics.Questions.ByCategory" />
+                <MetricCard Title="Categorías" Value="@operationalMetrics.Categories.TotalCategories.ToString()" Subtitle="@($"En uso: {operationalMetrics.Categories.CategoriesInUse}")" />
+            </div>
+            <p style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Calculado: @operationalCalculated?.ToString("dd/MM/yyyy HH:mm") (server-side, snapshot)</p>
+        }
+    </OperationalContent>
+    <PerformanceContent>
+        <PerformancePanel Metrics="@performanceMetrics" IsLoading="@(performanceState==State.Loading)" Error="@performanceError" OnRetry="LoadPerformance" />
+    </PerformanceContent>
+    <RewardsContent>
+        <RewardsPanel Metrics="@rewardsMetrics" IsLoading="@(rewardsState==State.Loading)" Error="@rewardsError" OnRetry="LoadRewards" />
+    </RewardsContent>
+</ReportsDashboard>
+
+<div style="margin-top:var(--space-4);font-size:var(--typography-caption);color:var(--color-muted-foreground);">
+    <div>CorrelationId propagado — errores como <code>ProblemDetails</code> RFC7807 sin fuga.</div>
+    <div>Paginación server-side — sin cargar colecciones completas.</div>
+</div>
+
+@code {
+    private enum State { Loading, Ready, Empty, Error }
+    private string activeTab = "operational";
+
+    // Filters
+    private string fromStr=""; private string toStr=""; private string? categoryName; private string? gameName; private string? playerSearch; private string? levelStr; private string? resultStr;
+    private IReadOnlyDictionary<string,string[]> fieldErrors = new Dictionary<string,string[]>();
+
+    // Operational
+    private State operationalState=State.Loading; private string operationalError=""; private ReportsModels.OperationalMetrics? operationalMetrics; private DateTimeOffset? operationalCalculated;
+    private int operationalTotal;
+
+    // Performance
+    private State performanceState=State.Loading; private string performanceError=""; private ReportsModels.PerformanceMetrics? performanceMetrics;
+
+    // Rewards
+    private State rewardsState=State.Loading; private string rewardsError=""; private ReportsModels.RewardsMetrics? rewardsMetrics;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOperational();
+        await LoadPerformance();
+        await LoadRewards();
+    }
+
+    private ReportsModels.ReportFilter BuildFilter()
+    {
+        DateTimeOffset? from = DateTimeOffset.TryParse(fromStr, out var fd) ? fd : null;
+        DateTimeOffset? to = DateTimeOffset.TryParse(toStr, out var td) ? td : null;
+        int? level = int.TryParse(levelStr, out var lv) ? lv : null;
+        return new ReportsModels.ReportFilter(
+            From: from, To: to, CategoryName: string.IsNullOrWhiteSpace(categoryName)?null:categoryName,
+            GameName: string.IsNullOrWhiteSpace(gameName)?null:gameName,
+            PlayerSearch: string.IsNullOrWhiteSpace(playerSearch)?null:playerSearch,
+            Level: level, Result: string.IsNullOrWhiteSpace(resultStr)?null:resultStr,
+            Page:1, PageSize:20);
+    }
+
+    private async Task ApplyFilters()
+    {
+        var filter = BuildFilter();
+        var validation = filter.Validate();
+        fieldErrors = validation;
+        if (validation.Count>0) return;
+        await Task.WhenAll(LoadOperational(), LoadPerformance(), LoadRewards());
+    }
+
+    private async Task ClearFilters()
+    {
+        fromStr=""; toStr=""; categoryName=null; gameName=null; playerSearch=null; levelStr=null; resultStr=null; fieldErrors=new Dictionary<string,string[]>();
+        await ApplyFilters();
+    }
+
+    private async Task OnTabChanged(string tab)
+    {
+        activeTab=tab;
+        if(tab=="operational" && operationalMetrics is null) await LoadOperational();
+        if(tab=="performance" && performanceMetrics is null) await LoadPerformance();
+        if(tab=="rewards" && rewardsMetrics is null) await LoadRewards();
+    }
+
+    private async Task LoadOperational()
+    {
+        operationalState=State.Loading;
+        try{
+            var snapshot = await ReportsService.GetOperationalAsync(BuildFilter());
+            operationalMetrics = snapshot.Operational;
+            operationalCalculated = snapshot.CalculatedAt;
+            operationalTotal = snapshot.TotalCount;
+            operationalState=State.Ready;
+        } catch(ApiErrorException ex){
+            if(ex.ErrorView.Code=="403"){ operationalError="Access Denied — 403 (REWARD_MANAGER no tiene acceso a operativo)"; }
+            else operationalError=ex.ErrorView.Detail??ex.ErrorView.Title;
+            operationalState=State.Error;
+        } catch{ operationalError="No se pudo cargar."; operationalState=State.Error; }
+    }
+
+    private async Task LoadPerformance()
+    {
+        performanceState=State.Loading;
+        try{
+            var snapshot = await ReportsService.GetPerformanceAsync(BuildFilter());
+            performanceMetrics = snapshot.Performance;
+            performanceState=State.Ready;
+        } catch(ApiErrorException ex){
+            if(ex.ErrorView.Code=="403"){ performanceError="Access Denied — 403"; }
+            else performanceError=ex.ErrorView.Detail??ex.ErrorView.Title;
+            performanceState=State.Error;
+        } catch{ performanceError="No se pudo cargar."; performanceState=State.Error; }
+    }
+
+    private async Task LoadRewards()
+    {
+        rewardsState=State.Loading;
+        try{
+            var snapshot = await ReportsService.GetRewardsAsync(BuildFilter());
+            rewardsMetrics = snapshot.Rewards;
+            rewardsState=State.Ready;
+        } catch(ApiErrorException ex){
+            if(ex.ErrorView.Code=="403"){ rewardsError="Access Denied — 403 (GAME_MANAGER no tiene acceso a recompensas)"; }
+            else rewardsError=ex.ErrorView.Detail??ex.ErrorView.Title;
+            rewardsState=State.Error;
+        } catch{ rewardsError="No se pudo cargar."; rewardsState=State.Error; }
+    }
+}

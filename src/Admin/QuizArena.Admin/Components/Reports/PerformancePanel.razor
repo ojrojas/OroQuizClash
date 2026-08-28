@@ -1,0 +1,30 @@
+@using ReportsModels = QuizArena.Admin.Client.Models.Reports
+
+<div class="performance-panel" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-4);">
+    @if (IsLoading)
+    {
+        <div style="grid-column:1/-1;"><LoadingSkeleton Rows="4" /></div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div style="grid-column:1/-1;"><ErrorState Message="@Error" OnRetry="OnRetry" /></div>
+    }
+    else if (Metrics is null)
+    {
+        <div style="grid-column:1/-1;"><EmptyState Title="Sin datos" Message="No hay métricas de rendimiento." /></div>
+    }
+    else
+    {
+        <MetricCard Title="Respuestas" Value="@Metrics.Answers.TotalAnswers.ToString()" Subtitle="@($"Correctas: {Metrics.Answers.CorrectAnswers} / Fallos: {Metrics.Answers.IncorrectAnswers}")" Details="@(new Dictionary<string,int>{{"Tasa",(int)(Metrics.Answers.AccuracyRate*100)}})" />
+        <MetricCard Title="Precisión" Value="@((Metrics.Answers.AccuracyRate*100).ToString("F1") + "%")" />
+        <MetricCard Title="Puntuación total" Value="@Metrics.Scores.TotalPoints.ToString()" Subtitle="@($"Promedio: {Metrics.Scores.AverageScore:F1}")" Details="@Metrics.Scores.ByTransactionType" />
+        <MetricCard Title="Retiros" Value="@Metrics.Withdrawals.TotalWithdrawals.ToString()" Subtitle="@($"Tasa: {(Metrics.Withdrawals.Rate*100):F1}%")" Details="@Metrics.Withdrawals.ByPolicy" />
+    }
+</div>
+
+@code {
+    [Parameter] public ReportsModels.PerformanceMetrics? Metrics { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

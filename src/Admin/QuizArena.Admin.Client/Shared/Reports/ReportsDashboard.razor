@@ -1,0 +1,42 @@
+@using ReportsModels = QuizArena.Admin.Client.Models.Reports
+
+<div class="reports-dashboard" role="region" aria-label="Reportes">
+    <QuizTabs Tabs="tabs" ActiveId="activeTab" ActiveIdChanged="OnTabChanged" AriaLabel="Secciones de reportes">
+        <ChildContent>
+            @if (activeTab == "operational")
+            {
+                @OperationalContent
+            }
+            else if (activeTab == "performance")
+            {
+                @PerformanceContent
+            }
+            else if (activeTab == "rewards")
+            {
+                @RewardsContent
+            }
+        </ChildContent>
+    </QuizTabs>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? OperationalContent { get; set; }
+    [Parameter] public RenderFragment? PerformanceContent { get; set; }
+    [Parameter] public RenderFragment? RewardsContent { get; set; }
+    [Parameter] public string ActiveTab { get; set; } = "operational";
+    [Parameter] public EventCallback<string> ActiveTabChanged { get; set; }
+
+    private List<QuizTabs.TabDef> tabs = [new("operational","Operativo"), new("performance","Rendimiento"), new("rewards","Recompensas")];
+    private string activeTab = "operational";
+
+    protected override void OnParametersSet()
+    {
+        activeTab = ActiveTab;
+    }
+
+    private Task OnTabChanged(string id)
+    {
+        activeTab = id;
+        return ActiveTabChanged.InvokeAsync(id);
+    }
+}
