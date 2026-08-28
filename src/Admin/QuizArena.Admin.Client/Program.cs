@@ -42,6 +42,12 @@ builder.Services.AddHttpClient<IAuditService, ClientAuditService>(client =>
 builder.Services.AddHttpClient<ILiveGamesService, ClientLiveGamesService>(client =>
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
     .AddHttpMessageHandler<SessionExpiredHandler>();
+builder.Services.AddHttpClient<ILiveGameService, ClientLiveGameService>(client =>
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
+    .AddHttpMessageHandler<SessionExpiredHandler>();
+builder.Services.AddHttpClient<ILiveGameOperationsService, ClientLiveGameOperationsService>(client =>
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
+    .AddHttpMessageHandler<SessionExpiredHandler>();
 builder.Services.AddTransient<IDashboardService, ClientDashboardService>();
 builder.Services.AddHttpClient<IGameConfigurationService, ClientGameConfigurationService>(client =>
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))

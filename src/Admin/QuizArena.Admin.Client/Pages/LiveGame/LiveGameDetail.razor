@@ -1,0 +1,187 @@
+@page "/admin/live/{GameId:guid}"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using QuizArena.Admin.Client.Models.LiveGame
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.LiveGame
+@using Microsoft.AspNetCore.SignalR.Client
+@inject ILiveGameService LiveGameService
+@inject ILiveGameOperationsService OperationsService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<PageTitle>Live game — QuizArena Admin</PageTitle>
+
+@if (isInitialLoading)
+{
+    <div class="live-grid" style="display:grid;gap:var(--space-3);">
+        <LoadingSkeleton Rows="2" />
+        <LoadingSkeleton Rows="2" />
+        <LoadingSkeleton Rows="2" />
+    </div>
+}
+else if (view is not null)
+{
+    <LiveGameHeader Status="@view.Status" CurrentRound="@view.CurrentRound" TotalRounds="@view.TotalRounds" CurrentLevel="@view.CurrentLevel" RemainingSeconds="@view.RemainingSeconds" />
+
+    <div class="live-grid" style="display:grid;gap:var(--space-4);">
+        <LiveQuestionCard Question="@view.CurrentQuestion" IsLoading="@questionLoading" IsError="@questionError" ErrorMessage="@questionErrorMessage" OnRetry="ReloadAsync" />
+        <LivePlayersPanel Players="@view.Players" PlayersConnected="@view.PlayersConnected" PlayersAnswered="@view.PlayersAnswered" PlayersWaiting="@view.PlayersWaiting" IsLoading="@playersLoading" IsError="@playersError" IsEmpty="@(view.PlayersConnected==0)" ErrorMessage="@playersErrorMessage" OnRetry="ReloadAsync" />
+        <LiveScoresTable Scores="@view.Scores" IsLoading="@scoresLoading" IsError="@scoresError" ErrorMessage="@scoresErrorMessage" OnRetry="ReloadAsync" />
+    </div>
+
+    <LiveOperationsBar State="@view.Status" RowVersion="@view.RowVersion" IsBusy="@isBusy" OnOperation="HandleOperation" />
+
+    @if (sessionExpired)
+    {
+        <div class="refresh-banner refresh-banner-error" role="alert">Sesión expirada — <a href="/authentication/login">re-autenticar</a></div>
+    }
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <ErrorState Message="@error" OnRetry="ReloadAsync" />
+}
+else
+{
+    <EmptyState Title="No game" Message="Juego no encontrado." />
+}
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+    private LiveGameView? view;
+    private bool isInitialLoading = true;
+    private bool isBusy;
+    private bool sessionExpired;
+    private string error = string.Empty;
+    private bool questionLoading, playersLoading, scoresLoading;
+    private bool questionError, playersError, scoresError;
+    private string? questionErrorMessage, playersErrorMessage, scoresErrorMessage;
+    private LiveGamePoller? poller;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await ReloadAsync();
+        StartPolling();
+        await StartHubAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        isInitialLoading = view is null;
+        error = string.Empty;
+        try
+        {
+            view = await LiveGameService.GetLiveGameAsync(GameId);
+            sessionExpired = false;
+        }
+        catch (ApiErrorException ex) when (ex.ErrorView.Code == "Unauthorized" || ex.ErrorView.Title.Contains("Unauthorized"))
+        {
+            sessionExpired = true;
+            poller?.Stop();
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+        catch (Exception)
+        {
+            error = "No se pudo cargar la vista en vivo.";
+        }
+        finally
+        {
+            isInitialLoading = false;
+        }
+    }
+
+    private void StartPolling()
+    {
+        poller?.DisposeAsync();
+        poller = new LiveGamePoller();
+        poller.Start(async ct =>
+        {
+            if (sessionExpired) return;
+            try
+            {
+                // Respect visibilityState if available
+                try
+                {
+                    var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible'");
+                    if (!visible) return;
+                }
+                catch { }
+                var updated = await LiveGameService.GetLiveGameAsync(GameId, ct);
+                await InvokeAsync(() =>
+                {
+                    view = updated;
+                    StateHasChanged();
+                });
+            }
+            catch (ApiErrorException ex) when (ex.ErrorView.Code == "Unauthorized")
+            {
+                sessionExpired = true;
+                poller?.Stop();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch { }
+        });
+    }
+
+    private async Task StartHubAsync()
+    {
+        try
+        {
+            hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/game"))
+                .WithAutomaticReconnect()
+                .Build();
+            hubConnection.On<string>("GamePaused", async _ => await ReloadAsync());
+            hubConnection.On<string>("GameResumed", async _ => await ReloadAsync());
+            hubConnection.On<string>("ScoreUpdated", async _ => await ReloadAsync());
+            hubConnection.On<string>("QuestionAvailable", async _ => await ReloadAsync());
+            await hubConnection.StartAsync();
+            await hubConnection.InvokeAsync("AddToGroup", $"game-{GameId}");
+        }
+        catch { /* fallback to polling */ }
+    }
+
+    private async Task HandleOperation((string Action, string RowVersion, string? Reason) args)
+    {
+        if (view is null) return;
+        isBusy = true;
+        var idempotencyKey = Guid.NewGuid().ToString();
+        try
+        {
+            view = args.Action switch
+            {
+                "Pause" => await OperationsService.PauseAsync(GameId, args.RowVersion, idempotencyKey),
+                "Resume" => await OperationsService.ResumeAsync(GameId, args.RowVersion, idempotencyKey),
+                "Cancel" => await OperationsService.CancelAsync(GameId, args.RowVersion, idempotencyKey, args.Reason),
+                "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey),
+                _ => view
+            };
+        }
+        catch (ApiErrorException ex) when (ex.ErrorView.Code == "ConcurrencyConflict")
+        {
+            error = "Conflicto de concurrencia — recargue.";
+        }
+        catch (ApiErrorException ex) when (ex.ErrorView.Code == "InvalidGameState")
+        {
+            error = ex.ErrorView.Detail ?? "Transición inválida.";
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+        finally { isBusy = false; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        poller?.Stop();
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

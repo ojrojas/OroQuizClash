@@ -1,0 +1,38 @@
+@using QuizArena.Admin.Client.Models.LiveGame
+
+<QuizCard Title="Scores">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="3" />
+    }
+    else if (Scores is null || Scores.Count == 0)
+    {
+        <EmptyState Title="No scores" Message="No hay puntuaciones aún" />
+    }
+    else
+    {
+        <table class="live-scores-table" aria-live="polite">
+            <thead><tr><th>Player</th><th>Score</th><th>Secured</th><th>Level</th></tr></thead>
+            <tbody>
+                @foreach (var s in Scores)
+                {
+                    <tr>
+                        <td>@s.DisplayName</td>
+                        <td>@s.Score</td>
+                        <td>@s.SecuredPoints</td>
+                        <td>@s.Level</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    @if (IsError) { <ErrorState Message="@ErrorMessage" OnRetry="OnRetry" /> }
+</QuizCard>
+
+@code {
+    [Parameter] public IReadOnlyList<LiveScore>? Scores { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

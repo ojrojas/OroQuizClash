@@ -90,6 +90,8 @@ builder.Services.AddAdminApiHttpClient<IReportsService, ServerReportsService>();
 builder.Services.AddAdminApiHttpClient<IAuditService, ServerAuditService>();
 builder.Services.AddTransient<IDashboardService, ServerDashboardService>();
 builder.Services.AddAdminApiHttpClient<ILiveGamesService, ServerLiveGamesService>();
+builder.Services.AddAdminApiHttpClient<ILiveGameService, ServerLiveGameService>();
+builder.Services.AddAdminApiHttpClient<ILiveGameOperationsService, ServerLiveGameOperationsService>();
 builder.Services.AddAdminApiHttpClient<QuizArena.Admin.Client.Services.IGameConfigurationService, ServerGameConfigurationService>();
 builder.Services.AddSingleton<ToastService>();
 

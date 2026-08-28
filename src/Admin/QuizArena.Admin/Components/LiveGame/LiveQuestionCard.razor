@@ -1,0 +1,34 @@
+@using QuizArena.Admin.Client.Models.LiveGame
+
+<QuizCard Title="Current Question">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="2" />
+    }
+    else if (Question is not null)
+    {
+        <p class="question-text" aria-live="polite">@Question.Text</p>
+        <ul class="question-options" role="list">
+            @foreach (var opt in Question.Options)
+            {
+                <li class="option-item" role="listitem">@opt.Position: @opt.Text</li>
+            }
+        </ul>
+    }
+    else
+    {
+        <EmptyState Title="No question" Message="Juego no iniciado - no hay pregunta actual" />
+    }
+    @if (IsError)
+    {
+        <ErrorState Message="@ErrorMessage" OnRetry="OnRetry" />
+    }
+</QuizCard>
+
+@code {
+    [Parameter] public QuestionView? Question { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

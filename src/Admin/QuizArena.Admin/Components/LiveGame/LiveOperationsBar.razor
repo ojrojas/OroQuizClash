@@ -1,0 +1,57 @@
+@using QuizArena.Admin.Client.Models.LiveGame
+
+<div class="live-operations-bar" role="toolbar" aria-label="Operaciones de juego">
+    <QuizButton Variant="primary" Disabled="@(!CanPause)" OnClick="HandlePause" Loading="@IsBusy">Pause</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanResume)" OnClick="HandleResume" Loading="@IsBusy">Resume</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanCancel)" OnClick="HandleCancel" Loading="@IsBusy">Cancel</QuizButton>
+    <QuizButton Variant="destructive" Disabled="@(!CanForceFinish)" OnClick="HandleForceFinish" Loading="@IsBusy">Force Finish</QuizButton>
+</div>
+
+@if (!string.IsNullOrEmpty(confirmAction))
+{
+    <QuizModal Open="true" Title="@confirmTitle" OnClose="() => confirmAction = null">
+        <ChildContent>
+            <p>@confirmMessage</p>
+            @if (confirmAction == "Cancel" || confirmAction == "ForceFinish")
+            {
+                <QuizInput Id="op-reason" Label="Motivo (opcional)" Value="@reason" ValueChanged="v => reason = v" />
+            }
+        </ChildContent>
+        <Footer>
+            <QuizButton Variant="ghost" OnClick="() => confirmAction = null">Cancelar</QuizButton>
+            <QuizButton Variant="primary" OnClick="ConfirmAsync" Loading="@IsBusy">Confirmar</QuizButton>
+        </Footer>
+    </QuizModal>
+}
+
+@code {
+    [Parameter, EditorRequired] public GameStateView State { get; set; }
+    [Parameter] public string RowVersion { get; set; } = string.Empty;
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public EventCallback<(string Action, string RowVersion, string? Reason)> OnOperation { get; set; }
+
+    private string? confirmAction;
+    private string confirmTitle = string.Empty;
+    private string confirmMessage = string.Empty;
+    private string? reason;
+
+    private bool CanPause => State == GameStateView.Running;
+    private bool CanResume => State == GameStateView.Paused;
+    private bool CanCancel => State == GameStateView.Running || State == GameStateView.Paused || State == GameStateView.Ready || State == GameStateView.Scheduled;
+    private bool CanForceFinish => State == GameStateView.Running || State == GameStateView.Paused;
+
+    private void HandlePause(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) { confirmAction = "Pause"; confirmTitle = "Pausar partida"; confirmMessage = "¿Pausar partida? Se congelará el timer y se bloquearán respuestas."; }
+    private void HandleResume(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) { confirmAction = "Resume"; confirmTitle = "Reanudar partida"; confirmMessage = "¿Reanudar partida?"; }
+    private void HandleCancel(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) { confirmAction = "Cancel"; confirmTitle = "Cancelar partida"; confirmMessage = "¿Cancelar partida? Acción terminal."; }
+    private void HandleForceFinish(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) { confirmAction = "ForceFinish"; confirmTitle = "Forzar finalización"; confirmMessage = "¿Forzar finalización? Acción privilegiada, auditable."; }
+
+    private async Task ConfirmAsync()
+    {
+        if (confirmAction is null) return;
+        var action = confirmAction;
+        var r = reason;
+        confirmAction = null;
+        reason = null;
+        await OnOperation.InvokeAsync((action, RowVersion, r));
+    }
+}

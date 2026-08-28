@@ -15,7 +15,7 @@
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery.Yarp" />
   </ItemGroup>
 
-  <!-- 018 dashboard, 019 game-config, 020 categories & 021 questions: server Components duplicates the client implementation
+  <!-- 018 dashboard, 019 game-config, 020 categories, 021 questions & 022 live: server Components duplicates the client implementation
        for task path compliance; exclude from Razor compilation to avoid duplicate-type errors.
        Functional implementation lives in QuizArena.Admin.Client/Shared. -->
   <ItemGroup>
@@ -35,6 +35,10 @@
     <Content Remove="Components/Questions/**/*.razor.css" />
     <None Include="Components/Questions/**/*.razor" />
     <None Include="Components/Questions/**/*.razor.css" />
+    <Content Remove="Components/LiveGame/**/*.razor" />
+    <Content Remove="Components/LiveGame/**/*.razor.css" />
+    <None Include="Components/LiveGame/**/*.razor" />
+    <None Include="Components/LiveGame/**/*.razor.css" />
   </ItemGroup>
 
 </Project>

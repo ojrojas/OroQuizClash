@@ -1,0 +1,37 @@
+@using QuizArena.Admin.Client.Models.LiveGame
+
+<div class="live-header" role="banner" aria-live="polite">
+    <QuizBadge Variant="@StatusVariant" Label="@GameStateViewMap.DisplayName(Status)" />
+    <span class="live-round" aria-label="Current Round">Round @CurrentRound / @TotalRounds</span>
+    <span class="live-level" aria-label="Current Level">Level @CurrentLevel</span>
+    <span class="live-timer" aria-live="polite" aria-label="Game Timer">
+        @if (Status == GameStateView.Paused)
+        {
+            <span>Pausado - @RemainingSeconds s</span>
+        }
+        else if (Status == GameStateView.Finished || Status == GameStateView.Cancelled)
+        {
+            <span>0 s</span>
+        }
+        else
+        {
+            <span>@RemainingSeconds s</span>
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GameStateView Status { get; set; }
+    [Parameter] public int CurrentRound { get; set; }
+    [Parameter] public int TotalRounds { get; set; }
+    [Parameter] public int CurrentLevel { get; set; }
+    [Parameter] public int RemainingSeconds { get; set; }
+    private string StatusVariant => Status switch
+    {
+        GameStateView.Running => "success",
+        GameStateView.Paused => "warning",
+        GameStateView.Finished => "neutral",
+        GameStateView.Cancelled => "destructive",
+        _ => "info"
+    };
+}

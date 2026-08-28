@@ -1,0 +1,27 @@
+@using QuizArena.Admin.Client.Models.LiveGame
+
+<div class="live-players-panel" role="region" aria-label="Players">
+    <QuizCard Title="Players">
+        <div class="players-stats" role="grid" aria-live="polite">
+            <div class="stat-item" role="gridcell" aria-label="Players"><span class="stat-value">@Players</span><span class="stat-label">Players</span></div>
+            <div class="stat-item" role="gridcell" aria-label="Players Connected"><span class="stat-value">@PlayersConnected</span><span class="stat-label">Connected</span></div>
+            <div class="stat-item" role="gridcell" aria-label="Players Answered"><span class="stat-value">@PlayersAnswered</span><span class="stat-label">Answered</span></div>
+            <div class="stat-item" role="gridcell" aria-label="Players Waiting"><span class="stat-value">@PlayersWaiting</span><span class="stat-label">Waiting</span></div>
+        </div>
+        @if (IsLoading) { <LoadingSkeleton Rows="1" /> }
+        @if (IsError) { <ErrorState Message="@ErrorMessage" OnRetry="OnRetry" /> }
+        @if (IsEmpty) { <EmptyState Title="No players" Message="No jugadores conectados" /> }
+    </QuizCard>
+</div>
+
+@code {
+    [Parameter] public int Players { get; set; }
+    [Parameter] public int PlayersConnected { get; set; }
+    [Parameter] public int PlayersAnswered { get; set; }
+    [Parameter] public int PlayersWaiting { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsError { get; set; }
+    [Parameter] public bool IsEmpty { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}
