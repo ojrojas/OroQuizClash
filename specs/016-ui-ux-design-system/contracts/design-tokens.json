@@ -1,0 +1,107 @@
+{
+  "$schema": "https://schemas.style-dictionary.io/tokens",
+  "version": "1.0.0",
+  "description": "QuizArena Design Tokens — three-layer (primitive→semantic→component), Style Dictionary compatible. Source of truth: design-system/MASTER.md + design-system/tokens/design-tokens.json per Addendum 2 §14. Validated by ui-ux-pro-max.",
+  "layer": "all-layers-examples—primitive Semantic Component",
+  "primitive": {
+    "color": {
+      "blue": { "50": "#EFF6FF", "100": "#DBEAFE", "500": "#2563EB", "600": "#2563EB", "800": "#1E40AF", "900": "#1E3A8A" },
+      "violet": { "500": "#7C3AED" },
+      "amber": { "500": "#F59E0B", "600": "#D97706" },
+      "neutral": { "50": "#F8FAFC", "100": "#E9EEF6", "200": "#DBEAFE", "500": "#64748B", "900": "#0F172A" },
+      "red": { "600": "#DC2626" },
+      "green": { "600": "#16A34A" },
+      "white": "#FFFFFF",
+      "black": "#000000"
+    },
+    "spacing": { "1": "4px", "2": "8px", "3": "12px", "4": "16px", "6": "24px", "8": "32px", "12": "48px", "16": "64px" },
+    "radius": { "sm": "4px", "md": "8px", "lg": "12px", "xl": "16px", "2xl": "24px" },
+    "elevation": {
+      "0": "none",
+      "1": "0 1px 2px rgba(15,23,42,0.08)",
+      "2": "0 4px 8px rgba(15,23,42,0.12)",
+      "3": "0 8px 16px rgba(15,23,42,0.16)",
+      "4": "0 16px 32px rgba(15,23,42,0.20)"
+    },
+    "motion": {
+      "duration": { "100": "100ms", "200": "200ms", "300": "300ms", "500": "500ms", "800": "800ms" },
+      "easing": { "easeOut": "cubic-bezier(0.0,0,0.2,1)", "easeInOut": "cubic-bezier(0.4,0,0.2,1)", "spring": "cubic-bezier(0.34,1.56,0.64,1)" }
+    },
+    "typography": {
+      "family": {
+        "firaSans": "'Fira Sans', system-ui, sans-serif",
+        "firaCode": "'Fira Code', monospace",
+        "russoOne": "'Russo One', sans-serif",
+        "chakraPetch": "'Chakra Petch', system-ui, sans-serif"
+      }
+    },
+    "breakpoint": { "360": "360px", "375": "375px", "640": "640px", "768": "768px", "1024": "1024px", "1280": "1280px", "1440": "1440px", "1536": "1536px" },
+    "icon": { "grid": "24px", "stroke": "1.5px", "sizes": { "sm": "16px", "md": "20px", "lg": "24px", "xl": "32px" } }
+  },
+  "semantic": {
+    "color": {
+      "primary": { "value": "{color.blue.600}", "description": "quiz blue — onPrimary #FFFFFF contrast 12:1" },
+      "secondary": { "value": "{color.violet.500}", "description": "limited accent" },
+      "accent": { "value": "{color.amber.500}", "theme": { "administration": "{color.amber.600}", "player": "{color.amber.500}" } },
+      "background": { "value": "#F8FAFC", "theme": { "administration": "#F8FAFC", "player": "#0F172A" } },
+      "foreground": { "value": "#1E3A8A", "theme": { "administration": "#1E3A8A", "player": "#F8FAFC" } },
+      "surface": { "value": "#FFFFFF", "theme": { "administration": "#FFFFFF", "player": "#1E293B" } },
+      "card": { "value": "#FFFFFF", "theme": { "administration": "#FFFFFF", "player": "#1E293B" } },
+      "cardForeground": { "value": "#1E3A8A", "theme": { "administration": "#1E3A8A", "player": "#F1F5F9" } },
+      "muted": { "value": "#E9EEF6", "theme": { "administration": "#E9EEF6", "player": "#334155" } },
+      "mutedForeground": { "value": "#475569" },
+      "border": { "value": "#DBEAFE", "theme": { "administration": "#DBEAFE", "player": "#334155" } },
+      "ring": { "value": "{color.blue.600}" },
+      "destructive": { "value": "{color.red.600}" },
+      "success": { "value": "{color.green.600}" },
+      "warning": { "value": "{color.amber.600}" },
+      "info": { "value": "{color.blue.600}" },
+      "onPrimary": "#FFFFFF",
+      "onAccent": "#0F172A"
+    },
+    "typography": {
+      "display": { "family": "{typography.family.chakraPetch}", "size": "clamp(32px, 5vw, 48px)", "weight": "700", "lineHeight": "1.1", "tracking": "-0.02em" },
+      "headingL": { "family": "{typography.family.firaSans}", "size": "clamp(24px, 3vw, 32px)", "weight": "600", "lineHeight": "1.2", "theme": { "player": "{typography.family.russoOne}" } },
+      "titleM": { "family": "{typography.family.firaSans}", "size": "clamp(18px, 2vw, 20px)", "weight": "600", "lineHeight": "1.4" },
+      "bodyM": { "family": "{typography.family.firaSans}", "size": "16px", "weight": "400", "lineHeight": "1.6" },
+      "labelM": { "family": "{typography.family.firaSans}", "size": "14px", "weight": "500", "lineHeight": "1.4" },
+      "caption": { "family": "{typography.family.firaSans}", "size": "12px", "weight": "400", "lineHeight": "1.4" }
+    },
+    "spacing": {
+      "xs": "{spacing.1}", "sm": "{spacing.2}", "md": "{spacing.4}", "lg": "{spacing.6}", "xl": "{spacing.8}", "2xl": "{spacing.12}"
+    },
+    "motion": {
+      "fade": { "duration": "{motion.duration.200}", "easing": "{motion.easing.easeOut}" },
+      "slide": { "duration": "{motion.duration.300}", "easing": "{motion.easing.easeOut}" },
+      "scale": { "duration": "{motion.duration.200}", "easing": "{motion.easing.spring}" },
+      "timerPulse": { "duration": "{motion.duration.500}", "easing": "{motion.easing.easeInOut}", "iteration": "infinite" },
+      "roundTransition": { "duration": "{motion.duration.500}", "easing": "{motion.easing.easeInOut}" }
+    }
+  },
+  "component": {
+    "button": {
+      "bg": { "primary": "{color.primary}", "secondary": "transparent", "ghost": "transparent", "destructive": "{color.destructive}" },
+      "text": { "primary": "{color.onPrimary}", "secondary": "{color.foreground}", "ghost": "{color.foreground}", "destructive": "{color.onPrimary}" },
+      "border": { "primary": "none", "secondary": "1px solid {color.border}", "ghost": "none", "destructive": "none" },
+      "radius": "{radius.lg}",
+      "shadow": { "default": "{elevation.1}", "hover": "{elevation.2}", "active": "{elevation.0}" },
+      "focusRing": "0 0 0 2px {color.ring}",
+      "states": ["default", "hover", "active", "focus", "disabled", "loading"]
+    },
+    "card": {
+      "bg": "{color.card}", "fg": "{color.cardForeground}", "border": "1px solid {color.border}", "radius": "{radius.lg}", "shadow": "{elevation.1}"
+    },
+    "timer": {
+      "default": "{color.primary}", "warning": "{color.warning}", "critical": "{color.destructive}",
+      "presets": { "warningAt": "10s", "criticalAt": "5s", "pulse": "{motion.timerPulse}" }
+    }
+  },
+  "_contracts": {
+    "naming": "color.primary.500 | spacing.4 | typography.heading.l — kebab+dot, three-layer",
+    "theming": "administration vs player overrides only on semantic layer; primitives shared",
+    "cssGeneration": "node scripts/generate-tokens.cjs --config design-system/tokens/design-tokens.json -o design-system/tokens/design-tokens.css",
+    "validation": "node scripts/validate-tokens.cjs --dir design-system/ && --dir src/Admin && --dir src/Player — 0 literals fuera de catálogo; axe contrast 4.5:1/3:1",
+    "breakpoints": "375/768/1024/1440 normative (Addendum 2 §7); media queries var(--breakpoint-375)",
+    "antiPatterns": "Prohibidos §13: generic Bootstrap, no filtering, glass/neon excess, emoji, etc."
+  }
+}

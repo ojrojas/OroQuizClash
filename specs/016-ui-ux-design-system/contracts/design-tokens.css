@@ -1,0 +1,122 @@
+/* QuizArena Design Tokens — CSS variables (generated from design-tokens.json)
+   Source of truth: design-system/MASTER.md + design-system/tokens/design-tokens.json
+   Generated: node scripts/generate-tokens.cjs --config design-system/tokens/design-tokens.json -o design-system/tokens/design-tokens.css
+   Three-layer: primitive → semantic → component | Themes: base, administration (light), player (dark cinematic)
+   Never hardcode hex outside tokens — use var(--color-primary) etc. (Addendum 2 §14)
+*/
+
+:root {
+  /* primitive: color */
+  --color-blue-50: #EFF6FF;
+  --color-blue-100: #DBEAFE;
+  --color-blue-600: #2563EB;
+  --color-blue-800: #1E40AF;
+  --color-blue-900: #1E3A8A;
+  --color-violet-500: #7C3AED;
+  --color-amber-500: #F59E0B;
+  --color-amber-600: #D97706;
+  --color-neutral-50: #F8FAFC;
+  --color-neutral-100: #E9EEF6;
+  --color-neutral-200: #DBEAFE;
+  --color-neutral-500: #64748B;
+  --color-neutral-900: #0F172A;
+  --color-red-600: #DC2626;
+  --color-green-600: #16A34A;
+
+  /* semantic: color (base) */
+  --color-primary: var(--color-blue-600);
+  --color-secondary: var(--color-violet-500);
+  --color-accent: var(--color-amber-500);
+  --color-background: #F8FAFC;
+  --color-foreground: #1E3A8A;
+  --color-surface: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #1E3A8A;
+  --color-muted: #E9EEF6;
+  --color-muted-foreground: #475569;
+  --color-border: #DBEAFE;
+  --color-ring: var(--color-blue-600);
+  --color-destructive: var(--color-red-600);
+  --color-success: var(--color-green-600);
+  --color-warning: var(--color-amber-600);
+  --color-info: var(--color-blue-600);
+  --color-on-primary: #FFFFFF;
+  --color-on-accent: #0F172A;
+
+  /* spacing 4/8 */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px; --space-12: 48px; --space-16: 64px;
+
+  /* radius */
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 24px;
+
+  /* elevation */
+  --elevation-0: none;
+  --elevation-1: 0 1px 2px rgba(15,23,42,0.08);
+  --elevation-2: 0 4px 8px rgba(15,23,42,0.12);
+  --elevation-3: 0 8px 16px rgba(15,23,42,0.16);
+  --elevation-4: 0 16px 32px rgba(15,23,42,0.20);
+
+  /* typography */
+  --typography-font-fira-sans: 'Fira Sans', system-ui, sans-serif;
+  --typography-font-fira-code: 'Fira Code', monospace;
+  --typography-font-russo: 'Russo One', sans-serif;
+  --typography-font-chakra: 'Chakra Petch', system-ui, sans-serif;
+  --typography-display-size: clamp(32px, 5vw, 48px);
+  --typography-heading-l-size: clamp(24px, 3vw, 32px);
+  --typography-title-m-size: clamp(18px, 2vw, 20px);
+  --typography-body-m-size: 16px;
+  --typography-label-m-size: 14px;
+  --typography-caption-size: 12px;
+
+  /* motion */
+  --motion-duration-100: 100ms; --motion-duration-200: 200ms;
+  --motion-duration-300: 300ms; --motion-duration-500: 500ms; --motion-duration-800: 800ms;
+  --motion-ease-out: cubic-bezier(0.0,0,0.2,1);
+  --motion-ease-in-out: cubic-bezier(0.4,0,0.2,1);
+  --motion-spring: cubic-bezier(0.34,1.56,0.64,1);
+  --motion-fade: var(--motion-duration-200) var(--motion-ease-out);
+  --motion-slide: var(--motion-duration-300) var(--motion-ease-out);
+  --motion-scale: var(--motion-duration-200) var(--motion-spring);
+  --motion-timer-pulse: var(--motion-duration-500) var(--motion-ease-in-out) infinite;
+}
+
+/* Administration override — light, dense, professional (Blazor .NET 11) */
+[data-theme="administration"] {
+  --color-primary: var(--color-blue-800);
+  --color-accent: var(--color-amber-600);
+  --color-background: #F8FAFC;
+  --color-card: #FFFFFF;
+  --elevation-card: var(--elevation-1);
+  --radius-card: var(--radius-lg);
+  --density-gutter: 16px;
+}
+
+/* Player override — dark cinematic, immersive (Angular 22) */
+[data-theme="player"] {
+  --color-background: #0F172A;
+  --color-foreground: #F8FAFC;
+  --color-card: #1E293B;
+  --color-card-foreground: #F1F5F9;
+  --color-muted: #334155;
+  --color-border: #334155;
+  --elevation-card: var(--elevation-3);
+  --radius-card: var(--radius-xl);
+  --typography-font-heading: var(--typography-font-russo);
+  --typography-font-body: var(--typography-font-chakra);
+  --density-gutter: 24px;
+}
+
+/* reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-reduced: var(--motion-duration-200) var(--motion-ease-out);
+  }
+  * { animation-duration: var(--motion-duration-200) !important; }
+}
+
+/* breakpoints as custom media (for reference) */
+@custom-media --breakpoint-375 (min-width: 375px);
+@custom-media --breakpoint-768 (min-width: 768px);
+@custom-media --breakpoint-1024 (min-width: 1024px);
+@custom-media --breakpoint-1440 (min-width: 1440px);
