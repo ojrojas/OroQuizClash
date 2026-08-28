@@ -1,0 +1,55 @@
+@using AuditModels = QuizArena.Admin.Client.Models.Audit
+@using QuizArena.Admin.Client.Services
+
+<div class="audit-filters-bar" role="form" aria-label="Filtros de auditoría" style="display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:end;padding:var(--space-3);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);margin-bottom:var(--space-4);">
+    <QuizInput Id="filter-who" Label="Who" Value="@Who" ValueChanged="@(v => Who = v ?? string.Empty)" Placeholder="sub o nombre" />
+    <QuizInput Id="filter-what" Label="What" Value="@What" ValueChanged="@(v => What = v ?? string.Empty)" Placeholder="CreateCategory" />
+    <QuizInput Id="filter-when-from" Label="Desde" Type="date" Value="@WhenFromStr" ValueChanged="@(v => WhenFromStr = v ?? string.Empty)" Error="@Err("DateRange")" />
+    <QuizInput Id="filter-when-to" Label="Hasta" Type="date" Value="@WhenToStr" ValueChanged="@(v => WhenToStr = v ?? string.Empty)" Error="@Err("DateRange")" />
+    <QuizInput Id="filter-where" Label="Where" Value="@Where" ValueChanged="@(v => Where = v ?? string.Empty)" Placeholder="CorrelationId" />
+    <QuizSelect Id="filter-entity" Label="Entity" Value="@EntityType" ValueChanged="@(v => EntityType = v ?? string.Empty)" Options="@entityOptions" Placeholder="Todos" Error="@Err(nameof(AuditModels.AuditFilter.EntityType))" />
+    <QuizInput Id="filter-entity-id" Label="EntityId" Value="@EntityIdStr" ValueChanged="@(v => EntityIdStr = v ?? string.Empty)" Placeholder="GUID" />
+    <QuizSelect Id="filter-action" Label="Action" Value="@Action" ValueChanged="@(v => Action = v ?? string.Empty)" Options="@actionOptions" Placeholder="Todos" Error="@Err(nameof(AuditModels.AuditFilter.Action))" />
+    <QuizSelect Id="filter-result" Label="Result" Value="@Result" ValueChanged="@(v => Result = v ?? string.Empty)" Options="@resultOptions" Placeholder="Todos" Error="@Err(nameof(AuditModels.AuditFilter.Result))" />
+    <QuizButton Variant="primary" OnClick="Apply" style="min-height:44px;min-width:44px;" aria-label="Aplicar filtros">Aplicar</QuizButton>
+    <QuizButton Variant="ghost" OnClick="Clear" style="min-height:44px;">Limpiar</QuizButton>
+</div>
+
+@if (FieldErrors.Count>0)
+{
+    <div role="alert" aria-live="assertive" style="color:var(--color-destructive-text);font-size:var(--typography-caption);margin-bottom:var(--space-3);">
+        @foreach(var kv in FieldErrors){<div>@kv.Key: @string.Join(", ", kv.Value)</div>}
+    </div>
+}
+
+@code {
+    [Parameter] public string Who { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WhoChanged { get; set; }
+    [Parameter] public string What { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WhatChanged { get; set; }
+    [Parameter] public string WhenFromStr { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WhenFromStrChanged { get; set; }
+    [Parameter] public string WhenToStr { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WhenToStrChanged { get; set; }
+    [Parameter] public string Where { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> WhereChanged { get; set; }
+    [Parameter] public string EntityType { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> EntityTypeChanged { get; set; }
+    [Parameter] public string EntityIdStr { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> EntityIdStrChanged { get; set; }
+    [Parameter] public string Action { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ActionChanged { get; set; }
+    [Parameter] public string Result { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ResultChanged { get; set; }
+    [Parameter] public IReadOnlyDictionary<string,string[]> FieldErrors { get; set; } = new Dictionary<string,string[]>();
+    [Parameter] public EventCallback OnApply { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    private IReadOnlyList<QuizSelect.OptionDef> entityOptions = AuditCatalogs.EntityTypes.Select(e => new QuizSelect.OptionDef(e, e)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> actionOptions = AuditCatalogs.Actions.Select(a => new QuizSelect.OptionDef(a, a)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> resultOptions = AuditCatalogs.Results.Select(r => new QuizSelect.OptionDef(r, r)).ToList();
+
+    private string? Err(string f) => FieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+    private Task Apply() => OnApply.InvokeAsync();
+    private Task Clear() => OnClear.InvokeAsync();
+}

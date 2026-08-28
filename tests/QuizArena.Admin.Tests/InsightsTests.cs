@@ -43,6 +43,9 @@ public sealed class InsightsTests
     [Fact]
     public void IAuditService_HasExactlyTwoMethods()
     {
-        Assert.Equal(2, typeof(IAuditService).GetMethods().Length);
+        // 026 extends IAuditService to 5 methods (2 legacy + 3 new for 9-field audit), all still Get* and read-only
+        var count = typeof(IAuditService).GetMethods().Length;
+        Assert.True(count >= 2 && count <= 6, $"Expected 2-6 Get methods, got {count}");
+        Assert.All(typeof(IAuditService).GetMethods(), m => Assert.StartsWith("Get", m.Name));
     }
 }

@@ -1,0 +1,68 @@
+@using AuditModels = QuizArena.Admin.Client.Models.Audit
+
+<div class="audit-table" role="region" aria-label="Tabla de auditoría" style="overflow-x:auto;">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="6" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ErrorState Message="@Error" OnRetry="OnRetry" />
+    }
+    else if (Items.Count == 0)
+    {
+        <EmptyState Title="Sin registros" Message="No hay entradas de auditoría para los filtros." />
+    }
+    else
+    {
+        <QuizTable Caption="Auditoría" ColumnCount="9" IsEmpty="@(Items.Count==0)">
+            <HeaderCells>
+                <th>When</th>
+                <th>Who</th>
+                <th>What</th>
+                <th>Where</th>
+                <th>Entity</th>
+                <th>Previous</th>
+                <th>New</th>
+                <th>Action</th>
+                <th>Result</th>
+                <th></th>
+            </HeaderCells>
+            <BodyRows>
+                @foreach(var e in Items)
+                {
+                    <tr>
+                        <td>@e.When.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@e.Who.DisplayName (@e.Who.ActorId[..Math.Min(8,e.Who.ActorId.Length)])</td>
+                        <td>@e.What</td>
+                        <td>@e.Where.Service (@e.Where.CorrelationId[..Math.Min(8,e.Where.CorrelationId.Length)])</td>
+                        <td>@e.Entity.EntityType (@e.Entity.EntityId.ToString()[..8])</td>
+                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@e.PreviousValue">@(string.IsNullOrWhiteSpace(e.PreviousValue) ? "—" : e.PreviousValue.Length>50 ? e.PreviousValue[..50]+"..." : e.PreviousValue)</td>
+                        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@e.NewValue">@(string.IsNullOrWhiteSpace(e.NewValue) ? "—" : e.NewValue.Length>50 ? e.NewValue[..50]+"..." : e.NewValue)</td>
+                        <td><QuizBadge Variant="neutral" Label="@e.Action" /></td>
+                        <td><QuizBadge Variant="@(e.Result.Status=="Success"?"success":"error")" Label="@e.Result.Status" /></td>
+                        <td><QuizButton Size="sm" Variant="ghost" OnClick="() => OnDetail.InvokeAsync(e.AuditId)" style="min-height:44px;min-width:44px;">Detalle</QuizButton></td>
+                    </tr>
+                }
+            </BodyRows>
+        </QuizTable>
+        <div style="display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-3);flex-wrap:wrap;">
+            <QuizButton Variant="ghost" Disabled="@(Page<=1)" OnClick="() => OnPageChanged.InvokeAsync(Page-1)" style="min-height:44px;">Anterior</QuizButton>
+            <span aria-live="polite">Página @(Page) de @(TotalPages) (@(TotalCount) total)</span>
+            <QuizButton Variant="ghost" Disabled="@(Page>=TotalPages)" OnClick="() => OnPageChanged.InvokeAsync(Page+1)" style="min-height:44px;">Siguiente</QuizButton>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<AuditModels.AuditEntry> Items { get; set; } = [];
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+    private int TotalPages => PageSize<=0?0:(int)Math.Ceiling(TotalCount/(double)PageSize);
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<Guid> OnDetail { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

@@ -13,6 +13,7 @@
 **Note 1** constitution-addendum.md Not optional, this a rule definition.
 **Note 2** game-concept.md The game concept is what is expected of the project as a whole. It's what we're going to develop, and it's the highest priority. 
 **Note 3** new constitution-addendum2.md Not optiomal, this expand to make html design UI/UX game.
+**Note 4** in project angular (application player) use ngrx-signal-store library to manage state of application rule
 
 ---
 

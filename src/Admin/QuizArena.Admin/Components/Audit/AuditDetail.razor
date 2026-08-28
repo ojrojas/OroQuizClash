@@ -1,0 +1,81 @@
+@using AuditModels = QuizArena.Admin.Client.Models.Audit
+
+<div class="audit-detail" role="region" aria-label="Detalle de auditoría" style="display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-lg);">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="6" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ErrorState Message="@Error" OnRetry="OnRetry" />
+    }
+    else if (Detail is null)
+    {
+        <EmptyState Title="No encontrado" Message="Entrada de auditoría no encontrada." />
+    }
+    else
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-3);">
+            <div><strong>Who</strong><div>@Detail.Who.DisplayName (@Detail.Who.ActorId[..Math.Min(8,Detail.Who.ActorId.Length)]) — @Detail.Who.Email</div><div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Tenant: @(Detail.Who.TenantId ?? "—")</div></div>
+            <div><strong>What</strong><div>@Detail.What</div></div>
+            <div><strong>When</strong><div>@Detail.When.ToString("dd/MM/yyyy HH:mm:ss") UTC</div></div>
+            <div><strong>Where</strong><div>@Detail.Where.Service — @Detail.Where.Endpoint</div><div style="font-size:var(--typography-caption);">IP: @(Detail.Where.IpAddress ?? "—")</div><div style="font-size:var(--typography-caption);">CorrelationId: <code style="background:var(--color-muted);padding:2px 4px;border-radius:var(--radius-sm);cursor:pointer;" @onclick="() => OnCopyCorrelation.InvokeAsync(Detail.Where.CorrelationId)" title="Copiar CorrelationId">@Detail.Where.CorrelationId</code> <QuizButton Size="sm" Variant="ghost" OnClick="() => OnCopyCorrelation.InvokeAsync(Detail.Where.CorrelationId)" style="min-height:44px;">Copiar</QuizButton></div>@if (!string.IsNullOrWhiteSpace(Detail.Where.TraceId)){<div style="font-size:var(--typography-caption);">TraceId: @Detail.Where.TraceId</div>}</div>
+            <div><strong>Entity</strong><div>@Detail.Entity.EntityType (@Detail.Entity.EntityId)</div></div>
+            <div><strong>Action</strong><div><QuizBadge Variant="neutral" Label="@Detail.Action" /></div></div>
+            <div><strong>Result</strong><div><QuizBadge Variant="@(Detail.Result.Status=="Success"?"success":"error")" Label="@Detail.Result.Status" /> @if (!string.IsNullOrWhiteSpace(Detail.Result.ErrorCode)){<span style="margin-left:var(--space-2);font-size:var(--typography-caption);">@Detail.Result.ErrorCode — @Detail.Result.Detail</span>}</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-4);">
+            <div>
+                <h3>Previous Value</h3>
+                @if (string.IsNullOrWhiteSpace(Detail.PreviousValue))
+                {
+                    <div style="padding:var(--space-3);background:var(--color-muted);border-radius:var(--radius-md);">—</div>
+                }
+                else
+                {
+                    <pre style="max-height:300px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);white-space:pre-wrap;word-break:break-all;">@Truncate(Detail.PreviousValue)</pre>
+                    @if (Detail.PreviousValue.Length>10000){<QuizButton Size="sm" Variant="ghost" OnClick="() => showPreviousFull = !showPreviousFull" style="min-height:44px;">@(showPreviousFull ? "Ocultar" : "Ver JSON completo")</QuizButton> @if(showPreviousFull){<pre style="max-height:400px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);">@MaskSecrets(Detail.PreviousValue)</pre>}}
+                }
+            </div>
+            <div>
+                <h3>New Value</h3>
+                @if (string.IsNullOrWhiteSpace(Detail.NewValue))
+                {
+                    <div style="padding:var(--space-3);background:var(--color-muted);border-radius:var(--radius-md);">—</div>
+                }
+                else
+                {
+                    <pre style="max-height:300px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);white-space:pre-wrap;word-break:break-all;">@Truncate(Detail.NewValue)</pre>
+                    @if (Detail.NewValue.Length>10000){<QuizButton Size="sm" Variant="ghost" OnClick="() => showNewFull = !showNewFull" style="min-height:44px;">@(showNewFull ? "Ocultar" : "Ver JSON completo")</QuizButton> @if(showNewFull){<pre style="max-height:400px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);">@MaskSecrets(Detail.NewValue)</pre>}}
+                }
+            </div>
+        </div>
+
+        @if (Detail.Diff.Count>0)
+        {
+            <div>
+                <h3>Diff</h3>
+                <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--space-2);">
+                    @foreach(var d in Detail.Diff){
+                        <li style="padding:var(--space-2);background:var(--color-muted);border-radius:var(--radius-sm);font-family:var(--typography-font-fira-code);font-size:var(--typography-caption);">
+                            <span style="color:var(--color-muted-foreground);">@d.Path</span> — <span style="color:var(--color-destructive-text);">@(d.Previous ?? "—")</span> → <span style="color:var(--color-success-text);">@(d.New ?? "—")</span> (@d.ChangeType)
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public AuditModels.AuditDetail? Detail { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+    [Parameter] public EventCallback<string> OnCopyCorrelation { get; set; }
+    private bool showPreviousFull;
+    private bool showNewFull;
+    private string Truncate(string? json) => string.IsNullOrWhiteSpace(json) ? "—" : json.Length>10000 ? MaskSecrets(json[..10000])+"... (truncado)" : MaskSecrets(json);
+    private string MaskSecrets(string json) => System.Text.RegularExpressions.Regex.Replace(json, "\"(password|secret|token)\"\\s*:\\s*\"[^\"]*\"", "\"$1\":\"***\"", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+}

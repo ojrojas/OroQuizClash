@@ -1,0 +1,114 @@
+@page "/admin/audit"
+@attribute [Authorize(Policy = AdminPolicies.AdminOnly)]
+@using AuditModels = QuizArena.Admin.Client.Models.Audit
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Audit
+@inject IAuditService AuditService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Auditoría — QuizArena Admin</PageTitle>
+
+<h1>Auditoría</h1>
+
+<div style="display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:end;margin-bottom:var(--space-4);">
+    <QuizInput Id="audit-who" Label="Who" Value="@who" ValueChanged="@(v => who = v ?? string.Empty)" Placeholder="sub o nombre" />
+    <QuizInput Id="audit-what" Label="What" Value="@what" ValueChanged="@(v => what = v ?? string.Empty)" Placeholder="CreateCategory" />
+    <QuizInput Id="audit-when-from" Label="Desde" Type="date" Value="@whenFromStr" ValueChanged="@(v => whenFromStr = v ?? string.Empty)" />
+    <QuizInput Id="audit-when-to" Label="Hasta" Type="date" Value="@whenToStr" ValueChanged="@(v => whenToStr = v ?? string.Empty)" />
+    <QuizInput Id="audit-where" Label="Where" Value="@where" ValueChanged="@(v => where = v ?? string.Empty)" Placeholder="CorrelationId" />
+    <QuizSelect Id="audit-entity" Label="Entity" Value="@entityType" ValueChanged="OnEntityType" Options="@entityOptions" Placeholder="Todos" />
+    <QuizInput Id="audit-entity-id" Label="EntityId" Value="@entityIdStr" ValueChanged="@(v => entityIdStr = v ?? string.Empty)" Placeholder="GUID" />
+    <QuizSelect Id="audit-action" Label="Action" Value="@action" ValueChanged="OnAction" Options="@actionOptions" Placeholder="Todos" />
+    <QuizSelect Id="audit-result" Label="Result" Value="@result" ValueChanged="OnResult" Options="@resultOptions" Placeholder="Todos" />
+    <QuizButton Variant="primary" OnClick="() => LoadAsync()" style="min-height:44px;min-width:44px;">Buscar</QuizButton>
+    <QuizButton Variant="ghost" OnClick="Clear" style="min-height:44px;">Limpiar</QuizButton>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(correlationCopied))
+{
+    <div role="status" aria-live="polite" style="background:var(--color-success);color:var(--color-on-primary);padding:var(--space-2);border-radius:var(--radius-md);margin-bottom:var(--space-3);">@correlationCopied</div>
+}
+
+@if (state==PageState.Loading) { <LoadingSkeleton Rows="6" /> }
+else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+else if (items.Count==0) { <EmptyState Title="Sin registros" Message="No hay entradas de auditoría para los filtros." /> }
+else
+{
+    <div style="overflow-x:auto;">
+        <QuizTable Caption="Auditoría" ColumnCount="10" IsEmpty="@(items.Count==0)">
+            <HeaderCells>
+                <th>When</th><th>Who</th><th>What</th><th>Where</th><th>Entity</th><th>Previous</th><th>New</th><th>Action</th><th>Result</th><th></th>
+            </HeaderCells>
+            <BodyRows>
+                @foreach(var e in items)
+                {
+                    <tr>
+                        <td>@e.When.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@e.Who.DisplayName (@e.Who.ActorId[..Math.Min(8,e.Who.ActorId.Length)])</td>
+                        <td>@e.What</td>
+                        <td title="@e.Where.CorrelationId">@e.Where.Service (@e.Where.CorrelationId[..Math.Min(8,e.Where.CorrelationId.Length)]) <QuizButton Size="sm" Variant="ghost" OnClick="() => CopyCorrelation(e.Where.CorrelationId)" style="min-height:44px;">Copiar</QuizButton></td>
+                        <td>@e.Entity.EntityType (@e.Entity.EntityId.ToString()[..8])</td>
+                        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@e.PreviousValue">@(string.IsNullOrWhiteSpace(e.PreviousValue) ? "—" : e.PreviousValue.Length>40 ? e.PreviousValue[..40]+"..." : e.PreviousValue)</td>
+                        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="@e.NewValue">@(string.IsNullOrWhiteSpace(e.NewValue) ? "—" : e.NewValue.Length>40 ? e.NewValue[..40]+"..." : e.NewValue)</td>
+                        <td><QuizBadge Variant="neutral" Label="@e.Action" /></td>
+                        <td><QuizBadge Variant="@(e.Result.Status=="Success"?"success":"error")" Label="@e.Result.Status" /></td>
+                        <td><QuizButton Size="sm" Variant="ghost" OnClick="() => GoToDetail(e.AuditId)" style="min-height:44px;">Detalle</QuizButton></td>
+                    </tr>
+                }
+            </BodyRows>
+        </QuizTable>
+    </div>
+    <div style="display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-4);flex-wrap:wrap;">
+        <QuizButton Variant="ghost" Disabled="@(page<=1)" OnClick="() => ChangePage(page-1)" style="min-height:44px;">Anterior</QuizButton>
+        <span aria-live="polite">Página @(page) de @(totalPages) (@(totalCount) total)</span>
+        <QuizButton Variant="ghost" Disabled="@(page>=totalPages)" OnClick="() => ChangePage(page+1)" style="min-height:44px;">Siguiente</QuizButton>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(fieldError))
+{
+    <div role="alert" aria-live="assertive" style="color:var(--color-destructive-text);margin-top:var(--space-3);">@fieldError</div>
+}
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state=PageState.Loading;
+    private string error=""; private string? fieldError; private string? correlationCopied;
+    private IReadOnlyList<AuditModels.AuditEntry> items=[]; private int page=1; private int pageSize=20; private int totalCount; private int totalPages => pageSize<=0?0:(int)Math.Ceiling(totalCount/(double)pageSize);
+    private string who=""; private string what=""; private string whenFromStr=""; private string whenToStr=""; private string where=""; private string entityType=""; private string entityIdStr=""; private string action=""; private string result="";
+    private IReadOnlyList<QuizSelect.OptionDef> entityOptions = AuditCatalogs.EntityTypes.Select(e=> new QuizSelect.OptionDef(e,e)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> actionOptions = AuditCatalogs.Actions.Select(a=> new QuizSelect.OptionDef(a,a)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> resultOptions = AuditCatalogs.Results.Select(r=> new QuizSelect.OptionDef(r,r)).ToList();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state=PageState.Loading; fieldError=null;
+        try{
+            DateTimeOffset? from = DateTimeOffset.TryParse(whenFromStr, out var fd) ? fd : null;
+            DateTimeOffset? to = DateTimeOffset.TryParse(whenToStr, out var td) ? td : null;
+            Guid? entityId = Guid.TryParse(entityIdStr, out var g) ? g : null;
+            var filter = new AuditModels.AuditFilter(Who: string.IsNullOrWhiteSpace(who)?null:who, What: string.IsNullOrWhiteSpace(what)?null:what, WhenFrom: from, WhenTo: to, Where: string.IsNullOrWhiteSpace(where)?null:where, EntityType: string.IsNullOrWhiteSpace(entityType)?null:entityType, EntityId: entityId, Action: string.IsNullOrWhiteSpace(action)?null:action, Result: string.IsNullOrWhiteSpace(result)?null:result, Page: page, PageSize: pageSize);
+            var validation = filter.Validate();
+            if(validation.Count>0){ fieldError=string.Join("; ", validation.SelectMany(kv=>kv.Value)); state=PageState.Error; return; }
+            var res = await AuditService.GetAuditAsync(filter);
+            items=res.Items; totalCount=res.TotalCount; state=items.Count==0?PageState.Empty:PageState.Ready;
+        } catch(ApiErrorException ex){
+            if(ex.ErrorView.Code=="403") error="Access Denied — 403";
+            else error=ex.ErrorView.Detail??ex.ErrorView.Title;
+            state=PageState.Error;
+        } catch{ error="No se pudo cargar."; state=PageState.Error; }
+    }
+
+    private async Task ChangePage(int p){ page=p; await LoadAsync(); }
+    private async Task Clear(){ who=""; what=""; whenFromStr=""; whenToStr=""; where=""; entityType=""; entityIdStr=""; action=""; result=""; page=1; await LoadAsync(); }
+    private async Task OnEntityType(string? v){ entityType=v??string.Empty; page=1; await LoadAsync(); }
+    private async Task OnAction(string? v){ action=v??string.Empty; page=1; await LoadAsync(); }
+    private async Task OnResult(string? v){ result=v??string.Empty; page=1; await LoadAsync(); }
+    private async Task CopyCorrelation(string cid){
+        try{ await JS.InvokeVoidAsync("navigator.clipboard.writeText", cid); correlationCopied=$"CorrelationId copiado: {cid}"; StateHasChanged(); await Task.Delay(2000); correlationCopied=null; } catch{ correlationCopied="No se pudo copiar"; }
+    }
+    private void GoToDetail(Guid id) => Navigation.NavigateTo($"/admin/audit/{id}");
+}

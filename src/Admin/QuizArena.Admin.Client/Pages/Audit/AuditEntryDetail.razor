@@ -1,0 +1,107 @@
+@page "/admin/audit/{AuditId:guid}"
+@attribute [Authorize(Policy = AdminPolicies.AdminOnly)]
+@using AuditModels = QuizArena.Admin.Client.Models.Audit
+@using QuizArena.Admin.Client.Services
+@inject IAuditService AuditService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Detalle auditoría — QuizArena Admin</PageTitle>
+
+<div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-4);">
+    <QuizButton Variant="ghost" OnClick='() => Navigation.NavigateTo("/admin/audit")' style="min-height:44px;">← Volver</QuizButton>
+    <h1 style="margin:0;">Detalle auditoría</h1>
+</div>
+
+@if (state==PageState.Loading) { <LoadingSkeleton Rows="6" /> }
+else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+else if (detail is null) { <EmptyState Title="No encontrado" Message="Entrada no encontrada." /> }
+else
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-3);margin-bottom:var(--space-4);">
+        <div><strong>Who</strong><div>@detail.Who.DisplayName (@detail.Who.ActorId[..Math.Min(8,detail.Who.ActorId.Length)]) — @detail.Who.Email</div><div style="font-size:var(--typography-caption);">Tenant: @(detail.Who.TenantId ?? "—")</div></div>
+        <div><strong>What</strong><div>@detail.What</div></div>
+        <div><strong>When</strong><div>@detail.When.ToString("dd/MM/yyyy HH:mm:ss") UTC</div></div>
+        <div><strong>Where</strong><div>@detail.Where.Service — @detail.Where.Endpoint</div><div style="font-size:var(--typography-caption);">IP: @(detail.Where.IpAddress ?? "—")</div><div style="font-size:var(--typography-caption);">CorrelationId: <code style="background:var(--color-muted);padding:2px 4px;border-radius:var(--radius-sm);">@detail.Where.CorrelationId</code> <QuizButton Size="sm" Variant="ghost" OnClick="() => CopyCorrelation(detail.Where.CorrelationId)" style="min-height:44px;">Copiar</QuizButton></div>@if (!string.IsNullOrWhiteSpace(detail.Where.TraceId)){<div style="font-size:var(--typography-caption);">TraceId: @detail.Where.TraceId</div>}</div>
+        <div><strong>Entity</strong><div>@detail.Entity.EntityType (@detail.Entity.EntityId)</div></div>
+        <div><strong>Action</strong><div><QuizBadge Variant="neutral" Label="@detail.Action" /></div></div>
+        <div><strong>Result</strong><div><QuizBadge Variant="@(detail.Result.Status=="Success"?"success":"error")" Label="@detail.Result.Status" /> @if (!string.IsNullOrWhiteSpace(detail.Result.ErrorCode)){<span style="margin-left:var(--space-2);font-size:var(--typography-caption);">@detail.Result.ErrorCode — @detail.Result.Detail</span>}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-4);">
+        <div>
+            <h3>Previous Value</h3>
+            @if (string.IsNullOrWhiteSpace(detail.PreviousValue))
+            {
+                <div style="padding:var(--space-3);background:var(--color-muted);border-radius:var(--radius-md);" aria-live="polite">—</div>
+            }
+            else
+            {
+                <pre style="max-height:300px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);white-space:pre-wrap;word-break:break-all;" aria-live="polite">@Truncate(detail.PreviousValue)</pre>
+                @if (detail.PreviousValue.Length>10000){<QuizButton Size="sm" Variant="ghost" OnClick="() => showPrevFull = !showPrevFull" style="min-height:44px;">@(showPrevFull ? "Ocultar" : "Ver JSON completo")</QuizButton> @if(showPrevFull){<pre style="max-height:400px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);">@Mask(detail.PreviousValue)</pre>}}
+            }
+        </div>
+        <div>
+            <h3>New Value</h3>
+            @if (string.IsNullOrWhiteSpace(detail.NewValue))
+            {
+                <div style="padding:var(--space-3);background:var(--color-muted);border-radius:var(--radius-md);">—</div>
+            }
+            else
+            {
+                <pre style="max-height:300px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);white-space:pre-wrap;word-break:break-all;" aria-live="polite">@Truncate(detail.NewValue)</pre>
+                @if (detail.NewValue.Length>10000){<QuizButton Size="sm" Variant="ghost" OnClick="() => showNewFull = !showNewFull" style="min-height:44px;">@(showNewFull ? "Ocultar" : "Ver JSON completo")</QuizButton> @if(showNewFull){<pre style="max-height:400px;overflow:auto;background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);">@Mask(detail.NewValue)</pre>}}
+            }
+        </div>
+    </div>
+
+    @if (detail.Diff.Count>0)
+    {
+        <div style="margin-top:var(--space-4);">
+            <h3>Diff</h3>
+            <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:var(--space-2);" aria-live="polite">
+                @foreach(var d in detail.Diff){
+                    <li style="padding:var(--space-2);background:var(--color-muted);border-radius:var(--radius-sm);font-family:var(--typography-font-fira-code);font-size:var(--typography-caption);">
+                        <span style="color:var(--color-muted-foreground);">@d.Path</span> — <span style="color:var(--color-destructive-text);">@(d.Previous ?? "—")</span> → <span style="color:var(--color-success-text);">@(d.New ?? "—")</span> (@d.ChangeType)
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(copyMsg))
+    {
+        <div role="status" aria-live="polite" style="margin-top:var(--space-3);background:var(--color-success);color:var(--color-on-primary);padding:var(--space-2);border-radius:var(--radius-md);">@copyMsg</div>
+    }
+}
+
+@code {
+    [Parameter] public Guid AuditId { get; set; }
+    private enum PageState { Loading, Ready, Error }
+    private PageState state=PageState.Loading;
+    private string error=""; private string? copyMsg;
+    private AuditModels.AuditDetail? detail;
+    private bool showPrevFull; private bool showNewFull;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state=PageState.Loading;
+        try{
+            detail = await AuditService.GetDetailAsync(AuditId);
+            state=PageState.Ready;
+        } catch(ApiErrorException ex){
+            if(ex.ErrorView.Code=="404") error="Entrada no encontrada.";
+            else if(ex.ErrorView.Code=="403") error="Access Denied — 403";
+            else error=ex.ErrorView.Detail??ex.ErrorView.Title;
+            state=PageState.Error;
+        } catch{ error="No se pudo cargar."; state=PageState.Error; }
+    }
+
+    private string Truncate(string? json) => string.IsNullOrWhiteSpace(json) ? "—" : json.Length>10000 ? Mask(json[..10000])+"... (truncado)" : Mask(json);
+    private string Mask(string json) => System.Text.RegularExpressions.Regex.Replace(json, "\"(password|secret|token)\"\\s*:\\s*\"[^\"]*\"", "\"$1\":\"***\"", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private async Task CopyCorrelation(string cid){
+        try{ await JS.InvokeVoidAsync("navigator.clipboard.writeText", cid); copyMsg=$"CorrelationId copiado: {cid}"; StateHasChanged(); await Task.Delay(2000); copyMsg=null; } catch{ copyMsg="No se pudo copiar"; }
+    }
+}
