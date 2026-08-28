@@ -1,0 +1,32 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Services
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="quick-action-grid" role="navigation" aria-label="Accesos rápidos">
+    @foreach (var action in VisibleActions)
+    {
+        <QuickActionCard Action="action" IsDisabled="false" />
+    }
+    @foreach (var action in DisabledActions)
+    {
+        <QuickActionCard Action="action" IsDisabled="true" />
+    }
+</div>
+
+@code {
+    private IReadOnlyList<QuickAction> VisibleActions { get; set; } = [];
+    private IReadOnlyList<QuickAction> DisabledActions { get; set; } = [];
+    private AdminUserState userState = AdminUserState.Anonymous;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        userState = AdminUserState.FromPrincipal(auth.User);
+        var allRoles = userState.Roles;
+        VisibleActions = QuickActionsCatalog.ForRoles(allRoles);
+        DisabledActions = QuickActionsCatalog.All.Except(VisibleActions).ToList();
+        // Per FR-011: show disabled with reason or hide; we show disabled for auditability
+        // If user is REWARD_MANAGER, game actions appear disabled per spec alternative
+    }
+}

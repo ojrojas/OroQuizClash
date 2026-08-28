@@ -1,0 +1,32 @@
+@if (SessionExpired)
+{
+    <div class="refresh-banner refresh-banner-error" role="alert">
+        Sesión expirada — <a href="/authentication/login">re-autenticar</a>
+    </div>
+}
+
+<div class="refresh-bar">
+    <QuizButton Variant="primary" OnClick="HandleRefresh" Disabled="@IsRefreshing">
+        @(IsRefreshing ? "Actualizando..." : "Actualizar")
+    </QuizButton>
+    @if (LastRefreshAt.HasValue)
+    {
+        <span class="refresh-timestamp">Última actualización: @LastRefreshAt.Value.ToLocalTime().ToString("HH:mm:ss") UTC</span>
+    }
+    <label class="refresh-toggle">
+        <input type="checkbox" checked="@AutoRefreshEnabled" @onchange="HandleToggle" />
+        Auto-refresh: @(AutoRefreshEnabled ? "ON (45s)" : "OFF")
+    </label>
+</div>
+
+@code {
+    [Parameter] public bool IsRefreshing { get; set; }
+    [Parameter] public DateTimeOffset? LastRefreshAt { get; set; }
+    [Parameter] public bool AutoRefreshEnabled { get; set; }
+    [Parameter] public bool SessionExpired { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback<bool> OnToggleAutoRefresh { get; set; }
+
+    private Task HandleRefresh(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnRefresh.InvokeAsync();
+    private Task HandleToggle(ChangeEventArgs e) => OnToggleAutoRefresh.InvokeAsync((bool?)e.Value ?? false);
+}

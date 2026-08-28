@@ -1,0 +1,56 @@
+@using QuizArena.Admin.Client.Models.Dashboard
+@inject NavigationManager Navigation
+
+<div class="metric-tile @(Value.State == MetricState.Error ? "metric-error" : "")" role="status" aria-live="polite" aria-busy="@(Value.State == MetricState.Loading ? "true" : "false")">
+    @if (Value.State == MetricState.Loading)
+    {
+        <LoadingSkeleton Rows="2" />
+    }
+    else if (Value.State == MetricState.Error)
+    {
+        <QuizCard Variant="stat">
+            <div class="stat-value stat-error" title="@Value.ErrorMessage">@Value.Label</div>
+            <div class="stat-label">@Value.ErrorMessage</div>
+            @if (Value.Retryable)
+            {
+                <span>Reintentar</span>
+            }
+        </QuizCard>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(Value.DrillDownRoute))
+        {
+            <a href="@Value.DrillDownRoute" class="metric-link">
+                <QuizCard Variant="stat">
+                    <div class="stat-value" aria-label="@Value.Label @Value.Count">@Value.Count</div>
+                    <div class="stat-label">@Value.Label
+                        @if (!string.IsNullOrEmpty(Value.Tooltip))
+                        {
+                            <span class="metric-tooltip" title="@Value.Tooltip" aria-label="@Value.Tooltip"> ⓘ</span>
+                        }
+                        @if (!string.IsNullOrEmpty(Value.SourceLabel))
+                        {
+                            <span class="metric-source">@Value.SourceLabel</span>
+                        }
+                    </div>
+                </QuizCard>
+            </a>
+        }
+        else
+        {
+            <div class="metric-disabled" title="Sin permiso para ver el detalle">
+                <QuizCard Variant="stat">
+                    <div class="stat-value" aria-label="@Value.Label @Value.Count">@Value.Count</div>
+                    <div class="stat-label">@Value.Label</div>
+                </QuizCard>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public MetricValue Value { get; set; } = default!;
+    [Parameter] public bool IsRetrying { get; set; }
+    [Parameter] public EventCallback<MetricId> OnRetry { get; set; }
+}

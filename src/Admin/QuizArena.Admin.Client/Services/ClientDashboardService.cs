@@ -8,5 +8,7 @@ public sealed class ClientDashboardService(
     IGamesAdminService games,
     IQuestionsService questions,
     IRedemptionsService redemptions,
-    IReportsService reports)
-    : DashboardServiceCore(games, questions, redemptions, reports), IDashboardService;
+    IReportsService reports,
+    ICategoriesService categories,
+    IRewardsService rewards)
+    : DashboardServiceCore(games, questions, redemptions, reports, categories, rewards), IDashboardService;

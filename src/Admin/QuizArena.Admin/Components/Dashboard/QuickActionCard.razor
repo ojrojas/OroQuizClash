@@ -1,0 +1,26 @@
+@using QuizArena.Admin.Client.Services
+@inject NavigationManager Navigation
+
+@if (IsDisabled)
+{
+    <div class="quick-action-card quick-action-disabled" title="Requiere rol: @string.Join(", ", Action.AllowedRoles)" aria-disabled="true" style="min-height:44px;min-width:44px;">
+        <LucideIcon Name="@Action.Icon" />
+        <div class="quick-action-label">@Action.Label</div>
+        <div class="quick-action-desc">@Action.Description</div>
+    </div>
+}
+else
+{
+    <button class="quick-action-card" @onclick="HandleClick" style="min-height:44px;min-width:44px;" aria-label="@Action.Label">
+        <LucideIcon Name="@Action.Icon" />
+        <div class="quick-action-label">@Action.Label</div>
+        <div class="quick-action-desc">@Action.Description</div>
+    </button>
+}
+
+@code {
+    [Parameter, EditorRequired] public QuickAction Action { get; set; } = default!;
+    [Parameter] public bool IsDisabled { get; set; }
+
+    private void HandleClick() => Navigation.NavigateTo(Action.Route);
+}

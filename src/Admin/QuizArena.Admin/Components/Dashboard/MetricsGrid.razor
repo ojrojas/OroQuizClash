@@ -1,0 +1,26 @@
+@using QuizArena.Admin.Client.Models.Dashboard
+
+<div class="metrics-grid" role="grid" aria-label="Métricas del dashboard">
+    @if (Metrics is not null)
+    {
+        @foreach (var metric in Metrics)
+        {
+            <MetricTile Value="metric" IsRetrying="RetryingIds.Contains(metric.Id)" OnRetry="HandleRetry" />
+        }
+    }
+    else
+    {
+        @for (var i = 0; i < 10; i++)
+        {
+            <LoadingSkeleton Rows="2" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<MetricValue>? Metrics { get; set; }
+    [Parameter] public HashSet<MetricId> RetryingIds { get; set; } = new();
+    [Parameter] public EventCallback<MetricId> OnRetry { get; set; }
+
+    private Task HandleRetry(MetricId id) => OnRetry.InvokeAsync(id);
+}

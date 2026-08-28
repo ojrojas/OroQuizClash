@@ -1,40 +1,195 @@
 @page "/admin/dashboard"
 @attribute [Authorize(Policy = AdminPolicies.AnyAdminRole)]
+@implements IDisposable
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Models.Dashboard
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Dashboard
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IDashboardService DashboardService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Dashboard — QuizArena Admin</PageTitle>
 
-<h1>Dashboard</h1>
+<h1>Dashboard operacional</h1>
 
-@if (state==PageState.Loading) { <div class="kpi-grid"><LoadingSkeleton Rows="3" /><LoadingSkeleton Rows="3" /><LoadingSkeleton Rows="3" /></div> }
-else if (state==PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
-else if (kpis is not null)
+<DashboardRefreshBar IsRefreshing="@isRefreshing" LastRefreshAt="@lastRefreshAt" AutoRefreshEnabled="@autoRefreshEnabled" SessionExpired="@sessionExpired" OnRefresh="HandleManualRefresh" OnToggleAutoRefresh="HandleToggleAutoRefresh" />
+
+@if (isInitialLoading)
 {
-    <div class="kpi-grid">
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.ActiveGames</div><div class="stat-label">Active games</div></QuizCard>
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.PlayersOnline</div><div class="stat-label">Players online</div></QuizCard>
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.QuestionBankSize</div><div class="stat-label">Questions</div></QuizCard>
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.PendingRedemptions</div><div class="stat-label">Pending redemptions</div></QuizCard>
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.RewardsPaidPeriod.ToString("0.00")</div><div class="stat-label">Rewards paid (period)</div></QuizCard>
-        <QuizCard Variant="stat"><div class="stat-value">@kpis.GamesPeriod</div><div class="stat-label">Games (period)</div></QuizCard>
-    </div>
-    <div class="shortcuts">
-        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/games"))">Games</QuizButton>
-        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/live"))">Live</QuizButton>
-        <QuizButton Variant="ghost" OnClick="@(() => Navigation.NavigateTo("/admin/reports"))">Reports</QuizButton>
+    <div class="metrics-grid">
+        @for (var i = 0; i < 10; i++) { <LoadingSkeleton Rows="2" /> }
     </div>
 }
-else { <EmptyState Title="No data" Message="Dashboard data is not available." /> }
+else if (snapshot is not null)
+{
+    <MetricsGrid Metrics="snapshot.Metrics" RetryingIds="retryingIds" OnRetry="HandleRetry" />
+    <section class="dashboard-quick-actions" aria-label="Accesos rápidos" style="margin-top:1.5rem;">
+        <h2>Accesos rápidos</h2>
+        <QuickActionGrid />
+    </section>
+
+    <section class="dashboard-stats" style="margin-top:1.5rem;">
+        <h3>Estadísticas generales</h3>
+        <div class="stats-grid">
+            <div>Total juegos: @snapshot.Statistics.TotalGames</div>
+            <div>Participaciones: @snapshot.Statistics.TotalParticipations</div>
+            <div>Promedio preguntas/categoría: @snapshot.Statistics.AvgQuestionsPerCategory</div>
+        </div>
+    </section>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+else
+{
+    <EmptyState Title="Sin datos" Message="No se pudo cargar el dashboard." />
+}
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = default!;
-    private enum PageState { Loading, Ready, Error, Empty }
-    private PageState state=PageState.Loading; private string error=string.Empty; private DashboardKpis? kpis;
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-    private async Task LoadAsync() {
-        state=PageState.Loading;
-        try { kpis = await DashboardService.GetKpisAsync(); state=PageState.Ready; }
-        catch (ApiErrorException ex){ error=ex.ErrorView.Detail??ex.ErrorView.Title; state=PageState.Error; }
-        catch{ error="Could not load dashboard."; state=PageState.Error; }
+    private DashboardSnapshot? snapshot;
+    private bool isInitialLoading = true;
+    private bool isRefreshing;
+    private bool sessionExpired;
+    private bool autoRefreshEnabled = true;
+    private DateTimeOffset? lastRefreshAt;
+    private HashSet<MetricId> retryingIds = new();
+    private string error = string.Empty;
+    private PeriodicTimer? timer;
+    private CancellationTokenSource? timerCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        StartAutoRefresh();
+    }
+
+    private async Task LoadAsync()
+    {
+        isRefreshing = true;
+        error = string.Empty;
+        try
+        {
+            snapshot = await DashboardService.GetSnapshotAsync();
+            lastRefreshAt = snapshot.GeneratedAt;
+            sessionExpired = false;
+        }
+        catch (ApiErrorException ex) when (ex.ErrorView.Code == "Unauthorized" || ex.ErrorView.Title.Contains("Unauthorized"))
+        {
+            sessionExpired = true;
+            StopAutoRefresh();
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+        catch (Exception)
+        {
+            error = "No se pudo cargar el dashboard. Reintente.";
+        }
+        finally
+        {
+            isInitialLoading = false;
+            isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleManualRefresh()
+    {
+        await LoadAsync();
+    }
+
+    private async Task HandleRetry(MetricId id)
+    {
+        retryingIds.Add(id);
+        try
+        {
+            var metric = await DashboardService.GetMetricAsync(id);
+            if (snapshot is not null)
+            {
+                var list = snapshot.Metrics.ToList();
+                var idx = list.FindIndex(m => m.Id == id);
+                if (idx >= 0) list[idx] = metric;
+                snapshot = new DashboardSnapshot(snapshot.GeneratedAt, snapshot.CorrelationId, list, snapshot.Statistics);
+            }
+        }
+        finally
+        {
+            retryingIds.Remove(id);
+        }
+    }
+
+    private void HandleToggleAutoRefresh(bool enabled)
+    {
+        autoRefreshEnabled = enabled;
+        if (enabled) StartAutoRefresh(); else StopAutoRefresh();
+    }
+
+    private void StartAutoRefresh()
+    {
+        StopAutoRefresh();
+        if (!autoRefreshEnabled) return;
+        timerCts = new CancellationTokenSource();
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(45));
+        _ = RunAutoRefreshAsync(timerCts.Token);
+    }
+
+    private void StopAutoRefresh()
+    {
+        timerCts?.Cancel();
+        timerCts?.Dispose();
+        timerCts = null;
+        timer?.Dispose();
+        timer = null;
+    }
+
+    private async Task RunAutoRefreshAsync(CancellationToken ct)
+    {
+        if (timer is null) return;
+        try
+        {
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                if (!autoRefreshEnabled || sessionExpired) break;
+                // Visibility check via JS interop - pause if hidden
+                try
+                {
+                    var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible'");
+                    if (!visible) continue;
+                }
+                catch { }
+                await InvokeAsync(async () =>
+                {
+                    isRefreshing = true;
+                    StateHasChanged();
+                    try
+                    {
+                        snapshot = await DashboardService.GetSnapshotAsync(ct);
+                        lastRefreshAt = snapshot.GeneratedAt;
+                    }
+                    catch (ApiErrorException ex) when (ex.ErrorView.Code == "Unauthorized")
+                    {
+                        sessionExpired = true;
+                        StopAutoRefresh();
+                    }
+                    catch { }
+                    finally
+                    {
+                        isRefreshing = false;
+                        StateHasChanged();
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    public void Dispose()
+    {
+        StopAutoRefresh();
     }
 }

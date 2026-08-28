@@ -1,0 +1,41 @@
+.metric-tile {
+    min-width: 0;
+}
+
+.metric-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.metric-link:focus-visible {
+    outline: none;
+    box-shadow: var(--component-button-focus-ring);
+    border-radius: var(--radius-md);
+}
+
+.metric-disabled {
+    opacity: 0.9;
+}
+
+.metric-tooltip {
+    cursor: help;
+    color: var(--color-muted-foreground);
+}
+
+.metric-source {
+    display: block;
+    font-size: var(--typography-caption-size);
+    color: var(--color-muted-foreground);
+    margin-top: var(--space-1);
+}
+
+.stat-value {
+    font-size: var(--typography-title-l-size);
+    font-weight: 600;
+    color: var(--color-foreground);
+}
+
+.stat-error {
+    color: var(--color-destructive-text);
+}
