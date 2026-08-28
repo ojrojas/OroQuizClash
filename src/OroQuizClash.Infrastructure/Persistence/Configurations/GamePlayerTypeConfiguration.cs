@@ -21,6 +21,8 @@ public sealed class GamePlayerTypeConfiguration : IEntityTypeConfiguration<GameP
             .HasColumnName("ParticipationStatus")
             .IsRequired();
         builder.Property(p => p.ExitedAt);
+        builder.Property(p => p.CurrentRoundNumber).HasColumnName("CurrentRoundNumber").HasDefaultValue(0).IsRequired();
+        builder.Property(p => p.RowVersion).IsRowVersion().IsConcurrencyToken();
         builder.Ignore(p => p.IsWithdrawn);
         builder.Ignore(p => p.IsActive);
 

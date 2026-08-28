@@ -143,7 +143,7 @@ public sealed class ScoringQueryTests
         Assert.Equal(2, result.Value.Players.Count);
         Assert.Equal(otherPlayer, result.Value.Players[0].PlayerId);
         Assert.Equal(1, result.Value.Players[0].Rank);
-        Assert.Equal(250, result.Value.Players[0].CurrentPoints);
+        Assert.Equal(250, result.Value.Players[0].Points);
         Assert.Equal(playerId, result.Value.Players[1].PlayerId);
     }
 

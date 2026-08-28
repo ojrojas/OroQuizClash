@@ -212,7 +212,10 @@ public sealed class Game : AggregateRoot<GameId>
 
         var potential = ComputeRoundPoints(difficulty);
         foreach (var p in _players.Where(p => p.IsActive))
+        {
+            p.AdvanceToRound(roundNumber);
             p.UpdateScore(p.Score.ResetRound().SetPotential(potential));
+        }
 
         RaiseDomainEvent(new RoundStartedDomainEvent(Id.Value, roundId.Value, roundNumber, questionId));
         return Result.Success(round);
@@ -760,6 +763,16 @@ public sealed class Game : AggregateRoot<GameId>
     {
         return _answers.FirstOrDefault(a =>
             a.PlayerId == playerId && a.RoundId == roundId);
+    }
+
+    public AnswerStatus GetPlayerAnswerState(Guid playerId)
+    {
+        var round = CurrentRound;
+        if (round is null)
+            return AnswerStatus.NotAnswered;
+
+        var answer = GetAnswer(playerId, round.Id);
+        return answer?.Status ?? AnswerStatus.NotAnswered;
     }
 
     private Answer CreateExpiredAnswer(

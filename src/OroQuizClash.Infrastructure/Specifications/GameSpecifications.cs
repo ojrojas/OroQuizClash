@@ -1,3 +1,4 @@
+
 using BuildingBlocks.Kernel.Domain.Specifications;
 
 using OroQuizClash.Domain.Categories;

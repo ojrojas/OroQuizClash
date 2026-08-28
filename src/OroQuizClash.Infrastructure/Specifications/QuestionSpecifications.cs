@@ -1,3 +1,4 @@
+
 using BuildingBlocks.Kernel.Domain.Specifications;
 
 using OroQuizClash.Domain.Categories;
@@ -116,15 +117,21 @@ public sealed class QuestionSelectionSpecification : Specification<Question>
         Where(q => q.AnswerOptions.Count(a => a.IsCorrect) == 1);
 
         if (criteria.CategoryId is not null)
-            Where(q => q.CategoryId == criteria.CategoryId);
+        {
+            var categoryId = criteria.CategoryId;
+            Where(q => q.CategoryId == categoryId);
+        }
 
         if (criteria.Difficulty is not null)
-            Where(q => q.Difficulty.Id == criteria.Difficulty.Id);
+        {
+            var difficulty = criteria.Difficulty;
+            Where(q => q.Difficulty == difficulty);
+        }
 
         if (!string.IsNullOrWhiteSpace(criteria.AcademicLevel))
         {
-            var lvl = criteria.AcademicLevel.Trim();
-            Where(q => q.AcademicLevel.Value == lvl);
+            var academicLevel = new AcademicLevel(criteria.AcademicLevel.Trim());
+            Where(q => q.AcademicLevel == academicLevel);
         }
 
         if (criteria.AgeRange is not null)
@@ -134,7 +141,8 @@ public sealed class QuestionSelectionSpecification : Specification<Question>
 
         if (criteria.PreviousQuestionIds.Count > 0)
         {
-            Where(q => !criteria.PreviousQuestionIds.Contains(q.Id));
+            var previous = criteria.PreviousQuestionIds.ToList();
+            Where(q => !previous.Contains(q.Id));
         }
     }
 }

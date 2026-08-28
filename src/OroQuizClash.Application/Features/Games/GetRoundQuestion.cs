@@ -47,7 +47,8 @@ public sealed class GetRoundQuestionHandler(
         if (round is null)
             return Result.Failure<PresentQuestionResponse>(GameErrors.InvalidGameStateDetail("Round not found."));
 
-        var question = await questionRepository.GetByIdAsync(round.QuestionId, ct);
+        var question = await questionRepository.FirstOrDefaultAsync(
+            new QuestionByIdSpecification(round.QuestionId), ct);
         if (question is null)
             return Result.Failure<PresentQuestionResponse>(GameErrors.InvalidGameStateDetail("Question not found."));
 

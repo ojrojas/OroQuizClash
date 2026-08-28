@@ -14,6 +14,7 @@ using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Questions.Services;
 using OroQuizClash.Domain.Questions.ValueObjects;
 using OroQuizClash.Domain.Shared.Errors;
+using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
@@ -29,7 +30,7 @@ public sealed class StartRoundHandler(
 {
     public async Task<Result<GameRoundResponse>> HandleAsync(StartRoundCommand command, CancellationToken ct)
     {
-        var game = await repository.GetByIdAsync(new GameId(command.GameId), ct);
+        var game = await repository.FirstOrDefaultAsync(new GameByIdWithAnswersSpecification(new GameId(command.GameId)), ct);
         if (game is null) return Result.Failure<GameRoundResponse>(GameErrors.GameNotFound);
 
         // Compute difficulty for this round via strategy (IncreaseDifficulty)

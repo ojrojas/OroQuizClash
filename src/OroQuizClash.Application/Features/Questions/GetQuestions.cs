@@ -85,7 +85,8 @@ public sealed class GetQuestionByIdHandler(IRepository<Question, QuestionId> rep
 {
     public async Task<Result<CreateQuestionResponse>> HandleAsync(GetQuestionByIdQuery query, CancellationToken ct)
     {
-        var question = await repository.GetByIdAsync(new QuestionId(query.Id), ct);
+        var question = await repository.FirstOrDefaultAsync(
+            new QuestionByIdSpecification(new QuestionId(query.Id)), ct);
         if (question is null)
             return Result.Failure<CreateQuestionResponse>(QuestionErrors.QuestionNotFound(query.Id));
 

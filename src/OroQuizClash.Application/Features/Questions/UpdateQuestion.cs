@@ -81,7 +81,8 @@ public sealed class UpdateQuestionHandler(
 {
     public async Task<Result<CreateQuestionResponse>> HandleAsync(UpdateQuestionCommand command, CancellationToken ct)
     {
-        var question = await repository.GetByIdAsync(new QuestionId(command.Id), ct);
+        var question = await repository.FirstOrDefaultAsync(
+            new OroQuizClash.Infrastructure.Specifications.QuestionByIdSpecification(new QuestionId(command.Id)), ct);
         if (question is null)
             return Result.Failure<CreateQuestionResponse>(QuestionErrors.QuestionNotFound(command.Id));
 

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Shared.Errors;
+using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
@@ -19,7 +20,7 @@ public sealed class CompleteRoundHandler(IRepository<Game, GameId> repository, I
 {
     public async Task<Result<GameResponse>> HandleAsync(CompleteRoundCommand command, CancellationToken ct)
     {
-        var game = await repository.GetByIdAsync(new GameId(command.GameId), ct);
+        var game = await repository.FirstOrDefaultAsync(new GameByIdWithAnswersSpecification(new GameId(command.GameId)), ct);
         if (game is null) return Result.Failure<GameResponse>(GameErrors.GameNotFound);
         var result = game.CompleteRound(command.RoundId);
         if (result.IsFailure) return Result.Failure<GameResponse>(result.Error);

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
+using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
@@ -30,7 +31,7 @@ public sealed class JoinGameHandler(IRepository<Game, GameId> repository, IUnitO
 {
     public async Task<Result<GameResponse>> HandleAsync(JoinGameCommand command, CancellationToken ct)
     {
-        var game = await repository.GetByIdAsync(new GameId(command.GameId), ct);
+        var game = await repository.FirstOrDefaultAsync(new GameByIdSpecification(new GameId(command.GameId)), ct);
         if (game is null) return Result.Failure<GameResponse>(Domain.Shared.Errors.GameErrors.GameNotFound);
 
         var result = game.JoinPlayer(command.UserId);

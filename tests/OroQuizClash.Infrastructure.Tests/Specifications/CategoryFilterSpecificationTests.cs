@@ -55,7 +55,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_KnowledgeArea_TrueOnlyForMatching()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
         var specMatch = new CategoryFilterSpecification(knowledgeArea: "Humanidades", paginate: false);
         var specNoMatch = new CategoryFilterSpecification(knowledgeArea: "Ciencias", paginate: false);
 
@@ -66,7 +66,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_AcademicLevel()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
         Assert.True(new CategoryFilterSpecification(academicLevel: "Secundaria", paginate: false).IsSatisfiedBy(cat));
         Assert.False(new CategoryFilterSpecification(academicLevel: "Universidad", paginate: false).IsSatisfiedBy(cat));
     }
@@ -74,8 +74,8 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_State()
     {
-        var active = Make("A", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia" });
-        var draft = Make("D", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
+        var active = Make("CatA", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia" });
+        var draft = Make("CatD", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
 
         var activeSpec = new CategoryFilterSpecification(state: "ACTIVE", paginate: false);
         Assert.True(activeSpec.IsSatisfiedBy(active));
@@ -88,7 +88,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_Tag_NormalizedLower()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "Álgebra", "matemáticas" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "Álgebra", "matemáticas" });
         // tags normalized to lower
         var spec = new CategoryFilterSpecification(tag: "álgebra", paginate: false);
         Assert.True(spec.IsSatisfiedBy(cat));
@@ -103,7 +103,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_AgeRange_Overlap()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 10, 15, 3, "DRAFT", new[] { "historia" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 10, 15, 3, "DRAFT", new[] { "historia" });
         // query ageMin 13 => cat Max 15 >=13 true, Min 10 <= AgeMax maybe
         Assert.True(new CategoryFilterSpecification(ageMin: 13, paginate: false).IsSatisfiedBy(cat));
         Assert.True(new CategoryFilterSpecification(ageMax: 12, paginate: false).IsSatisfiedBy(cat)); // Min 10 <=12 true
@@ -118,7 +118,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_DifficultyLevel()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
         Assert.True(new CategoryFilterSpecification(difficultyLevel: 3, paginate: false).IsSatisfiedBy(cat));
         Assert.False(new CategoryFilterSpecification(difficultyLevel: 5, paginate: false).IsSatisfiedBy(cat));
     }
@@ -126,7 +126,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void IsSatisfiedBy_Combined_And()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia", "álgebra" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia", "álgebra" });
         var spec = new CategoryFilterSpecification(
             knowledgeArea: "Humanidades",
             academicLevel: "Secundaria",
@@ -173,8 +173,8 @@ public sealed class CategoryFilterSpecificationTests
     {
         await using var ctx = CreateContext();
         var repo = new EfRepository<Category, CategoryId>(ctx);
-        var c1 = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "álgebra", "matemáticas" });
-        var c2 = Make("C2", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia" });
+        var c1 = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "álgebra", "matemáticas" });
+        var c2 = Make("Cat2", "Humanidades", "Secundaria", 13, 17, 3, "ACTIVE", new[] { "historia" });
         await repo.AddAsync(c1, CancellationToken.None);
         await repo.AddAsync(c2, CancellationToken.None);
         await ctx.SaveChangesAsync();
@@ -182,7 +182,7 @@ public sealed class CategoryFilterSpecificationTests
         var spec = new CategoryFilterSpecification(tag: "álgebra", page: 1, pageSize: 10);
         var list = await repo.ListAsync(spec, CancellationToken.None);
         Assert.Single(list);
-        Assert.Equal("C1", list[0].Name);
+        Assert.Equal("Cat1", list[0].Name);
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class CategoryFilterSpecificationTests
     [Fact]
     public void CategoryByIdSpecification_IsSatisfiedAndEF()
     {
-        var cat = Make("C1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
+        var cat = Make("Cat1", "Humanidades", "Secundaria", 13, 17, 3, "DRAFT", new[] { "historia" });
         var spec = new CategoryByIdSpecification(cat.Id);
         Assert.True(spec.IsSatisfiedBy(cat));
         var otherId = new CategoryId(Guid.NewGuid());

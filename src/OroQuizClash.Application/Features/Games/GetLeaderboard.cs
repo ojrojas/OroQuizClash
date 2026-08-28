@@ -23,9 +23,11 @@ public sealed record LeaderboardEntryResponse(
     Guid PlayerId,
     string? DisplayName,
     int Rank,
-    int CurrentPoints,
-    int SecuredPoints,
-    bool IsWithdrawn);
+    int Points,
+    int CorrectAnswers,
+    int? CurrentLevel,
+    string Status,
+    int SecuredPoints);
 
 public sealed class GetLeaderboardHandler(IRepository<Game, GameId> repository) : IQueryHandler<GetLeaderboardQuery, Result<LeaderboardResponse>>
 {
@@ -35,18 +37,7 @@ public sealed class GetLeaderboardHandler(IRepository<Game, GameId> repository) 
         var game = await repository.FirstOrDefaultAsync(spec, ct);
         if (game is null) return Result.Failure<LeaderboardResponse>(GameErrors.GameNotFound);
 
-        var entries = game.Players
-            .OrderByDescending(p => p.Score.CurrentPoints)
-            .Select((p, index) => new LeaderboardEntryResponse(
-                p.UserId,
-                p.DisplayName,
-                index + 1,
-                p.Score.CurrentPoints,
-                p.Score.SecuredPoints,
-                p.IsWithdrawn))
-            .ToList();
-
-        return Result.Success(new LeaderboardResponse(query.GameId, entries));
+        return Result.Success(new LeaderboardResponse(query.GameId, LeaderboardBuilder.Build(game)));
     }
 }
 

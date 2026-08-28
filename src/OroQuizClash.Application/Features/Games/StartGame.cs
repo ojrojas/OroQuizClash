@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Shared.Errors;
+using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
@@ -20,7 +21,7 @@ public sealed class StartGameHandler(IRepository<Game, GameId> games, IUnitOfWor
 {
     public async Task<Result<GameResponse>> HandleAsync(StartGameCommand command, CancellationToken ct)
     {
-        var game = await games.GetByIdAsync(new GameId(command.GameId), ct);
+        var game = await games.FirstOrDefaultAsync(new GameByIdSpecification(new GameId(command.GameId)), ct);
         if (game is null) return Result.Failure<GameResponse>(GameErrors.GameNotFound);
         var result = game.Start();
         if (result.IsFailure) return Result.Failure<GameResponse>(result.Error);

@@ -7,6 +7,7 @@ using BuildingBlocks.ServiceDefaults.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Questions;
@@ -17,6 +18,7 @@ namespace OroQuizClash.Application.Features.Games;
 
 public sealed record SubmitAnswerCommand(
     Guid GameId,
+    Guid PlayerId,
     Guid AnswerOptionId,
     Guid? RoundId,
     Guid? IdempotencyKey) : ICommand<Result<SubmitAnswerResponse>>;
@@ -36,6 +38,7 @@ public sealed class SubmitAnswerValidator : IValidator<SubmitAnswerCommand>
     {
         var failures = new List<ValidationFailure>();
         if (request.GameId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.GameId), "GameId required."));
+        if (request.PlayerId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.PlayerId), "PlayerId required."));
         if (request.AnswerOptionId == Guid.Empty) failures.Add(new ValidationFailure(nameof(request.AnswerOptionId), "AnswerOptionId required."));
         return Task.FromResult<IReadOnlyCollection<ValidationFailure>>(failures);
     }
@@ -62,15 +65,10 @@ public sealed class SubmitAnswerHandler(
         if (round is null)
             return Result.Failure<SubmitAnswerResponse>(GameErrors.QuestionNotActive);
 
-        var question = await questionRepository.GetByIdAsync(round.QuestionId, ct);
+        var question = await questionRepository.FirstOrDefaultAsync(
+            new QuestionByIdSpecification(round.QuestionId), ct);
 
-        var playerId = Guid.Empty;
-        var player = game.Players.FirstOrDefault(p => p.UserId == playerId);
-        if (player is null)
-        {
-            // Fallback: try to extract from JWT context if available
-            // For now, use a placeholder — actual implementation uses HttpContext.User.FindFirst("sub")
-        }
+        var playerId = command.PlayerId;
 
         var result = game.SubmitAnswer(
             playerId,
@@ -81,7 +79,8 @@ public sealed class SubmitAnswerHandler(
         if (result.IsFailure)
             return Result.Failure<SubmitAnswerResponse>(result.Error);
 
-        await unitOfWork.SaveChangesAsync(ct);
+        try { await unitOfWork.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException) { return Result.Failure<SubmitAnswerResponse>(GameErrors.ConcurrencyConflict); }
 
         var answer = result.Value;
         return Result.Success(new SubmitAnswerResponse(
@@ -101,11 +100,16 @@ public sealed class SubmitAnswerEndpoint : IEndpoint
     {
         app.MapPost("/api/games/{id:guid}/answers", async (
             Guid id,
+            HttpContext http,
             SubmitAnswerCommand body,
             ISender sender,
             CancellationToken ct) =>
         {
-            var command = body with { GameId = id };
+            // Player identity is ALWAYS the authenticated JWT sub — a player can only
+            // submit their own answer (SPEC-011 FR-003). Body cannot override it.
+            var playerId = GameClaims.GetSub(http.User);
+
+            var command = body with { GameId = id, PlayerId = playerId };
             var result = await sender.SendAsync(command, ct);
             return result.ToHttpResult();
         }).RequireAuthorization();

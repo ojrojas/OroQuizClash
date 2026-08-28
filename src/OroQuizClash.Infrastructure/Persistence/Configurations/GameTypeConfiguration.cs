@@ -21,29 +21,29 @@ public sealed class GameTypeConfiguration : IEntityTypeConfiguration<Game>
         builder.Property(g => g.FinishedAt);
         builder.Property(g => g.CreatedBy).IsRequired();
 
-        builder.HasMany(typeof(GamePlayer), "_players")
+        builder.HasMany(g => g.Players)
             .WithOne()
             .HasForeignKey("GameId")
             .OnDelete(DeleteBehavior.Cascade);
-        builder.Navigation("Players").HasField("_players").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(g => g.Players).HasField("_players").UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        builder.HasMany(typeof(GameRound), "_rounds")
+        builder.HasMany(g => g.Rounds)
             .WithOne()
             .HasForeignKey("GameId")
             .OnDelete(DeleteBehavior.Cascade);
-        builder.Navigation("Rounds").HasField("_rounds").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(g => g.Rounds).HasField("_rounds").UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        builder.HasMany(typeof(Answer), "_answers")
+        builder.HasMany(g => g.Answers)
             .WithOne()
             .HasForeignKey("GameId")
             .OnDelete(DeleteBehavior.Cascade);
-        builder.Navigation("Answers").HasField("_answers").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(g => g.Answers).HasField("_answers").UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        builder.HasMany(typeof(PointTransaction), "_pointTransactions")
+        builder.HasMany(g => g.PointTransactions)
             .WithOne()
             .HasForeignKey("GameId")
             .OnDelete(DeleteBehavior.Cascade);
-        builder.Navigation("PointTransactions").HasField("_pointTransactions").UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(g => g.PointTransactions).HasField("_pointTransactions").UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.OwnsOne(g => g.Configuration, cb =>
         {

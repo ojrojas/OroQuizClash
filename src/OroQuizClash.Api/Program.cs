@@ -63,6 +63,8 @@ builder.Services.AddScoped<IQuestionSelectionStrategy, RandomQuestionSelectionSt
 builder.Services.AddScoped<IDifficultyProgressionStrategy, LinearDifficultyStrategy>();
 
 builder.Services.AddEndpoints(typeof(OroQuizClash.Application.Features.Games.CreateGameEndpoint).Assembly);
+builder.Services.AddSignalR();
+builder.Services.AddScoped<OroQuizClash.Application.Features.Games.IGameNotificationsBroadcaster, OroQuizClash.Api.Hubs.SignalRGameNotificationsBroadcaster>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -112,6 +114,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapEndpoints();
+app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
 
 app.Run();
 

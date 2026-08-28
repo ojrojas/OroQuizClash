@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: OroQuizClash Multiplayer API
+  version: 1.0.0
+  description: |
+    Concurrent multiplayer participation endpoints (SPEC-011). Per-player state
+    (PlayerId, GameId, Status, Score, CurrentRound, AnswerState), player isolation
+    enforced via JWT `sub` claim, idempotent answer submission, and deterministic
+    leaderboard. Server-driven push notifications are delivered via the SignalR
+    GameHub (see contracts/gamehub.md) and are never the source of truth.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+tags:
+  - name: Participation
+    description: Player join, state, and withdrawal
+  - name: Answers
+    description: Concurrent answer submission (server-authoritative)
+  - name: Leaderboard
+    description: Per-game deterministic ranking
+paths:
+  /games/{gameId}/players:
+    post:
+      operationId: joinGame
+      summary: Join a game in WAITING_FOR_PLAYERS (one participation per user per game)
+      description: |
+        Registers the authenticated player in the game. The player identity is the
+        JWT `sub` claim; a body-supplied UserId is honored only as fallback for
+        organizer-driven flows. Duplicate joins are idempotent/rejected
+        (PlayerAlreadyJoined) and capacity is enforced (GameFull). SPEC-004 contract,
+        listed here as the multiplayer entry point.
+      tags: [Participation]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId: { type: string, format: uuid, description: Optional. Defaults to JWT sub. }
+      responses:
+        '200':
+          description: Player joined (or already joined)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GameResponse' }
+        '401': { description: Not authenticated }
+        '404':
+          description: Game not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: PlayerAlreadyJoined | GameFull | ConcurrencyConflict
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/players/{playerId}/state:
+    get:
+      operationId: getPlayerState
+      summary: Get a player's authoritative participation state
+      description: |
+        Returns the full per-player state required by SPEC-011 FR-001/FR-015:
+        Status, Score breakdown, CurrentRound, AnswerState for the current round,
+        and answer counters. Players may only query their own state
+        (JWT sub == playerId); organizers (ADMIN/GAME_MANAGER) may query any player.
+        Use this to recover authoritative state after a 409 ConcurrencyConflict.
+      tags: [Participation]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: playerId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Player state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerStateResponse' }
+        '401': { description: Not authenticated }
+        '403':
+          description: Forbidden — not the player and not an organizer (PlayerIdentityMismatch)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/answers:
+    post:
+      operationId: submitAnswer
+      summary: Submit an answer for the active round (concurrent-safe, idempotent)
+      description: |
+        The player identity is ALWAYS the JWT `sub` claim — a player can only submit
+        their own answer (FR-003). Correctness, elapsed time, and points are computed
+        server-side (SPEC-006). Multiple players may submit simultaneously; each
+        submission is evaluated independently and atomically (answer + ledger
+        transaction in one operation). Duplicate submissions for the same
+        player+round return the original result without duplicating points
+        (idempotency boundary = gameId+playerId+roundId; the optional idempotencyKey
+        is accepted for client correlation only). On optimistic-concurrency conflict
+        the response is 409 ConcurrencyConflict; the client should re-read player
+        state and retry if applicable.
+      tags: [Answers]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answerOptionId]
+              properties:
+                answerOptionId: { type: string, format: uuid }
+                roundId: { type: string, format: uuid, description: Optional. Defaults to the active round. }
+                idempotencyKey: { type: string, format: uuid, description: Optional client retry-correlation key. }
+      responses:
+        '200':
+          description: Answer evaluated (or original result for a duplicate submission)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubmitAnswerResponse' }
+        '400':
+          description: Validation | NoActiveRound | InvalidAnswer | AnswerTimeout | PlayerNotInGame | GameNotActive | QuestionNotActive
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401': { description: Not authenticated }
+        '403':
+          description: PlayerIdentityMismatch — authenticated user is not a player acting on their own state
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: Game not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: ConcurrencyConflict — stale version; reload state and retry
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/withdraw:
+    post:
+      operationId: withdrawPlayer
+      summary: Withdraw the authenticated player from the game (SPEC-008 policy applies)
+      description: |
+        Players may only withdraw themselves (JWT sub == playerId); organizers may
+        withdraw any player. Attempts to withdraw another player return 403
+        PlayerIdentityMismatch. The configured withdrawal policy determines retained
+        points; the player's Status becomes WITHDRAWN and CurrentRound is frozen.
+      tags: [Participation]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerId: { type: string, format: uuid, description: Optional. Defaults to JWT sub. Must equal sub for non-organizers. }
+      responses:
+        '200':
+          description: Player withdrawn
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WithdrawPlayerResponse' }
+        '400':
+          description: Validation | GameNotActive
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '401': { description: Not authenticated }
+        '403':
+          description: PlayerIdentityMismatch
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '404':
+          description: Game or player not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+        '409':
+          description: PlayerAlreadyWithdrawn | PlayerAlreadyEliminated | ParticipationAlreadyFinished | ConcurrencyConflict
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+  /games/{gameId}/leaderboard:
+    get:
+      operationId: getLeaderboard
+      summary: Get the deterministic per-game leaderboard
+      description: |
+        Returns one entry per player with Rank, Player, Points, CorrectAnswers,
+        CurrentLevel, and Status (SPEC-011 FR-011). Ordering is deterministic:
+        Points desc, tie -> CorrectAnswers desc, tie -> earliest achievement of the
+        current balance (ledger timestamp), tie -> join order. Only evaluated data
+        is shown (points exist only for EVALUATED answers); entries for withdrawn or
+        eliminated players remain with their final Status and score. Stable after
+        the game reaches FINISHED.
+      tags: [Leaderboard]
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Leaderboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LeaderboardResponse' }
+        '401': { description: Not authenticated }
+        '404':
+          description: Game not found
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/ProblemDetails' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by OroIdentityServer; player identity = `sub` claim.
+  schemas:
+    PlayerStateResponse:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        displayName: { type: string, nullable: true }
+        status: { type: string, enum: [ACTIVE, WITHDRAWN, ELIMINATED, WINNER] }
+        currentPoints: { type: integer }
+        securedPoints: { type: integer }
+        roundPoints: { type: integer }
+        potentialPoints: { type: integer }
+        totalPoints: { type: integer }
+        currentRound: { type: integer, description: Current (or last reached) round number; 0 before the first round. }
+        answerState: { type: string, enum: [NOT_ANSWERED, ANSWERED, EVALUATED, EXPIRED], description: Answer state for the current round. }
+        correctAnswers: { type: integer }
+        incorrectAnswers: { type: integer }
+        exitedAt: { type: string, format: date-time, nullable: true }
+    SubmitAnswerResponse:
+      type: object
+      properties:
+        answerId: { type: string, format: uuid }
+        correct: { type: boolean }
+        points: { type: integer }
+        elapsedTime: { type: integer, description: Seconds, server-computed. }
+        status: { type: string, enum: [EVALUATED, EXPIRED] }
+        roundNumber: { type: integer }
+        gameStatus: { type: string }
+    WithdrawPlayerResponse:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        playerId: { type: string, format: uuid }
+        participationStatus: { type: string, enum: [WITHDRAWN] }
+        pointsDeducted: { type: integer }
+        finalScore: { type: integer }
+        withdrawalPolicy: { type: string, enum: [LOSE_ALL, KEEP_CURRENT_SCORE, KEEP_SECURED_SCORE, KEEP_CHECKPOINT_SCORE] }
+        withdrawnAt: { type: string, format: date-time, nullable: true }
+    LeaderboardResponse:
+      type: object
+      properties:
+        gameId: { type: string, format: uuid }
+        players:
+          type: array
+          items: { $ref: '#/components/schemas/LeaderboardEntryResponse' }
+    LeaderboardEntryResponse:
+      type: object
+      properties:
+        playerId: { type: string, format: uuid }
+        displayName: { type: string, nullable: true }
+        rank: { type: integer, description: 1-based deterministic position. }
+        points: { type: integer, description: Current points, ledger-consistent. }
+        correctAnswers: { type: integer }
+        currentLevel: { type: integer, nullable: true, description: Difficulty level of the player's current (or last reached) round; null before the first round. }
+        status: { type: string, enum: [ACTIVE, WITHDRAWN, ELIMINATED, WINNER] }
+        securedPoints: { type: integer, description: Retained for backward compatibility. }
+    GameResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string }
+        categoryId: { type: string, format: uuid }
+        minRounds: { type: integer }
+        maxRounds: { type: integer }
+        playerCount: { type: integer }
+        roundCount: { type: integer }
+        rowVersion: { type: string, description: Base64 optimistic-concurrency token. }
+        createdAt: { type: string, format: date-time }
+        readyAt: { type: string, format: date-time, nullable: true }
+        startedAt: { type: string, format: date-time, nullable: true }
+        finishedAt: { type: string, format: date-time, nullable: true }
+    ProblemDetails:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }

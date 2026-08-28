@@ -7,6 +7,7 @@ using BuildingBlocks.ServiceDefaults.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Shared.Errors;
@@ -58,7 +59,8 @@ public sealed class AdjustScoreHandler(
         if (result.IsFailure)
             return Result.Failure<AdjustScoreResponse>(result.Error);
 
-        await unitOfWork.SaveChangesAsync(ct);
+        try { await unitOfWork.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException) { return Result.Failure<AdjustScoreResponse>(GameErrors.ConcurrencyConflict); }
 
         var transaction = result.Value;
         return Result.Success(new AdjustScoreResponse(

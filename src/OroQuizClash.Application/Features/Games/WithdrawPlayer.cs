@@ -7,6 +7,7 @@ using BuildingBlocks.ServiceDefaults.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Shared.Errors;
@@ -50,7 +51,8 @@ public sealed class WithdrawPlayerHandler(
         if (result.IsFailure)
             return Result.Failure<WithdrawPlayerResponse>(result.Error);
 
-        await unitOfWork.SaveChangesAsync(ct);
+        try { await unitOfWork.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException) { return Result.Failure<WithdrawPlayerResponse>(GameErrors.ConcurrencyConflict); }
 
         var score = game.GetPlayerScore(command.PlayerId);
         var player = game.Players.First(p => p.UserId == command.PlayerId);
@@ -71,11 +73,21 @@ public sealed class WithdrawPlayerEndpoint : IEndpoint
     {
         app.MapPost("/api/games/{id:guid}/withdraw", async (
             Guid id,
-            WithdrawPlayerRequest body,
+            HttpContext http,
+            WithdrawPlayerRequest? body,
             ISender sender,
             CancellationToken ct) =>
         {
-            var command = new WithdrawPlayerCommand(id, body.PlayerId);
+            var subId = GameClaims.GetSub(http.User);
+
+            var playerId = body?.PlayerId ?? Guid.Empty;
+            if (playerId == Guid.Empty) playerId = subId;
+
+            // Players may only withdraw themselves; organizers may withdraw any player (SPEC-011 FR-003).
+            if (playerId != subId && !GameClaims.IsOrganizer(http.User))
+                return Result.Failure(GameErrors.PlayerIdentityMismatch).ToHttpResult();
+
+            var command = new WithdrawPlayerCommand(id, playerId);
             var result = await sender.SendAsync(command, ct);
             return result.ToHttpResult();
         }).RequireAuthorization();

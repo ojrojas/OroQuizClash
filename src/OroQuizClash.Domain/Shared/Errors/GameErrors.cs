@@ -29,6 +29,7 @@ public static class GameErrors
     public static Error InvalidReason => Error.Validation("InvalidReason", "Reason must be 3-500 characters.");
 
     public static Error PlayerNotInGame => Error.Validation("PlayerNotInGame", "Player is not in progress in this game.");
+    public static Error PlayerIdentityMismatch => Error.Forbidden("PlayerIdentityMismatch", "Authenticated user cannot act on behalf of another player.");
     public static Error GameNotActive => Error.Validation("GameNotActive", "Game is not in active state.");
     public static Error QuestionNotActive => Error.Validation("QuestionNotActive", "Round is not in progress.");
     public static Error InvalidAnswer => Error.Validation("InvalidAnswer", "Answer option does not belong to the active question.");
