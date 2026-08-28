@@ -1,0 +1,113 @@
+# Realtime payload schemas — SPEC-012 (referencia, no OpenAPI generable)
+# Cada payload corresponde a un mensaje SignalR server→client en /hubs/game.
+# Ver contracts/gamehub.md para el catálogo completo y la semántica de entrega.
+# Los payloads reutilizan los DTOs REST existentes donde aplica (LeaderboardEntry).
+
+GameStartedPayload:
+  type: object
+  required: [gameId]
+  properties:
+    gameId: { type: string, format: uuid }
+
+PlayerJoinedPayload:
+  type: object
+  required: [gameId, playerId]
+  properties:
+    gameId: { type: string, format: uuid }
+    playerId: { type: string, format: uuid }
+    displayName: { type: string, nullable: true }
+
+RoundStartedPayload:
+  type: object
+  required: [gameId, roundId, roundNumber]
+  properties:
+    gameId: { type: string, format: uuid }
+    roundId: { type: string, format: uuid }
+    roundNumber: { type: integer, minimum: 1 }
+
+QuestionPresentedPayload:
+  type: object
+  required: [gameId, roundId, roundNumber, question]
+  properties:
+    gameId: { type: string, format: uuid }
+    roundId: { type: string, format: uuid }
+    roundNumber: { type: integer, minimum: 1 }
+    question:
+      type: object
+      required: [questionId, text, answerOptions]
+      properties:
+        questionId: { type: string, format: uuid }
+        text: { type: string }
+        answerOptions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: object
+            required: [id, text]
+            properties:
+              id: { type: string, format: uuid }
+              text: { type: string }
+              # isCorrect MUST NOT appear — anti-trampa (FR-004/FR-013)
+
+PlayerAnsweredPayload:
+  type: object
+  required: [gameId, playerId, roundId, answeredAt]
+  properties:
+    gameId: { type: string, format: uuid }
+    playerId: { type: string, format: uuid }
+    roundId: { type: string, format: uuid }
+    answeredAt: { type: string, format: date-time }
+    # answerOptionId / correct / points MUST NOT appear (FR-005)
+
+ScoreUpdatedPayload:
+  type: object
+  required: [gameId, playerId, points, totalPoints, reason]
+  properties:
+    gameId: { type: string, format: uuid }
+    playerId: { type: string, format: uuid }
+    points: { type: integer }
+    totalPoints: { type: integer }
+    reason: { type: string, enum: [ANSWER_CORRECT, ANSWER_INCORRECT, ROUND_BONUS, LEVEL_BONUS, GAME_BONUS, PENALTY] }
+
+LeaderboardUpdatedPayload:
+  type: object
+  required: [gameId, entries]
+  properties:
+    gameId: { type: string, format: uuid }
+    entries:
+      type: array
+      items:
+        $ref: '#/LeaderboardEntry'
+
+RoundCompletedPayload:
+  type: object
+  required: [gameId, roundId, roundNumber]
+  properties:
+    gameId: { type: string, format: uuid }
+    roundId: { type: string, format: uuid }
+    roundNumber: { type: integer, minimum: 1 }
+
+GameFinishedPayload:
+  type: object
+  required: [gameId, status, entries]
+  properties:
+    gameId: { type: string, format: uuid }
+    status: { type: string, enum: [FINISHED, FORCED_FINISHED, CANCELLED] }
+    entries:
+      type: array
+      items:
+        $ref: '#/LeaderboardEntry'
+
+LeaderboardEntry:
+  type: object
+  required: [playerId, rank, points, correctAnswers, currentLevel, status, securedPoints]
+  properties:
+    playerId: { type: string, format: uuid }
+    displayName: { type: string, nullable: true }
+    rank: { type: integer, minimum: 1 }
+    points: { type: integer }
+    correctAnswers: { type: integer }
+    currentLevel: { type: integer, nullable: true }
+    status: { type: string, enum: [ACTIVE, WITHDRAWN, ELIMINATED, WINNER, FINISHED] }
+    securedPoints: { type: integer }

@@ -28,6 +28,7 @@
     <ProjectReference Include="../../src/OroQuizClash.Domain/OroQuizClash.Domain.csproj" />
     <ProjectReference Include="../../src/OroQuizClash.Application/OroQuizClash.Application.csproj" />
     <ProjectReference Include="../../src/OroQuizClash.Infrastructure/OroQuizClash.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/OroQuizClash.Api/OroQuizClash.Api.csproj" />
     <ProjectReference Include="..\..\OroQuizClash.AppHost\OroQuizClash.AppHost.csproj" />
   </ItemGroup>
 

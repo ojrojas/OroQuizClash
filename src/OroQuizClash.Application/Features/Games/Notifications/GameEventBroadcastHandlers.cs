@@ -141,10 +141,3 @@ public sealed class PlayerStatusBroadcastHandler(
         }
     }
 }
-
-file static class BroadcastGameLoader
-{
-    public static Task<Game?> LoadGameAsync(
-        IRepository<Game, GameId> repository, Guid gameId, CancellationToken cancellationToken) =>
-        repository.FirstOrDefaultAsync(new GameByIdWithAnswersSpecification(new GameId(gameId)), cancellationToken);
-}
