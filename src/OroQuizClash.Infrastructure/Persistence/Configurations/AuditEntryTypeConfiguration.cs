@@ -18,15 +18,22 @@ public sealed class AuditEntryTypeConfiguration : IEntityTypeConfiguration<Audit
         builder.Property(e => e.Action).HasMaxLength(100).IsRequired();
         builder.Property(e => e.Permission).HasMaxLength(100).IsRequired();
         builder.Property(e => e.Resource).HasMaxLength(200).IsRequired();
+        builder.Property(e => e.ResourceId).HasMaxLength(100);
+        builder.Property(e => e.GameId);
+        builder.Property(e => e.PlayerId);
         builder.Property(e => e.CorrelationId).HasMaxLength(100).IsRequired();
         builder.Property(e => e.TenantId).HasMaxLength(100);
         builder.Property(e => e.Result).HasMaxLength(50).IsRequired();
         builder.Property(e => e.Reason).HasMaxLength(200);
         builder.Property(e => e.Details).HasMaxLength(1000);
+        builder.Property(e => e.Data).HasMaxLength(1000);
 
         builder.HasIndex(e => e.Timestamp);
         builder.HasIndex(e => e.Resource);
         builder.HasIndex(e => e.CorrelationId);
         builder.HasIndex(e => e.ActorId);
+        builder.HasIndex(e => e.GameId);
+        builder.HasIndex(e => e.PlayerId);
+        builder.HasIndex(e => e.Action);
     }
 }

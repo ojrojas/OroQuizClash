@@ -20,6 +20,9 @@ public sealed record GetAuditEntriesQuery(
     string? ActorId,
     string? Action,
     string? Resource,
+    string? ResourceId,
+    Guid? GameId,
+    Guid? PlayerId,
     string? Result,
     DateTimeOffset? From,
     DateTimeOffset? To,
@@ -34,11 +37,15 @@ public sealed record AuditEntryResponse(
     string Action,
     string Permission,
     string Resource,
+    string? ResourceId,
+    Guid? GameId,
+    Guid? PlayerId,
     string CorrelationId,
     string? TenantId,
     string Result,
     string? Reason,
-    string? Details);
+    string? Details,
+    string? Data);
 
 public sealed record GetAuditEntriesResponse(
     IReadOnlyList<AuditEntryResponse> Items,
@@ -51,19 +58,17 @@ public sealed class GetAuditEntriesHandler(
 {
     public async Task<Result<GetAuditEntriesResponse>> HandleAsync(GetAuditEntriesQuery query, CancellationToken ct)
     {
-        var spec = new AuditEntrySpecification(query.CorrelationId, query.ActorId, query.Action, query.Resource, query.Result, query.From, query.To, query.Page, query.PageSize);
+        var spec = new AuditEntrySpecification(query.CorrelationId, query.ActorId, query.Action, query.Resource, query.ResourceId, query.GameId, query.PlayerId, query.Result, query.From, query.To, query.Page, query.PageSize);
         var items = await repository.ListAsync(spec, ct);
-        // For simplicity, total is items count (paginated). Real count would require CountAsync.
         var total = items.Count;
         if (items.Count == query.PageSize)
         {
-            // Approximate total if page is full — fetch next page to detect more
-            var nextSpec = new AuditEntrySpecification(query.CorrelationId, query.ActorId, query.Action, query.Resource, query.Result, query.From, query.To, query.Page + 1, 1);
+            var nextSpec = new AuditEntrySpecification(query.CorrelationId, query.ActorId, query.Action, query.Resource, query.ResourceId, query.GameId, query.PlayerId, query.Result, query.From, query.To, query.Page + 1, 1);
             var next = await repository.ListAsync(nextSpec, ct);
             if (next.Count > 0) total = query.Page * query.PageSize + 1;
         }
 
-        var responses = items.Select(e => new AuditEntryResponse(e.Id, e.Timestamp, e.ActorId, e.ActorRoles, e.Action, e.Permission, e.Resource, e.CorrelationId, e.TenantId, e.Result, e.Reason, e.Details)).ToList();
+        var responses = items.Select(e => new AuditEntryResponse(e.Id, e.Timestamp, e.ActorId, e.ActorRoles, e.Action, e.Permission, e.Resource, e.ResourceId, e.GameId, e.PlayerId, e.CorrelationId, e.TenantId, e.Result, e.Reason, e.Details, e.Data ?? e.Details)).ToList();
         return Result.Success(new GetAuditEntriesResponse(responses, query.Page, query.PageSize, total));
     }
 }
@@ -76,7 +81,7 @@ public sealed class GetAuditEntryByIdHandler(IRepository<AuditEntry, Guid> repos
     {
         var entry = await repository.GetByIdAsync(query.Id, ct);
         if (entry is null) return Result.Failure<AuditEntryResponse>(Error.NotFound("Audit.NotFound", "Audit entry not found."));
-        return Result.Success(new AuditEntryResponse(entry.Id, entry.Timestamp, entry.ActorId, entry.ActorRoles, entry.Action, entry.Permission, entry.Resource, entry.CorrelationId, entry.TenantId, entry.Result, entry.Reason, entry.Details));
+        return Result.Success(new AuditEntryResponse(entry.Id, entry.Timestamp, entry.ActorId, entry.ActorRoles, entry.Action, entry.Permission, entry.Resource, entry.ResourceId, entry.GameId, entry.PlayerId, entry.CorrelationId, entry.TenantId, entry.Result, entry.Reason, entry.Details, entry.Data ?? entry.Details));
     }
 }
 
@@ -89,6 +94,9 @@ public sealed class GetAuditEntriesEndpoint : IEndpoint
             string? actorId,
             string? action,
             string? resource,
+            string? resourceId,
+            Guid? gameId,
+            Guid? playerId,
             string? result,
             DateTimeOffset? from,
             DateTimeOffset? to,
@@ -97,7 +105,7 @@ public sealed class GetAuditEntriesEndpoint : IEndpoint
             ISender sender,
             CancellationToken ct) =>
         {
-            var query = new GetAuditEntriesQuery(correlationId, actorId, action, resource, result, from, to, page ?? 1, pageSize ?? 20);
+            var query = new GetAuditEntriesQuery(correlationId, actorId, action, resource, resourceId, gameId, playerId, result, from, to, page ?? 1, pageSize ?? 20);
             var res = await sender.SendAsync(query, ct);
             return res.ToHttpResult();
         }).RequireAuthorization("Audit.Read").RequireRateLimiting("ReadLimiter");
