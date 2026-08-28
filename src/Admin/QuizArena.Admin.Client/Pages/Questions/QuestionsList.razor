@@ -1,0 +1,109 @@
+@page "/admin/questions/list"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Questions
+@inject IQuestionsService QuestionsService
+@inject NavigationManager Navigation
+
+<PageTitle>Preguntas — QuizArena Admin</PageTitle>
+
+<div class="page-header">
+    <h1>Banco de preguntas</h1>
+    <QuizButton Icon="plus" OnClick="GoCreate">Nueva pregunta</QuizButton>
+</div>
+
+<div class="toolbar">
+    <QuizSelect Id="filter-category" Label="Categoría" Value="@selectedCategory" ValueChanged="OnCategoryChanged" Options="@categoryOptions" Placeholder="Todas" />
+    <QuizSelect Id="filter-difficulty" Label="Dificultad" Value="@selectedDifficulty" ValueChanged="OnDifficultyChanged" Options="@difficultyOptions" Placeholder="Todas" />
+    <QuizSelect Id="filter-status" Label="Estado" Value="@selectedStatus" ValueChanged="OnStatusChanged" Options="@statusOptions" Placeholder="Todos" />
+    <QuizInput Id="filter-search" Label="Buscar" Placeholder="Texto…" Value="@search" ValueChanged="OnSearchChanged" />
+</div>
+
+@if (state == PageState.Loading)
+{
+    <LoadingSkeleton Rows="3" />
+}
+else if (state == PageState.Error)
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+else if (questions is not null)
+{
+    <QuizTable Caption="Preguntas" ColumnCount="5" Loading="false" Page="@currentPage" TotalPages="@totalPages" PageChanged="OnPageChanged">
+        <HeaderCells><th>Texto</th><th>Categoría</th><th>Dificultad</th><th>Estado</th><th></th></HeaderCells>
+        <BodyRows>
+            @foreach (var q in questions)
+            {
+                <tr>
+                    <td>@(q.Text.Length > 60 ? q.Text[..60] + "…" : q.Text)</td>
+                    <td>@q.CategoryId.ToString().Substring(0,8)</td>
+                    <td>@q.Difficulty</td>
+                    <td><QuestionStateBadge State="@MapStatus(q.Status)" /></td>
+                    <td><a href="@($"/admin/questions/{q.Id}")">Detalle</a> | <a href="@($"/admin/questions/{q.Id}/edit")">Editar</a></td>
+                </tr>
+            }
+        </BodyRows>
+    </QuizTable>
+    <p>Total: @totalCount preguntas</p>
+    <QuizButton Variant="ghost" OnClick="GoStats">Ver estadísticas</QuizButton>
+}
+else
+{
+    <EmptyState Title="Sin preguntas" Message="No hay preguntas." />
+}
+
+@code {
+    private enum PageState { Loading, Ready, Error, Empty }
+    private PageState state = PageState.Loading;
+    private string error = string.Empty;
+    private IReadOnlyList<QuestionSummary>? questions;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalCount;
+    private string? selectedCategory;
+    private string? selectedDifficulty;
+    private string? selectedStatus;
+    private string? search;
+    private IReadOnlyList<QuizSelect.OptionDef> categoryOptions = [];
+    private IReadOnlyList<QuizSelect.OptionDef> difficultyOptions = [new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
+    private IReadOnlyList<QuizSelect.OptionDef> statusOptions = [new("Draft","Draft"), new("Active","Active"), new("Inactive","Inactive"), new("Archived","Archived")];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try
+        {
+            var filter = new QuestionFilter(
+                CategoryId: string.IsNullOrWhiteSpace(selectedCategory) ? null : Guid.TryParse(selectedCategory, out var g) ? g : null,
+                Difficulty: string.IsNullOrWhiteSpace(selectedDifficulty) ? null : int.TryParse(selectedDifficulty, out var d) ? d : null,
+                Status: string.IsNullOrWhiteSpace(selectedStatus) ? null : Enum.Parse<QuestionStatusView>(selectedStatus),
+                Search: string.IsNullOrWhiteSpace(search) ? null : search,
+                Page: currentPage);
+            var result = await QuestionsService.GetQuestionsAsync(filter);
+            questions = result.Items;
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages;
+            state = questions.Count == 0 ? PageState.Empty : PageState.Ready;
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; state = PageState.Error; }
+    }
+
+    private QuizArena.Admin.Client.Models.Questions.QuestionStateView MapStatus(QuestionStatusView s) => s switch
+    {
+        QuestionStatusView.Active => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Active,
+        QuestionStatusView.Inactive => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Inactive,
+        QuestionStatusView.Archived => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Archived,
+        _ => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Draft
+    };
+
+    private void GoCreate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => Navigation.NavigateTo("/admin/questions/new");
+    private void GoStats(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => Navigation.NavigateTo("/admin/questions/stats");
+    private Task OnCategoryChanged(string? v) { selectedCategory = v; currentPage = 1; return LoadAsync(); }
+    private Task OnDifficultyChanged(string? v) { selectedDifficulty = v; currentPage = 1; return LoadAsync(); }
+    private Task OnStatusChanged(string? v) { selectedStatus = v; currentPage = 1; return LoadAsync(); }
+    private Task OnSearchChanged(string? v) { search = v; currentPage = 1; return LoadAsync(); }
+    private Task OnPageChanged(int p) { currentPage = p; return LoadAsync(); }
+}

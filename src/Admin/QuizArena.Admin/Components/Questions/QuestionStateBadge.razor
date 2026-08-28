@@ -1,0 +1,17 @@
+@using QuizArena.Admin.Client.Models.Questions
+
+<span class="question-state-badge state-@State.ToString().ToLower()" title="@QuestionStateViewMap.DisplayName(State)">
+    <QuizBadge Variant="@Variant" Label="@QuestionStateViewMap.DisplayName(State)" />
+</span>
+
+@code {
+    [Parameter, EditorRequired] public QuestionStateView State { get; set; }
+    private string Variant => State switch
+    {
+        QuestionStateView.Draft => "neutral",
+        QuestionStateView.Active => "success",
+        QuestionStateView.Inactive => "warning",
+        QuestionStateView.Archived => "neutral",
+        _ => "neutral"
+    };
+}

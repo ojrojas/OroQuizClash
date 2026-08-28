@@ -1,0 +1,92 @@
+@page "/admin/questions/new"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using QuizArena.Admin.Client.Models
+@using Q = QuizArena.Admin.Client.Models.Questions
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Questions
+@inject IQuestionsService QuestionsService
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Crear pregunta — QuizArena Admin</PageTitle>
+
+<h1>Crear pregunta</h1>
+
+@if (isSubmitting)
+{
+    <LoadingSkeleton Rows="4" />
+}
+else
+{
+    <QuestionForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+    @if (!string.IsNullOrEmpty(generalError))
+    {
+        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
+    }
+}
+
+@code {
+    private Q.QuestionForm form = new("", Guid.Empty, 3, "Secundaria", 12, 18, [new Q.OptionForm("", false), new Q.OptionForm("", false), new Q.OptionForm("", false), new Q.OptionForm("", false)], null, 30);
+    private Dictionary<string, string[]> fieldErrors = new();
+    private string generalError = string.Empty;
+    private bool isSubmitting;
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        var (field, value) = args;
+        if (field.StartsWith("Options["))
+        {
+            var idxStr = field.Substring(8, 1);
+            if (int.TryParse(idxStr, out var idx) && idx >= 0 && idx < 4)
+            {
+                var opts = form.Options.ToList();
+                opts[idx] = opts[idx] with { Text = value ?? string.Empty };
+                form = form with { Options = opts };
+            }
+            return Task.CompletedTask;
+        }
+        if (field == "CorrectIndex" && int.TryParse(value, out var cIdx))
+        {
+            var opts = form.Options.Select((o, i) => o with { IsCorrect = i == cIdx }).ToList();
+            form = form with { Options = opts };
+            return Task.CompletedTask;
+        }
+        form = field switch
+        {
+            nameof(Q.QuestionForm.Text) => form with { Text = value ?? string.Empty },
+            nameof(Q.QuestionForm.CategoryId) when Guid.TryParse(value, out var g) => form with { CategoryId = g },
+            nameof(Q.QuestionForm.Difficulty) when int.TryParse(value, out var n) => form with { Difficulty = n },
+            nameof(Q.QuestionForm.AcademicLevel) => form with { AcademicLevel = value ?? string.Empty },
+            nameof(Q.QuestionForm.AgeMin) when int.TryParse(value, out var n) => form with { AgeMin = n },
+            nameof(Q.QuestionForm.AgeMax) when int.TryParse(value, out var n) => form with { AgeMax = n },
+            nameof(Q.QuestionForm.TimePerQuestion) when int.TryParse(value, out var n) => form with { TimePerQuestion = n },
+            nameof(Q.QuestionForm.Explanation) => form with { Explanation = string.IsNullOrWhiteSpace(value) ? null : value },
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit(Q.QuestionForm _)
+    {
+        fieldErrors.Clear();
+        generalError = string.Empty;
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            var legacyForm = new QuizArena.Admin.Client.Models.QuestionForm(form.Text, form.CategoryId, form.Difficulty, form.AcademicLevel, form.AgeMin, form.AgeMax, form.Options.Select(o => new QuizArena.Admin.Client.Models.OptionForm(o.Text, o.IsCorrect)).ToList(), form.Explanation, form.TimePerQuestion);
+            var result = await QuestionsService.CreateQuestionAsync(legacyForm);
+            Toasts.Success($"Pregunta creada: {result.Text[..Math.Min(30, result.Text.Length)]}");
+            Navigation.NavigateTo($"/admin/questions/{result.Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+            generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            if (ex.ErrorView.Code == "Unauthorized") generalError = "Sesión expirada — re-autenticar. Borrador preservado.";
+        }
+        catch (Exception) { generalError = "No se pudo crear la pregunta. Reintente."; }
+        finally { isSubmitting = false; }
+    }
+}

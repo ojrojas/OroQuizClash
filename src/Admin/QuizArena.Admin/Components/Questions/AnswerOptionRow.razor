@@ -1,0 +1,23 @@
+@using QuizArena.Admin.Client.Models.Questions
+
+<div class="answer-row" style="display:flex;gap:var(--space-2);align-items:center;">
+    <span class="answer-position" style="min-width:24px;font-weight:600;">@Position</span>
+    <QuizInput Id="@($"ans-{Position}")" Label="@($"Respuesta {Position}")" Value="@Text" ValueChanged="HandleTextChanged" Disabled="@Disabled" />
+    <label style="display:flex;align-items:center;gap:var(--space-1);min-height:44px;min-width:44px;">
+        <input type="radio" name="correct-@Group" checked="@IsCorrect" @onchange="HandleCorrect" disabled="@Disabled" />
+        Correcta
+    </label>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public char Position { get; set; }
+    [Parameter, EditorRequired] public string Text { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public bool IsCorrect { get; set; }
+    [Parameter] public string Group { get; set; } = "correct";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<bool> CorrectChanged { get; set; }
+
+    private Task HandleTextChanged(string? v) => TextChanged.InvokeAsync(v ?? string.Empty);
+    private Task HandleCorrect(ChangeEventArgs _) => CorrectChanged.InvokeAsync(true);
+}

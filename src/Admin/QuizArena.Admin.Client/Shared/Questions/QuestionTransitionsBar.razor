@@ -1,0 +1,22 @@
+@using QuizArena.Admin.Client.Models.Questions
+
+<div class="transitions-bar" role="toolbar" aria-label="Transiciones de pregunta">
+    <QuizButton Variant="primary" Disabled="@(!CanActivate)" OnClick="HandleActivate">Activar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanDeactivate)" OnClick="HandleDeactivate">Desactivar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanDelete)" OnClick="HandleDelete">Eliminar</QuizButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public QuestionStateView State { get; set; }
+    [Parameter] public bool InUseByLiveGame { get; set; }
+    [Parameter] public string RowVersion { get; set; } = string.Empty;
+    [Parameter] public EventCallback<(string Action, string RowVersion)> OnTransition { get; set; }
+
+    private bool CanActivate => State == QuestionStateView.Inactive || State == QuestionStateView.Draft;
+    private bool CanDeactivate => State == QuestionStateView.Active;
+    private bool CanDelete => (State == QuestionStateView.Draft || State == QuestionStateView.Inactive) && !InUseByLiveGame;
+
+    private Task HandleActivate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync(("activate", RowVersion));
+    private Task HandleDeactivate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync(("deactivate", RowVersion));
+    private Task HandleDelete(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync(("delete", RowVersion));
+}

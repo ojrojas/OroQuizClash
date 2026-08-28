@@ -1,0 +1,120 @@
+@page "/admin/questions/{Id:guid}/edit"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using Q = QuizArena.Admin.Client.Models.Questions
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Questions
+@inject IQuestionsService QuestionsService
+@inject NavigationManager Navigation
+
+<PageTitle>Editar pregunta — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (loadError is not null)
+{
+    <ErrorState Message="@loadError" OnRetry="LoadAsync" />
+}
+else if (form is not null)
+{
+    <h1>Editar pregunta</h1>
+    <QuestionForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleUpdate" IsReadOnly="@isReadOnly" IsSubmitting="@isSubmitting" />
+    @if (isReadOnly) { <div class="form-readonly-banner" role="alert">Pregunta en uso en juego activo — solo lectura o clonar</div> }
+    @if (!string.IsNullOrEmpty(generalError)) { <div class="validation-errors" role="alert">@generalError</div> }
+}
+else
+{
+    <EmptyState Title="No encontrado" Message="Pregunta no encontrada." />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private Q.QuestionForm? form;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? loadError;
+    private string generalError = string.Empty;
+    private Dictionary<string, string[]> fieldErrors = new();
+    private bool isReadOnly;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+        try
+        {
+            var detail = await QuestionsService.GetQuestionAsync(Id);
+            form = new Q.QuestionForm(detail.Text, detail.CategoryId, detail.Difficulty, "Secundaria", 12, 18, [new Q.OptionForm("A", false), new Q.OptionForm("B", true), new Q.OptionForm("C", false), new Q.OptionForm("D", false)], null, 30);
+            isReadOnly = detail.InUseByLiveGame;
+        }
+        catch (ApiErrorException ex) { loadError = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        if (form is null) return Task.CompletedTask;
+        var (field, value) = args;
+        if (field.StartsWith("Options["))
+        {
+            var idxStr = field.Substring(8, 1);
+            if (int.TryParse(idxStr, out var idx) && idx >= 0 && idx < 4)
+            {
+                var opts = form.Options.ToList();
+                opts[idx] = opts[idx] with { Text = value ?? string.Empty };
+                form = form with { Options = opts };
+            }
+            return Task.CompletedTask;
+        }
+        if (field == "CorrectIndex" && int.TryParse(value, out var cIdx))
+        {
+            var opts = form.Options.Select((o, i) => o with { IsCorrect = i == cIdx }).ToList();
+            form = form with { Options = opts };
+            return Task.CompletedTask;
+        }
+        form = field switch
+        {
+            nameof(Q.QuestionForm.Text) => form with { Text = value ?? string.Empty },
+            nameof(Q.QuestionForm.CategoryId) when Guid.TryParse(value, out var g) => form with { CategoryId = g },
+            nameof(Q.QuestionForm.Difficulty) when int.TryParse(value, out var n) => form with { Difficulty = n },
+            nameof(Q.QuestionForm.AcademicLevel) => form with { AcademicLevel = value ?? string.Empty },
+            nameof(Q.QuestionForm.AgeMin) when int.TryParse(value, out var n) => form with { AgeMin = n },
+            nameof(Q.QuestionForm.AgeMax) when int.TryParse(value, out var n) => form with { AgeMax = n },
+            nameof(Q.QuestionForm.TimePerQuestion) when int.TryParse(value, out var n) => form with { TimePerQuestion = n },
+            nameof(Q.QuestionForm.Explanation) => form with { Explanation = string.IsNullOrWhiteSpace(value) ? null : value },
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleUpdate(Q.QuestionForm _)
+    {
+        if (form is null) return;
+        if (isReadOnly) { generalError = "Pregunta en uso — no se puede editar."; return; }
+        fieldErrors.Clear();
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            var legacyForm = new QuizArena.Admin.Client.Models.QuestionForm(form.Text, form.CategoryId, form.Difficulty, form.AcademicLevel, form.AgeMin, form.AgeMax, form.Options.Select(o => new QuizArena.Admin.Client.Models.OptionForm(o.Text, o.IsCorrect)).ToList(), form.Explanation, form.TimePerQuestion);
+            await QuestionsService.UpdateQuestionAsync(Id, legacyForm);
+            Navigation.NavigateTo($"/admin/questions/{Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code == "ConcurrencyConflict") generalError = "Conflicto de concurrencia — recargue.";
+            else if (ex.ErrorView.Code == "QuestionInUse") generalError = "Pregunta en uso — no se puede editar.";
+            else
+            {
+                if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+                generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            }
+        }
+        finally { isSubmitting = false; }
+    }
+}

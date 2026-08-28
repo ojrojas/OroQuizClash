@@ -1,0 +1,104 @@
+@page "/admin/questions/{Id:guid}"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using QuizArena.Admin.Client.Models
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Questions
+@inject IQuestionsService QuestionsService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalle pregunta — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (detail is not null)
+{
+    <h1>@detail.Text</h1>
+    <QuestionStateBadge State="@MapStatus(detail.Status)" />
+    <p>Categoría: @detail.CategoryId | Dificultad: @detail.Difficulty</p>
+
+    <QuizCard Title="Respuestas (4, 1 correcta)">
+        <div style="display:grid;gap:var(--space-2);">
+            @for (int i = 0; i < 4; i++)
+            {
+                var idx = i;
+                <div style="display:flex;gap:var(--space-2);align-items:center;">
+                    <span>@((char)('A'+idx)):</span>
+                    <span style="@(IsCorrect(idx) ? "font-weight:600;color:var(--color-success-text);" : "")">@GetOptionText(idx)</span>
+                    @if (IsCorrect(idx)) { <QuizBadge Label="Correcta" Variant="success" /> }
+                </div>
+            }
+        </div>
+        @if (!string.IsNullOrEmpty(GetExplanation(detail))) { <p><strong>Explicación:</strong> @GetExplanation(detail)</p> }
+        @if (detail.InUseByLiveGame) { <p role="alert">En uso en juego activo — edición limitada</p> }
+    </QuizCard>
+
+    <QuestionTransitionsBar State="@MapStatus(detail.Status)" InUseByLiveGame="@detail.InUseByLiveGame" RowVersion="@rowVersion" OnTransition="HandleTransition" />
+
+    @if (!string.IsNullOrEmpty(error)) { <div class="validation-errors" role="alert">@error</div> }
+}
+else
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private QuestionSummary? detail;
+    private bool isLoading = true;
+    private string error = string.Empty;
+    private string rowVersion = string.Empty;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            detail = await QuestionsService.GetQuestionAsync(Id);
+            rowVersion = detail.Id.ToString();
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+
+    private QuizArena.Admin.Client.Models.Questions.QuestionStateView MapStatus(QuestionStatusView s) => s switch
+    {
+        QuestionStatusView.Active => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Active,
+        QuestionStatusView.Inactive => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Inactive,
+        QuestionStatusView.Archived => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Archived,
+        _ => QuizArena.Admin.Client.Models.Questions.QuestionStateView.Draft
+    };
+
+    private string GetOptionText(int idx) => "Opción " + (char)('A'+idx);
+    private bool IsCorrect(int idx) => idx == 1; // placeholder: B is correct in mock
+    private string GetExplanation(QuestionSummary d) => "";
+    private int GetTime(QuestionSummary d) => 30;
+    private string GetLevel(QuestionSummary d) => "Secundaria";
+    private string GetAge(QuestionSummary d) => "12-18";
+
+    private async Task HandleTransition((string Action, string RowVersion) args)
+    {
+        if (detail is null) return;
+        try
+        {
+            switch (args.Action)
+            {
+                case "activate":
+                    await QuestionsService.ActivateQuestionAsync(Id);
+                    break;
+                case "deactivate":
+                    await QuestionsService.DeactivateQuestionAsync(Id);
+                    break;
+                case "delete":
+                    await QuestionsService.ArchiveQuestionAsync(Id);
+                    Navigation.NavigateTo("/admin/questions/list");
+                    return;
+            }
+            detail = await QuestionsService.GetQuestionAsync(Id);
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+    }
+}

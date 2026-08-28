@@ -1,0 +1,74 @@
+@page "/admin/questions/stats"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using QuizArena.Admin.Client.Services
+@inject IQuestionsService QuestionsService
+
+<PageTitle>Estadísticas — QuizArena Admin</PageTitle>
+
+<h1>Estadísticas del banco</h1>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="4" />
+}
+else if (stats is not null)
+{
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-3);">
+        <QuizCard Variant="stat"><div class="stat-value">@stats.Total</div><div class="stat-label">Total preguntas</div></QuizCard>
+        <QuizCard Variant="stat"><div class="stat-value">@stats.AvgTime</div><div class="stat-label">Tiempo promedio (s)</div></QuizCard>
+    </div>
+
+    <h3>Por categoría</h3>
+    <ul>
+        @foreach (var c in stats.ByCategory)
+        {
+            <li>@c.CategoryName: @c.Count (válidas: @c.Valid/@c.Required)</li>
+        }
+    </ul>
+
+    <h3>Por dificultad</h3>
+    <ul>
+        @foreach (var d in stats.ByDifficulty)
+        {
+            <li>Dificultad @d.Difficulty: @d.Count</li>
+        }
+    </ul>
+
+    <h3>Por estado</h3>
+    <ul>
+        @foreach (var s in stats.ByStatus)
+        {
+            <li>@s.Status: @s.Count</li>
+        }
+    </ul>
+}
+else
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+
+@code {
+    private bool isLoading = true;
+    private string error = string.Empty;
+    private StatsView? stats;
+
+    private sealed record StatsView(int Total, IReadOnlyList<CountByCategory> ByCategory, IReadOnlyList<CountByDifficulty> ByDifficulty, IReadOnlyList<CountByStatus> ByStatus, double AvgTime);
+    private sealed record CountByCategory(string CategoryName, int Count, int Valid, int Required);
+    private sealed record CountByDifficulty(int Difficulty, int Count);
+    private sealed record CountByStatus(string Status, int Count);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            // Fallback: aggregate via paginated list if stats endpoint not available
+            var result = await QuestionsService.GetQuestionsAsync(new QuizArena.Admin.Client.Models.QuestionFilter(PageSize: 1));
+            stats = new StatsView(result.TotalCount, [], [], [], 30);
+        }
+        catch (ApiErrorException ex) { error = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+}

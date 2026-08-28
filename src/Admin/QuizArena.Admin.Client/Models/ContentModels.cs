@@ -141,7 +141,8 @@ public sealed record QuestionForm(
     int AgeMin,
     int AgeMax,
     IReadOnlyList<OptionForm> Options,
-    string? Explanation = null)
+    string? Explanation = null,
+    int TimePerQuestion = 30)
 {
     public IReadOnlyDictionary<string, string[]> Validate()
     {
@@ -152,6 +153,17 @@ public sealed record QuestionForm(
             errors[nameof(CategoryId)] = ["Category is required."];
         if (Difficulty is < 1 or > 5)
             errors[nameof(Difficulty)] = ["Difficulty must be 1-5."];
+        var level = AcademicLevel?.Trim() ?? string.Empty;
+        if (level.Length < 2 || level.Length > 100)
+            errors[nameof(AcademicLevel)] = ["Academic level must be 2-100 characters."];
+        if (AgeMin is < 0 or > 120)
+            errors[nameof(AgeMin)] = ["Minimum age must be 0-120."];
+        if (AgeMax is < 0 or > 120 || AgeMax < AgeMin)
+            errors[nameof(AgeMax)] = ["Maximum age must be 0-120 and at least the minimum age."];
+        if (TimePerQuestion is < 5 or > 300)
+            errors[nameof(TimePerQuestion)] = ["Time per question must be 5-300 seconds."];
+        if (Explanation is not null && Explanation.Length > 1000)
+            errors[nameof(Explanation)] = ["Explanation must be at most 1000 characters."];
         if (Options is null || Options.Count != 4)
             errors[nameof(Options)] = ["Exactly 4 answer options are required."];
         else

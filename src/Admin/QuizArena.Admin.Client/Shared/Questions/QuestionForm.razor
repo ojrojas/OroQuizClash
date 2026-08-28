@@ -1,0 +1,78 @@
+@using QuizArena.Admin.Client.Models
+@using ModelQ = QuizArena.Admin.Client.Models.Questions
+@using QuizArena.Admin.Client.Services
+
+<div class="question-form" role="form" aria-label="Formulario de pregunta">
+    <QuizInput Id="q-text" Label="Pregunta *" Required="true" Value="@Form.Text" ValueChanged="@(v => Update(nameof(Form.Text), v ?? string.Empty))" Error="@Err(nameof(Form.Text))" Disabled="@IsReadOnly" />
+    <QuizSelect Id="q-category" Label="Categoría *" Required="true" Value="@Form.CategoryId.ToString()" ValueChanged="@(v => Update(nameof(Form.CategoryId), v ?? string.Empty))" Options="@categoryOptions" Error="@Err(nameof(Form.CategoryId))" Disabled="@IsReadOnly" Placeholder="Seleccione categoría" />
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);">
+        <QuizSelect Id="q-difficulty" Label="Dificultad" Value="@Form.Difficulty.ToString()" ValueChanged="@(v => Update(nameof(Form.Difficulty), v ?? string.Empty))" Options="@difficultyOptions" Disabled="@IsReadOnly" />
+        <QuizInput Id="q-level" Label="Nivel académico *" Required="true" Value="@Form.AcademicLevel" ValueChanged="@(v => Update(nameof(Form.AcademicLevel), v ?? string.Empty))" Error="@Err(nameof(Form.AcademicLevel))" Disabled="@IsReadOnly" />
+        <QuizInput Id="q-amin" Label="Edad mínima" Type="number" Value="@Form.AgeMin.ToString()" ValueChanged="@(v => Update(nameof(Form.AgeMin), v ?? string.Empty))" Disabled="@IsReadOnly" />
+        <QuizInput Id="q-amax" Label="Edad máxima" Type="number" Value="@Form.AgeMax.ToString()" ValueChanged="@(v => Update(nameof(Form.AgeMax), v ?? string.Empty))" Disabled="@IsReadOnly" />
+        <QuizInput Id="q-time" Label="Tiempo (s)" Type="number" Value="@Form.TimePerQuestion.ToString()" ValueChanged="@(v => Update(nameof(Form.TimePerQuestion), v ?? string.Empty))" Error="@Err(nameof(Form.TimePerQuestion))" Disabled="@IsReadOnly" />
+    </div>
+
+    <QuizInput Id="q-explanation" Label="Explicación" Value="@(Form.Explanation ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Explanation), v))" Helper="0–1000 caracteres" Disabled="@IsReadOnly" Error="@Err(nameof(Form.Explanation))" />
+
+    <div class="answers-section" style="margin-top:var(--space-4);">
+        <h3>Respuestas (4 requeridas, 1 correcta)</h3>
+        @for (int i = 0; i < Form.Options.Count; i++)
+        {
+            var idx = i;
+            var opt = Form.Options[idx];
+            <div style="display:grid;grid-template-columns:1fr auto;gap:var(--space-2);align-items:center;margin-bottom:var(--space-2);">
+                <QuizInput Id="@($"opt-{idx}")" Label="@($"Respuesta {(char)('A'+idx)}")" Value="@opt.Text" ValueChanged="@(v => UpdateOption(idx, v ?? string.Empty))" Disabled="@IsReadOnly" Error="@Err($"Options[{idx}]")" />
+                <label style="display:flex;align-items:center;gap:var(--space-1);min-width:44px;min-height:44px;">
+                    <input type="radio" name="correct" checked="@opt.IsCorrect" @onchange="() => SetCorrect(idx)" disabled="@IsReadOnly" aria-label="Correcta" />
+                    Correcta
+                </label>
+            </div>
+        }
+        @if (FieldErrors.TryGetValue("Options", out var optErr)) { <div class="validation-message" role="alert">@string.Join(", ", optErr)</div> }
+    </div>
+
+    @foreach (var kv in FieldErrors.Where(kv => !new[] { "Text","CategoryId","Difficulty","AcademicLevel","AgeMin","AgeMax","TimePerQuestion","Explanation","Options" }.Contains(kv.Key)))
+    {
+        <div class="validation-message" role="alert">@kv.Key: @string.Join(", ", kv.Value)</div>
+    }
+
+    <div style="margin-top:var(--space-4);">
+        <QuizButton Variant="primary" OnClick="HandleSubmit" Disabled="@IsReadOnly" Loading="@IsSubmitting">Guardar pregunta</QuizButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ModelQ.QuestionForm Form { get; set; } = default!;
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string[]> FieldErrors { get; set; } = new Dictionary<string, string[]>();
+    [Parameter] public EventCallback<ModelQ.QuestionForm> OnSubmit { get; set; }
+    [Parameter] public EventCallback<(string Field, string? Value)> OnFieldChanged { get; set; }
+
+    private IReadOnlyList<QuizSelect.OptionDef> categoryOptions = [];
+    private IReadOnlyList<QuizSelect.OptionDef> difficultyOptions = [new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
+
+    private string? Err(string f) => FieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+
+    private Task Update(string field, string? value) => OnFieldChanged.InvokeAsync((field, value));
+
+    private Task UpdateOption(int idx, string text)
+    {
+        var opts = Form.Options.ToList();
+        opts[idx] = opts[idx] with { Text = text };
+        // Need to update via parent; for simplicity, send as field "Options"
+        // Parent will handle reconstruction
+        return OnFieldChanged.InvokeAsync(($"Options[{idx}]", text));
+    }
+
+    private Task SetCorrect(int idx)
+    {
+        var opts = Form.Options.Select((o, i) => o with { IsCorrect = i == idx }).ToList();
+        // Send special field to indicate correct change
+        return OnFieldChanged.InvokeAsync(("CorrectIndex", idx.ToString()));
+    }
+
+    private Task HandleSubmit(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnSubmit.InvokeAsync(Form);
+}
