@@ -1,0 +1,81 @@
+@using QuizArena.Admin.Client.Models.Rewards
+
+<tr class="redemption-row">
+    <td>@RewardName</td>
+    <td>@PlayerName</td>
+    <td>@Cost</td>
+    <td><QuizBadge Variant="@Variant" Label="@RedemptionStateMap.DisplayName(Status)" /></td>
+    <td style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
+        @if (Status == RedemptionStateView.Requested)
+        {
+            <QuizButton Size="sm" Variant="primary" OnClick="() => OnApprove.InvokeAsync(RowVersion)" Loading="@IsProcessing" style="min-height:44px;">Aprobar</QuizButton>
+            <QuizButton Size="sm" Variant="ghost" OnClick="() => showReject = true" style="min-height:44px;">Rechazar</QuizButton>
+            <QuizButton Size="sm" Variant="destructive" OnClick="() => OnCancel.InvokeAsync(RowVersion)" style="min-height:44px;">Cancelar</QuizButton>
+        }
+        @if (Status == RedemptionStateView.Approved)
+        {
+            <QuizButton Size="sm" Variant="primary" OnClick="() => OnDeliver.InvokeAsync(RowVersion)" style="min-height:44px;">Entregar</QuizButton>
+            <QuizButton Size="sm" Variant="destructive" OnClick="() => OnCancel.InvokeAsync(RowVersion)" style="min-height:44px;">Cancelar</QuizButton>
+        }
+        @if (IsConsolation)
+        {
+            <QuizBadge Variant="info" Label="Consolación" />
+        }
+    </td>
+</tr>
+
+@if (showReject)
+{
+    <tr><td colspan="5">
+        <div style="display:flex;gap:var(--space-2);align-items:center;padding:var(--space-3);background:var(--color-muted);border-radius:var(--radius-md);">
+            <QuizInput Id="@($"reject-reason-{RedemptionId}")" Label="Motivo" Value="@rejectReason" ValueChanged="@(v => rejectReason = v ?? string.Empty)" Placeholder="Motivo de rechazo" />
+            <QuizButton Size="sm" Variant="primary" OnClick="HandleReject" style="min-height:44px;">Confirmar</QuizButton>
+            <QuizButton Size="sm" Variant="ghost" OnClick="() => showReject = false" style="min-height:44px;">Cancelar</QuizButton>
+        </div>
+    </td></tr>
+}
+
+<QuizModal Open="@showConfirm" Title="Confirmar" OnClose="() => showConfirm = false">
+    <ChildContent><p>¿Confirmar acción?</p></ChildContent>
+    <Footer>
+        <QuizButton Variant="ghost" OnClick="() => showConfirm = false">Cancelar</QuizButton>
+        <QuizButton Variant="primary" OnClick="ConfirmAction">Confirmar</QuizButton>
+    </Footer>
+</QuizModal>
+
+@code {
+    [Parameter, EditorRequired] public Guid RedemptionId { get; set; }
+    [Parameter, EditorRequired] public string RewardName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string PlayerName { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public int Cost { get; set; }
+    [Parameter, EditorRequired] public RedemptionStateView Status { get; set; }
+    [Parameter, EditorRequired] public string RowVersion { get; set; } = string.Empty;
+    [Parameter] public bool IsConsolation { get; set; }
+    [Parameter] public bool IsProcessing { get; set; }
+    [Parameter] public EventCallback<string> OnApprove { get; set; }
+    [Parameter] public EventCallback<(string RowVersion, string Reason)> OnReject { get; set; }
+    [Parameter] public EventCallback<string> OnDeliver { get; set; }
+    [Parameter] public EventCallback<string> OnCancel { get; set; }
+
+    private bool showReject;
+    private string rejectReason = string.Empty;
+    private bool showConfirm;
+    private string? pendingAction;
+
+    private string Variant => Status switch
+    {
+        RedemptionStateView.Requested => "warning",
+        RedemptionStateView.Approved => "info",
+        RedemptionStateView.Delivered => "success",
+        _ => "neutral"
+    };
+
+    private async Task HandleReject()
+    {
+        await OnReject.InvokeAsync((RowVersion, rejectReason));
+        showReject = false;
+        rejectReason = string.Empty;
+    }
+
+    private Task ConfirmAction() { showConfirm = false; return Task.CompletedTask; }
+}

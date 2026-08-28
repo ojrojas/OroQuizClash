@@ -1,0 +1,25 @@
+@using QuizArena.Admin.Client.Models.Rewards
+
+<span class="reward-state-badge state-@Status.ToString().ToLower()" title="@RewardStateMap.DisplayName(Status)" style="display:inline-flex;gap:var(--space-2);align-items:center;">
+    <QuizBadge Variant="@Variant" Label="@RewardStateMap.DisplayName(Status)" />
+    @if (IsEligible)
+    {
+        <QuizBadge Variant="success" Label="Elegible" />
+    }
+    else if (Status == RewardStateView.Active)
+    {
+        <QuizBadge Variant="warning" Label="No elegible" />
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public RewardStateView Status { get; set; }
+    [Parameter] public bool IsEligible { get; set; }
+    private string Variant => Status switch
+    {
+        RewardStateView.Active => "success",
+        RewardStateView.Inactive => "warning",
+        RewardStateView.Archived => "neutral",
+        _ => "neutral"
+    };
+}

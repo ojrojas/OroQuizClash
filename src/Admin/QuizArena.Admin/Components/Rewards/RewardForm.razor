@@ -1,0 +1,88 @@
+@using RewardsModels = QuizArena.Admin.Client.Models.Rewards
+@using QuizArena.Admin.Client.Services
+
+<div class="reward-form" role="form" aria-label="Formulario de premio" style="display:flex;flex-direction:column;gap:var(--space-4);">
+    @if (IsReadOnly)
+    {
+        <div class="form-readonly-banner" role="alert" style="background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);">Premio archivado — solo lectura</div>
+    }
+
+    <QuizInput Id="rw-name" Label="Nombre *" Required="true" Value="@Form.Name" ValueChanged="@(v => Update(nameof(Form.Name), v ?? string.Empty))" Error="@Err(nameof(Form.Name))" Disabled="@IsReadOnly" />
+    <div aria-live="polite" style="min-height:1px;"></div>
+
+    <QuizInput Id="rw-desc" Label="Descripción" Value="@(Form.Description ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Description), v))" Error="@Err(nameof(Form.Description))" Disabled="@IsReadOnly" />
+
+    <QuizSelect Id="rw-type" Label="Tipo *" Required="true" Value="@Form.Type.ToString()" ValueChanged="@(v => UpdateType(v))" Options="@typeOptions" Error="@Err(nameof(Form.Type))" Disabled="@IsReadOnly" />
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);">
+        <QuizInput Id="rw-cost" Label="Costo en puntos *" Required="true" Type="number" Value="@Form.Cost.ToString()" ValueChanged="@(v => Update(nameof(Form.Cost), v ?? string.Empty))" Error="@Err(nameof(Form.Cost))" Disabled="@IsReadOnly" />
+        <QuizInput Id="rw-stock" Label="Stock" Type="number" Value="@Form.Stock.ToString()" ValueChanged="@(v => Update(nameof(Form.Stock), v ?? string.Empty))" Error="@Err(nameof(Form.Stock))" Disabled="@IsReadOnly" Helper="0 = ilimitado para Digital/Voucher/Consolación; para Físico/Monetario 0 = sin stock" />
+    </div>
+    @if (FieldErrors.TryGetValue("Stock", out var stockErr) == false && Form.Stock == 0)
+    {
+        <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);" role="note">
+            @(RewardsModels.RewardTypeMap.IsStockUnlimitedAllowed(Form.Type) ? "Stock 0 = ilimitado para este tipo." : "Stock 0 = sin stock para este tipo.")
+        </div>
+    }
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-3);">
+        <QuizInput Id="rw-from" Label="Disponible desde" Type="datetime-local" Value="@(Form.AvailableFrom?.ToString("yyyy-MM-ddTHH:mm") ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.AvailableFrom), v))" Error="@Err("Availability")" Disabled="@IsReadOnly" />
+        <QuizInput Id="rw-to" Label="Disponible hasta" Type="datetime-local" Value="@(Form.AvailableTo?.ToString("yyyy-MM-ddTHH:mm") ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.AvailableTo), v))" Error="@Err("Availability")" Disabled="@IsReadOnly" />
+    </div>
+    @if (FieldErrors.TryGetValue("Availability", out var availErr))
+    {
+        <div class="validation-message" role="alert" aria-live="assertive" style="color:var(--color-destructive-text);font-size:var(--typography-label-m-size);">@string.Join(", ", availErr)</div>
+    }
+    @if (ConcurrencyError is not null)
+    {
+        <div class="validation-message" role="alert" aria-live="assertive" style="background:var(--color-warning);padding:var(--space-3);border-radius:var(--radius-md);">
+            @ConcurrencyError
+            <QuizButton Size="sm" Variant="ghost" OnClick="OnReload">Recargar</QuizButton>
+        </div>
+    }
+
+    @foreach (var kv in FieldErrors.Where(kv => new[] { "Name","Description","Type","Cost","Stock","Availability" }.Contains(kv.Key) == false))
+    {
+        <div class="validation-message" role="alert" aria-live="polite">@kv.Key: @string.Join(", ", kv.Value)</div>
+    }
+
+    <div style="margin-top:var(--space-4);display:flex;gap:var(--space-3);">
+        <QuizButton Variant="primary" OnClick="HandleSubmit" Disabled="@IsReadOnly" Loading="@IsSubmitting" style="min-height:44px;min-width:44px;">Guardar premio</QuizButton>
+        @if (OnCancel.HasDelegate)
+        {
+            <QuizButton Variant="ghost" OnClick="HandleCancel" Disabled="@IsSubmitting" style="min-height:44px;min-width:44px;">Cancelar</QuizButton>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public RewardsModels.RewardForm Form { get; set; } = default!;
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string[]> FieldErrors { get; set; } = new Dictionary<string, string[]>();
+    [Parameter] public string? ConcurrencyError { get; set; }
+    [Parameter] public EventCallback<RewardsModels.RewardForm> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnReload { get; set; }
+    [Parameter] public EventCallback<(string Field, string? Value)> OnFieldChanged { get; set; }
+
+    private IReadOnlyList<QuizSelect.OptionDef> typeOptions = RewardCatalogs.TypeOptions.Select(o => new QuizSelect.OptionDef(o.Value, o.Label)).ToList();
+
+    private string? Err(string f) => FieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
+
+    private Task Update(string field, string? value) => OnFieldChanged.InvokeAsync((field, value));
+
+    private Task UpdateType(string? value)
+    {
+        if (Enum.TryParse<RewardsModels.RewardType>(value, true, out var t) || (value != null && RewardsModels.RewardTypeMap.FromApi(value) is var parsed))
+        {
+            // Map string value from select (which is canonical ToApi like MONETARY) back to enum
+            var mapped = RewardsModels.RewardTypeMap.FromApi(value);
+            return OnFieldChanged.InvokeAsync((nameof(Form.Type), mapped.ToString()));
+        }
+        return OnFieldChanged.InvokeAsync((nameof(Form.Type), value));
+    }
+
+    private Task HandleSubmit() => OnSubmit.InvokeAsync(Form);
+    private Task HandleCancel() => OnCancel.InvokeAsync();
+}

@@ -1,0 +1,37 @@
+@using QuizArena.Admin.Client.Models.Rewards
+
+<span class="reward-availability-badge" title="@Tooltip" style="display:inline-flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
+    @if (IsUnlimited)
+    {
+        <QuizBadge Variant="info" Label="Stock ilimitado" />
+    }
+    else if (Stock == 0)
+    {
+        <QuizBadge Variant="destructive" Label="Sin stock" />
+    }
+    else
+    {
+        <QuizBadge Variant="neutral" Label="@($"Stock {Stock}")" />
+    }
+    @if (AvailableFrom.HasValue || AvailableTo.HasValue)
+    {
+        <span style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">
+            @(AvailableFrom?.ToString("dd/MM/yyyy") ?? "—") → @(AvailableTo?.ToString("dd/MM/yyyy") ?? "—")
+        </span>
+    }
+    @if (!IsEligible && Status == RewardStateView.Active)
+    {
+        <QuizBadge Variant="warning" Label="Fuera de disponibilidad" />
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public int Stock { get; set; }
+    [Parameter, EditorRequired] public RewardType Type { get; set; }
+    [Parameter] public DateTimeOffset? AvailableFrom { get; set; }
+    [Parameter] public DateTimeOffset? AvailableTo { get; set; }
+    [Parameter, EditorRequired] public RewardStateView Status { get; set; }
+    [Parameter, EditorRequired] public bool IsEligible { get; set; }
+    private bool IsUnlimited => Stock == 0 && RewardTypeMap.IsStockUnlimitedAllowed(Type);
+    private string Tooltip => IsEligible ? "Elegible para canje" : Status != RewardStateView.Active ? "No elegible: inactivo" : Stock == 0 && !IsUnlimited ? "No elegible: sin stock" : !AvailabilityInfo.IsInWindow(AvailableFrom, AvailableTo, DateTimeOffset.UtcNow) ? "Fuera de disponibilidad" : "No elegible";
+}

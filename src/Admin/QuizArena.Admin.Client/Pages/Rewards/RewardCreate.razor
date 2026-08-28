@@ -1,0 +1,82 @@
+@page "/admin/rewards/new"
+@attribute [Authorize(Policy = AdminPolicies.RewardManagerOrAdmin)]
+@using RewardsModels = QuizArena.Admin.Client.Models.Rewards
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Rewards
+@inject IRewardsService RewardsService
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Crear premio — QuizArena Admin</PageTitle>
+
+<h1>Crear premio</h1>
+
+@if (isSubmitting)
+{
+    <LoadingSkeleton Rows="4" />
+}
+else
+{
+    <RewardFormWrapper Form="@form" FieldErrors="@fieldErrors" ConcurrencyError="@concurrencyError" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" OnCancel="GoBack" IsSubmitting="@isSubmitting" />
+    @if (!string.IsNullOrEmpty(generalError))
+    {
+        <div class="validation-errors" role="alert" aria-live="polite" style="color:var(--color-destructive-text);margin-top:var(--space-3);">@generalError</div>
+    }
+}
+
+@code {
+    private RewardsModels.RewardForm form = new(string.Empty, null, RewardsModels.RewardType.Physical, 100, 10, null, null);
+    private Dictionary<string, string[]> fieldErrors = new();
+    private string generalError = string.Empty;
+    private string? concurrencyError;
+    private bool isSubmitting;
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        var (field, value) = args;
+        form = field switch
+        {
+            nameof(RewardsModels.RewardForm.Name) => form with { Name = value ?? string.Empty },
+            nameof(RewardsModels.RewardForm.Description) => form with { Description = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(RewardsModels.RewardForm.Type) when Enum.TryParse<RewardsModels.RewardType>(value, out var t) => form with { Type = t },
+            nameof(RewardsModels.RewardForm.Cost) when int.TryParse(value, out var n) => form with { Cost = n },
+            nameof(RewardsModels.RewardForm.Stock) when int.TryParse(value, out var n) => form with { Stock = n },
+            nameof(RewardsModels.RewardForm.AvailableFrom) when string.IsNullOrWhiteSpace(value) => form with { AvailableFrom = null },
+            nameof(RewardsModels.RewardForm.AvailableFrom) when DateTimeOffset.TryParse(value, out var d) => form with { AvailableFrom = d },
+            nameof(RewardsModels.RewardForm.AvailableTo) when string.IsNullOrWhiteSpace(value) => form with { AvailableTo = null },
+            nameof(RewardsModels.RewardForm.AvailableTo) when DateTimeOffset.TryParse(value, out var d) => form with { AvailableTo = d },
+            "Availability" => form,
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit(RewardsModels.RewardForm _)
+    {
+        fieldErrors.Clear();
+        generalError = string.Empty;
+        concurrencyError = null;
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            var result = await RewardsService.CreateRewardAsync(form);
+            Toasts.Success($"Premio creado: {result.Name} ({result.RowVersion[..Math.Min(6, result.RowVersion.Length)]})");
+            Navigation.NavigateTo("/admin/rewards");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+            generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            if (ex.ErrorView.Code == "401" || ex.ErrorView.Title.Contains("Session", StringComparison.OrdinalIgnoreCase))
+                generalError = "Sesión expirada — re-autenticar. Borrador preservado.";
+            if (ex.ErrorView.Code == "RewardAlreadyExists") fieldErrors["Name"] = ["Ya existe un premio con ese nombre."];
+            if (ex.ErrorView.Code == "ConcurrencyConflict") concurrencyError = "Conflicto de concurrencia — recargue.";
+        }
+        catch (Exception) { generalError = "No se pudo crear el premio. Reintente."; }
+        finally { isSubmitting = false; }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/admin/rewards");
+}

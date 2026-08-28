@@ -1,0 +1,172 @@
+@page "/admin/rewards/redemptions"
+@attribute [Authorize(Policy = AdminPolicies.RewardManagerOrAdmin)]
+@using RewardsModels = QuizArena.Admin.Client.Models.Rewards
+@using QuizArena.Admin.Client.Services
+@inject IRedemptionsService RedemptionsService
+@inject ToastService Toasts
+
+<PageTitle>Canjes — QuizArena Admin</PageTitle>
+
+<h1>Canjes</h1>
+
+<div style="display:flex;gap:var(--space-3);flex-wrap:wrap;align-items:end;margin-bottom:var(--space-4);">
+    <QuizSelect Id="f-status" Label="Estado" Value="@selectedStatus" ValueChanged="OnStatusChanged" Options="@statusOptions" Placeholder="Todos" />
+    <QuizSelect Id="f-type" Label="Tipo premio" Value="@selectedType" ValueChanged="OnTypeChanged" Options="@typeOptions" Placeholder="Todos" />
+    <QuizInput Id="f-search" Label="Buscar" Value="@search" ValueChanged="@(v => search = v ?? string.Empty)" Placeholder="Premio / Jugador" />
+    <QuizInput Id="f-player" Label="PlayerId" Value="@playerId" ValueChanged="@(v => playerId = v ?? string.Empty)" Placeholder="GUID" />
+    <QuizInput Id="f-from" Label="Desde" Type="date" Value="@from" ValueChanged="@(v => from = v ?? string.Empty)" />
+    <QuizInput Id="f-to" Label="Hasta" Type="date" Value="@to" ValueChanged="@(v => to = v ?? string.Empty)" />
+    <QuizButton Variant="primary" OnClick="() => LoadAsync()" style="min-height:44px;">Filtrar</QuizButton>
+</div>
+
+@if (state == PageState.Loading) { <LoadingSkeleton Rows="6" /> }
+else if (state == PageState.Error) { <ErrorState Message="@error" OnRetry="LoadAsync" /> }
+else if (redemptions.Count == 0) { <EmptyState Title="Sin canjes" Message="No hay canjes con esos filtros." /> }
+else
+{
+    <QuizTable Caption="Canjes" ColumnCount="6" IsEmpty="@(redemptions.Count==0)">
+        <HeaderCells><th>Premio</th><th>Jugador</th><th>Costo</th><th>Estado</th><th>Consolación</th><th>Acciones</th></HeaderCells>
+        <BodyRows>
+            @foreach (var rd in redemptions)
+            {
+                <tr>
+                    <td>@rd.RewardName</td>
+                    <td>@rd.PlayerName</td>
+                    <td>@rd.Cost</td>
+                    <td><QuizBadge Variant="@Variant(rd.Status)" Label="@RewardsModels.RedemptionStateMap.DisplayName(rd.Status)" /></td>
+                    <td>@(rd.IsConsolation ? "Sí" : "No")</td>
+                    <td style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
+                        @if (rd.Status == RewardsModels.RedemptionStateView.Requested)
+                        {
+                            <QuizButton Size="sm" Variant="primary" OnClick="() => Approve(rd)" Loading="@processing.Contains(rd.RedemptionId)" style="min-height:44px;">Aprobar</QuizButton>
+                            <QuizButton Size="sm" Variant="ghost" OnClick="() => BeginReject(rd)" style="min-height:44px;">Rechazar</QuizButton>
+                            <QuizButton Size="sm" Variant="destructive" OnClick="() => Cancel(rd)" style="min-height:44px;">Cancelar</QuizButton>
+                        }
+                        @if (rd.Status == RewardsModels.RedemptionStateView.Approved)
+                        {
+                            <QuizButton Size="sm" Variant="primary" OnClick="() => Deliver(rd)" style="min-height:44px;">Entregar</QuizButton>
+                            <QuizButton Size="sm" Variant="destructive" OnClick="() => Cancel(rd)" style="min-height:44px;">Cancelar</QuizButton>
+                        }
+                    </td>
+                </tr>
+            }
+        </BodyRows>
+    </QuizTable>
+    <div style="display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-4);">
+        <QuizButton Variant="ghost" Disabled="@(currentPage<=1)" OnClick="() => ChangePage(currentPage-1)" style="min-height:44px;">Anterior</QuizButton>
+        <span>P&#225;gina @(currentPage) de @(totalPages) (@(totalCount) total)</span>
+        <QuizButton Variant="ghost" Disabled="@(currentPage>=totalPages)" OnClick="() => ChangePage(currentPage+1)" style="min-height:44px;">Siguiente</QuizButton>
+    </div>
+}
+
+@if (showReject)
+{
+    <QuizModal Open="@showReject" Title="Rechazar canje" OnClose="() => showReject=false">
+        <ChildContent>
+            <QuizInput Id="reject-reason" Label="Motivo *" Required="true" Value="@rejectReason" ValueChanged="@(v => rejectReason = v ?? string.Empty)" />
+        </ChildContent>
+        <Footer>
+            <QuizButton Variant="ghost" OnClick="() => showReject=false">Cancelar</QuizButton>
+            <QuizButton Variant="primary" OnClick="ConfirmReject">Confirmar</QuizButton>
+        </Footer>
+    </QuizModal>
+}
+
+@code {
+    private enum PageState { Loading, Ready, Empty, Error }
+    private PageState state = PageState.Loading;
+    private string error = string.Empty;
+    private IReadOnlyList<RewardsModels.RewardRedemption> redemptions = [];
+    private int currentPage = 1; private int pageSize = 20; private int totalCount; private int totalPages => pageSize<=0?0:(int)Math.Ceiling(totalCount/(double)pageSize);
+    private string? selectedStatus; private string? selectedType; private string search = string.Empty; private string playerId = string.Empty; private string from = string.Empty; private string to = string.Empty;
+    private IReadOnlyList<QuizSelect.OptionDef> statusOptions = RewardCatalogs.RedemptionStatusOptions.Select(o => new QuizSelect.OptionDef(o.Value, o.Label)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> typeOptions = RewardCatalogs.TypeOptions.Select(o => new QuizSelect.OptionDef(o.Value, o.Label)).ToList();
+    private HashSet<Guid> processing = new();
+    private bool showReject; private RewardsModels.RewardRedemption? pendingReject; private string rejectReason = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try
+        {
+            RewardsModels.RedemptionStateView? status = string.IsNullOrWhiteSpace(selectedStatus) ? null : RewardsModels.RedemptionStateMap.FromApi(selectedStatus);
+            RewardsModels.RewardType? type = string.IsNullOrWhiteSpace(selectedType) ? null : RewardsModels.RewardTypeMap.FromApi(selectedType);
+            Guid? pid = Guid.TryParse(playerId, out var g) ? g : null;
+            DateTimeOffset? fromDt = DateTimeOffset.TryParse(from, out var fd) ? fd : null;
+            DateTimeOffset? toDt = DateTimeOffset.TryParse(to, out var td) ? td : null;
+            var filter = new RewardsModels.RedemptionFilter(Status: status, Type: type, PlayerId: pid, Search: string.IsNullOrWhiteSpace(search)?null:search, From: fromDt, To: toDt, Page: currentPage, PageSize: pageSize);
+            var result = await RedemptionsService.GetRedemptionsV2Async(filter);
+            redemptions = result.Items;
+            totalCount = result.TotalCount;
+            state = redemptions.Count==0 ? PageState.Empty : PageState.Ready;
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code=="403") error="Access Denied — GAME_MANAGER 403";
+            else error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            state = PageState.Error;
+        }
+        catch { error="No se pudo cargar."; state=PageState.Error; }
+    }
+
+    private async Task OnStatusChanged(string? v) { selectedStatus=v; currentPage=1; await LoadAsync(); }
+    private async Task OnTypeChanged(string? v) { selectedType=v; currentPage=1; await LoadAsync(); }
+    private async Task ChangePage(int p) { currentPage=p; await LoadAsync(); }
+
+    private async Task Approve(RewardsModels.RewardRedemption rd)
+    {
+        if (rd.RewardType==RewardsModels.RewardType.Consolation) { Toasts.Error("Error", "Consolation solo via regla — InvalidRewardType"); return; }
+        processing.Add(rd.RedemptionId);
+        try { await RedemptionsService.ApproveAsync(rd.RedemptionId, rd.RowVersion, Guid.NewGuid().ToString()); await LoadAsync(); Toasts.Success("Aprobado"); }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code=="RewardOutOfStock") Toasts.Error("Sin stock", ex.ErrorView.Detail ?? "RewardOutOfStock");
+            else if (ex.ErrorView.Code=="ConcurrencyConflict") Toasts.Error("Conflicto", "ConcurrencyConflict — recargue");
+            else Toasts.Error("Error", ex.ErrorView.Detail ?? ex.ErrorView.Title);
+        }
+        finally { processing.Remove(rd.RedemptionId); }
+    }
+
+    private void BeginReject(RewardsModels.RewardRedemption rd) { pendingReject=rd; rejectReason=string.Empty; showReject=true; }
+    private async Task ConfirmReject()
+    {
+        if (pendingReject is null) return;
+        if (string.IsNullOrWhiteSpace(rejectReason)) { Toasts.Error("Error","Motivo requerido"); return; }
+        var rd = pendingReject;
+        showReject=false;
+        processing.Add(rd.RedemptionId);
+        try { await RedemptionsService.RejectAsync(rd.RedemptionId, rd.RowVersion, Guid.NewGuid().ToString(), rejectReason); await LoadAsync(); Toasts.Success("Rechazado"); }
+        catch (ApiErrorException ex) { Toasts.Error("Error", ex.ErrorView.Detail ?? ex.ErrorView.Title); }
+        finally { processing.Remove(rd.RedemptionId); pendingReject=null; }
+    }
+
+    private async Task Deliver(RewardsModels.RewardRedemption rd)
+    {
+        processing.Add(rd.RedemptionId);
+        try { await RedemptionsService.DeliverAsync(rd.RedemptionId, rd.RowVersion, Guid.NewGuid().ToString()); await LoadAsync(); Toasts.Success("Entregado"); }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code=="InvalidRedemptionState") Toasts.Error("Estado inválido", "InvalidRedemptionState");
+            else Toasts.Error("Error", ex.ErrorView.Detail ?? ex.ErrorView.Title);
+        }
+        finally { processing.Remove(rd.RedemptionId); }
+    }
+
+    private async Task Cancel(RewardsModels.RewardRedemption rd)
+    {
+        processing.Add(rd.RedemptionId);
+        try { await RedemptionsService.CancelAsync(rd.RedemptionId, rd.RowVersion, Guid.NewGuid().ToString(), null); await LoadAsync(); Toasts.Success("Cancelado"); }
+        catch (ApiErrorException ex) { Toasts.Error("Error", ex.ErrorView.Detail ?? ex.ErrorView.Title); }
+        finally { processing.Remove(rd.RedemptionId); }
+    }
+
+    private static string Variant(RewardsModels.RedemptionStateView s) => s switch
+    {
+        RewardsModels.RedemptionStateView.Requested => "warning",
+        RewardsModels.RedemptionStateView.Approved => "info",
+        RewardsModels.RedemptionStateView.Delivered => "success",
+        _ => "neutral"
+    };
+}

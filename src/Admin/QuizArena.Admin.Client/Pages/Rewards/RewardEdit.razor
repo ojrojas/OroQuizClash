@@ -1,0 +1,118 @@
+@page "/admin/rewards/{Id:guid}/edit"
+@attribute [Authorize(Policy = AdminPolicies.RewardManagerOrAdmin)]
+@using RewardsModels = QuizArena.Admin.Client.Models.Rewards
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.Rewards
+@inject IRewardsService RewardsService
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Editar premio — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (loadError is not null)
+{
+    <ErrorState Message="@loadError" OnRetry="LoadAsync" />
+}
+else if (form is not null)
+{
+    <h1>Editar premio</h1>
+    <p style="color:var(--color-muted-foreground);font-size:var(--typography-caption);">Estado: @(detail?.Status) — @(detail?.RowVersion[..Math.Min(8, detail.RowVersion.Length)])</p>
+    <RewardFormWrapper Form="@form" FieldErrors="@fieldErrors" ConcurrencyError="@concurrencyError" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleUpdate" OnCancel="GoBack" OnReload="LoadAsync" IsReadOnly="@isReadOnly" IsSubmitting="@isSubmitting" />
+    @if (isReadOnly) { <div class="form-readonly-banner" role="alert" style="background:var(--color-muted);padding:var(--space-3);border-radius:var(--radius-md);margin-top:var(--space-3);">Premio archivado — solo lectura</div> }
+    @if (!string.IsNullOrEmpty(generalError)) { <div class="validation-errors" role="alert" style="color:var(--color-destructive-text);">@generalError</div> }
+}
+else
+{
+    <EmptyState Title="No encontrado" Message="Premio no encontrado." />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private RewardsModels.RewardForm? form;
+    private RewardsModels.RewardDetail? detail;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? loadError;
+    private string generalError = string.Empty;
+    private string? concurrencyError;
+    private Dictionary<string, string[]> fieldErrors = new();
+    private bool isReadOnly;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        loadError = null;
+        fieldErrors.Clear();
+        concurrencyError = null;
+        try
+        {
+            detail = await RewardsService.GetRewardAsync(Id);
+            form = new RewardsModels.RewardForm(detail.Name, detail.Description, detail.Type, detail.Cost, detail.Stock, detail.AvailableFrom, detail.AvailableTo);
+            isReadOnly = detail.Status == RewardsModels.RewardStateView.Archived;
+        }
+        catch (ApiErrorException ex) { loadError = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+        finally { isLoading = false; }
+    }
+
+    private Task HandleFieldChanged((string Field, string? Value) args)
+    {
+        if (form is null) return Task.CompletedTask;
+        var (field, value) = args;
+        if (isReadOnly) return Task.CompletedTask;
+        form = field switch
+        {
+            nameof(RewardsModels.RewardForm.Name) => form with { Name = value ?? string.Empty },
+            nameof(RewardsModels.RewardForm.Description) => form with { Description = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(RewardsModels.RewardForm.Type) when Enum.TryParse<RewardsModels.RewardType>(value, out var t) => form with { Type = t },
+            nameof(RewardsModels.RewardForm.Cost) when int.TryParse(value, out var n) => form with { Cost = n },
+            nameof(RewardsModels.RewardForm.Stock) when int.TryParse(value, out var n) => form with { Stock = n },
+            nameof(RewardsModels.RewardForm.AvailableFrom) when string.IsNullOrWhiteSpace(value) => form with { AvailableFrom = null },
+            nameof(RewardsModels.RewardForm.AvailableFrom) when DateTimeOffset.TryParse(value, out var d) => form with { AvailableFrom = d },
+            nameof(RewardsModels.RewardForm.AvailableTo) when string.IsNullOrWhiteSpace(value) => form with { AvailableTo = null },
+            nameof(RewardsModels.RewardForm.AvailableTo) when DateTimeOffset.TryParse(value, out var d) => form with { AvailableTo = d },
+            _ => form
+        };
+        return Task.CompletedTask;
+    }
+
+    private void GoBack() => Navigation.NavigateTo($"/admin/rewards/{Id}");
+
+    private async Task HandleUpdate(RewardsModels.RewardForm _)
+    {
+        if (form is null || detail is null) return;
+        if (isReadOnly) { generalError = "Premio archivado — no se puede editar."; return; }
+        fieldErrors.Clear();
+        var validation = form.Validate();
+        if (validation.Count > 0) { fieldErrors = new(validation); return; }
+        isSubmitting = true;
+        try
+        {
+            var request = new RewardsModels.UpdateRewardRequest(form.Name, form.Description, form.Type, form.Cost, form.Stock, form.AvailableFrom, form.AvailableTo, detail.RowVersion);
+            var result = await RewardsService.UpdateRewardAsync(Id, request);
+            Toasts.Success($"Premio actualizado: {result.Name}");
+            Navigation.NavigateTo($"/admin/rewards/{Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.Code == "ConcurrencyConflict" || ex.ErrorView.Title.Contains("Concurrency", StringComparison.OrdinalIgnoreCase))
+            {
+                concurrencyError = "Conflicto de concurrencia — otro operador modificó el premio. Recargue.";
+                generalError = "Conflicto de concurrencia — recargue.";
+            }
+            else if (ex.ErrorView.Code == "RewardAlreadyExists") { fieldErrors["Name"] = ["Ya existe un premio con ese nombre."]; generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title; }
+            else if (ex.ErrorView.Code == "InvalidRewardState") generalError = "Estado no válido para editar.";
+            else
+            {
+                if (ex.ErrorView.FieldErrors is not null) fieldErrors = new(ex.ErrorView.FieldErrors);
+                generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            }
+        }
+        finally { isSubmitting = false; }
+    }
+}
