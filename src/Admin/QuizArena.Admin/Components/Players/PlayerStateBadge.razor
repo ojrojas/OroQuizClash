@@ -1,0 +1,17 @@
+@using PlayersModels = QuizArena.Admin.Client.Models.Players
+
+<span class="player-state-badge state-@State.ToString().ToLower()" title="@PlayersModels.PlayerStateMap.DisplayName(State)">
+    <QuizBadge Variant="@Variant" Label="@PlayersModels.PlayerStateMap.DisplayName(State)" />
+</span>
+
+@code {
+    [Parameter, EditorRequired] public PlayersModels.PlayerStateView State { get; set; }
+    private string Variant => State switch
+    {
+        PlayersModels.PlayerStateView.Active => "success",
+        PlayersModels.PlayerStateView.InGame => "info",
+        PlayersModels.PlayerStateView.Withdrawn => "warning",
+        PlayersModels.PlayerStateView.Inactive => "neutral",
+        _ => "neutral"
+    };
+}

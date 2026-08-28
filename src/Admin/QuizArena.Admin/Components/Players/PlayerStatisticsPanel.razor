@@ -1,0 +1,60 @@
+@using PlayersModels = QuizArena.Admin.Client.Models.Players
+
+<div class="player-statistics-panel" role="region" aria-label="Estadísticas" style="display:flex;flex-direction:column;gap:var(--space-4);">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="4" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ErrorState Message="@Error" OnRetry="OnRetry" />
+    }
+    else if (Statistics is null)
+    {
+        <EmptyState Title="Sin estadísticas" Message="No hay datos." />
+    }
+    else
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-4);">
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Total juegos</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;" aria-live="polite">@Statistics.TotalGames</div>
+            </div>
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Victorias</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;">@Statistics.Wins</div>
+                <div style="font-size:var(--typography-caption);">Top3: @Statistics.Top3</div>
+            </div>
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Promedio</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;">@Statistics.AverageScore.ToString("F1")</div>
+            </div>
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Precisión</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;">@((Statistics.AccuracyRate*100).ToString("F1"))%</div>
+            </div>
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Mejor racha</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;">@Statistics.BestStreak</div>
+            </div>
+            <div style="padding:var(--space-4);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);text-align:center;">
+                <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);">Tiempo medio</div>
+                <div style="font-size:var(--typography-heading-l);font-weight:700;">@Statistics.AverageTimePerQuestion.ToString(@"mm\:ss")</div>
+            </div>
+        </div>
+        <p style="font-size:var(--typography-caption);color:var(--color-muted-foreground);" aria-live="polite">Calculado: @Statistics.CalculatedAt.ToString("dd/MM/yyyy HH:mm") (server-side, snapshot)</p>
+        @if (Statistics.DistributionByCategory.Count>0)
+        {
+            <div style="font-size:var(--typography-caption);">
+                <strong>Por categoría:</strong> @string.Join(", ", Statistics.DistributionByCategory.Select(kv => $"{kv.Key}: {kv.Value}"))
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public PlayersModels.PlayerStatistics? Statistics { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

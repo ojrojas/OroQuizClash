@@ -1,0 +1,52 @@
+@using PlayersModels = QuizArena.Admin.Client.Models.Players
+
+<div class="player-history-table" role="region" aria-label="Historial de partidas">
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="4" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ErrorState Message="@Error" OnRetry="OnRetry" />
+    }
+    else if (Items.Count == 0)
+    {
+        <EmptyState Title="Sin historial" Message="No hay partidas con esos filtros." />
+    }
+    else
+    {
+        <QuizTable Caption="Historial" ColumnCount="6" IsEmpty="@(Items.Count==0)">
+            <HeaderCells><th>Juego</th><th>Categoría</th><th>Estado</th><th>Rondas</th><th>Puntos</th><th>Rank</th></HeaderCells>
+            <BodyRows>
+                @foreach(var h in Items)
+                {
+                    <tr>
+                        <td>@h.GameName</td>
+                        <td>@h.CategoryName</td>
+                        <td><QuizBadge Variant="neutral" Label="@h.Status" /></td>
+                        <td>@h.RoundCount</td>
+                        <td>@(h.PlayerScore?.ToString() ?? "—")</td>
+                        <td>@(h.PlayerRank?.ToString() ?? "—")</td>
+                    </tr>
+                }
+            </BodyRows>
+        </QuizTable>
+        <div style="display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-3);flex-wrap:wrap;">
+            <QuizButton Variant="ghost" Disabled="@(Page<=1)" OnClick="() => OnPageChanged.InvokeAsync(Page-1)" style="min-height:44px;">Anterior</QuizButton>
+            <span aria-live="polite">Página @(Page) de @(TotalPages) (@(TotalCount) total)</span>
+            <QuizButton Variant="ghost" Disabled="@(Page>=TotalPages)" OnClick="() => OnPageChanged.InvokeAsync(Page+1)" style="min-height:44px;">Siguiente</QuizButton>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<PlayersModels.GameHistoryEntry> Items { get; set; } = [];
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+    private int TotalPages => PageSize<=0?0:(int)Math.Ceiling(TotalCount/(double)PageSize);
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}

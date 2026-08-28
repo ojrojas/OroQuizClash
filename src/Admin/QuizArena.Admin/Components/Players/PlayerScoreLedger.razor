@@ -1,0 +1,60 @@
+@using PlayersModels = QuizArena.Admin.Client.Models.Players
+
+<div class="player-score-ledger" role="region" aria-label="Puntuaciones" style="display:flex;flex-direction:column;gap:var(--space-3);">
+    <div style="padding:var(--space-3);background:var(--color-card);border:var(--component-card-border);border-radius:var(--radius-md);">
+        <strong>Total acumulado (ledger):</strong> <span aria-live="polite">@TotalPoints pts</span>
+        <span style="font-size:var(--typography-caption);color:var(--color-muted-foreground);margin-left:var(--space-3);">Reconstruido server-side desde PointTransaction</span>
+    </div>
+
+    @if (IsLoading)
+    {
+        <LoadingSkeleton Rows="4" />
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <ErrorState Message="@Error" OnRetry="OnRetry" />
+    }
+    else if (Transactions.Count == 0)
+    {
+        <EmptyState Title="Sin puntuaciones" Message="No hay transacciones." />
+    }
+    else
+    {
+        <QuizTable Caption="Puntuaciones" ColumnCount="5" IsEmpty="@(Transactions.Count==0)">
+            <HeaderCells><th>Tipo</th><th>Puntos</th><th>Fecha</th><th>Juego</th><th>Referencia</th></HeaderCells>
+            <BodyRows>
+                @foreach(var t in Transactions)
+                {
+                    <tr>
+                        <td><QuizBadge Variant="@(t.Type==PlayersModels.TransactionType.CONSOLATION?"info":"neutral")" Label="@PlayersModels.TransactionTypeMap.DisplayName(t.Type)" /></td>
+                        <td style="color:@(t.Points<0?"var(--color-destructive-text)":"var(--color-success-text)");font-weight:600;">@t.Points</td>
+                        <td>@t.Timestamp.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@t.GameId.ToString()[..8]</td>
+                        <td>@(t.ReferenceId?.ToString()[..8] ?? "—") @(t.Type==PlayersModels.TransactionType.CONSOLATION ? "(Consolación)" : "")</td>
+                    </tr>
+                }
+            </BodyRows>
+        </QuizTable>
+        <div style="display:flex;gap:var(--space-3);align-items:center;margin-top:var(--space-3);flex-wrap:wrap;">
+            <QuizButton Variant="ghost" Disabled="@(Page<=1)" OnClick="() => OnPageChanged.InvokeAsync(Page-1)" style="min-height:44px;">Anterior</QuizButton>
+            <span aria-live="polite">Página @(Page) de @(TotalPages) (@(TotalCount) total)</span>
+            <QuizButton Variant="ghost" Disabled="@(Page>=TotalPages)" OnClick="() => OnPageChanged.InvokeAsync(Page+1)" style="min-height:44px;">Siguiente</QuizButton>
+        </div>
+        <div style="font-size:var(--typography-caption);color:var(--color-muted-foreground);" role="note">
+            Consolación se distingue con IsConsolation y no cuenta como canje normal.
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<PlayersModels.PointTransactionView> Transactions { get; set; } = [];
+    [Parameter] public int TotalPoints { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public int Page { get; set; } = 1;
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int PageSize { get; set; } = 20;
+    private int TotalPages => PageSize<=0?0:(int)Math.Ceiling(TotalCount/(double)PageSize);
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+}
