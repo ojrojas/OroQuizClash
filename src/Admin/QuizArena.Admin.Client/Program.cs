@@ -43,6 +43,9 @@ builder.Services.AddHttpClient<ILiveGamesService, ClientLiveGamesService>(client
     client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
     .AddHttpMessageHandler<SessionExpiredHandler>();
 builder.Services.AddTransient<IDashboardService, ClientDashboardService>();
+builder.Services.AddHttpClient<IGameConfigurationService, ClientGameConfigurationService>(client =>
+    client.BaseAddress = new Uri(builder.HostEnvironment.BaseAddress))
+    .AddHttpMessageHandler<SessionExpiredHandler>();
 builder.Services.AddSingleton<ToastService>();
 
 await builder.Build().RunAsync();

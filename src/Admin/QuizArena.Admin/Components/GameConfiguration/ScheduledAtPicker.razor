@@ -1,0 +1,32 @@
+@using QuizArena.Admin.Client.Shared
+
+<div class="scheduled-picker">
+    <QuizInput Id="scheduled-at" Label="Fecha/hora de inicio (UTC)" Type="datetime-local" Value="@DisplayValue" ValueChanged="HandleChanged" Disabled="@Disabled" Helper="Debe ser al menos 5 minutos en el futuro" />
+    @if (!string.IsNullOrEmpty(Error))
+    {
+        <div class="validation-message" role="alert" aria-live="polite">@Error</div>
+    }
+</div>
+
+@code {
+    [Parameter] public DateTimeOffset? Value { get; set; }
+    [Parameter] public EventCallback<DateTimeOffset?> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    private string DisplayValue => Value?.ToString("yyyy-MM-ddTHH:mm") ?? string.Empty;
+
+    private async Task HandleChanged(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v))
+        {
+            await ValueChanged.InvokeAsync(null);
+            return;
+        }
+        if (DateTimeOffset.TryParse(v, out var dto))
+        {
+            var utc = dto.ToUniversalTime();
+            await ValueChanged.InvokeAsync(utc);
+        }
+    }
+}

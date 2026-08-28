@@ -15,14 +15,18 @@
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery.Yarp" />
   </ItemGroup>
 
-  <!-- 018 dashboard: server Components/Dashboard duplicates the client implementation
+  <!-- 018 dashboard & 019 game-config: server Components duplicates the client implementation
        for task path compliance; exclude from Razor compilation to avoid duplicate-type errors.
-       Functional implementation lives in QuizArena.Admin.Client/Shared/Dashboard. -->
+       Functional implementation lives in QuizArena.Admin.Client/Shared. -->
   <ItemGroup>
     <Content Remove="Components/Dashboard/**/*.razor" />
     <Content Remove="Components/Dashboard/**/*.razor.css" />
     <None Include="Components/Dashboard/**/*.razor" />
     <None Include="Components/Dashboard/**/*.razor.css" />
+    <Content Remove="Components/GameConfiguration/**/*.razor" />
+    <Content Remove="Components/GameConfiguration/**/*.razor.css" />
+    <None Include="Components/GameConfiguration/**/*.razor" />
+    <None Include="Components/GameConfiguration/**/*.razor.css" />
   </ItemGroup>
 
 </Project>

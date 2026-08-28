@@ -1,0 +1,21 @@
+@using QuizArena.Admin.Client.Models.GameConfiguration
+
+<span class="game-state-badge state-@State.ToString().ToLower()" title="@GameStateViewMap.ToDisplayName(State)">
+    <QuizBadge Label="@GameStateViewMap.ToDisplayName(State)" Variant="@Variant" />
+</span>
+
+@code {
+    [Parameter, EditorRequired] public GameStateView State { get; set; }
+    private string Variant => State switch
+    {
+        GameStateView.Draft => "neutral",
+        GameStateView.Configured => "info",
+        GameStateView.Scheduled => "info",
+        GameStateView.Ready => "warning",
+        GameStateView.Running => "success",
+        GameStateView.Paused => "warning",
+        GameStateView.Finished => "neutral",
+        GameStateView.Cancelled => "destructive",
+        _ => "neutral"
+    };
+}

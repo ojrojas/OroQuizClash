@@ -1,0 +1,116 @@
+@page "/admin/games/{Id:guid}"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.GameConfiguration
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared
+@using QuizArena.Admin.Client.Shared.GameConfiguration
+@inject IGameConfigurationService GameService
+
+<PageTitle>Detalle juego — QuizArena Admin</PageTitle>
+
+@if (isLoading)
+{
+    <LoadingSkeleton Rows="6" />
+}
+else if (detail is not null)
+{
+    <h1>@detail.Name</h1>
+    <GameStateBadge State="@detail.Status" />
+    <p>RowVersion: @detail.RowVersion</p>
+    @if (GC.GameStateViewMap.IsImmutable(detail.Status))
+    {
+        <div class="form-readonly-banner" role="alert">Configuración inmutable — destacado como solo lectura</div>
+    }
+
+    <QuizCard Title="Configuración (16 campos)">
+        <div class="detail-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:var(--space-3);">
+            <div><strong>Nombre:</strong> @detail.Name</div>
+            <div><strong>Descripción:</strong> @(detail.Description ?? "-")</div>
+            <div><strong>Categoría:</strong> @detail.CategoryId (@detail.CategoryName)</div>
+            <div><strong>Rondas:</strong> @detail.NumberOfRounds</div>
+            <div><strong>Max jugadores:</strong> @detail.MaxPlayers</div>
+            <div><strong>Tiempo/pregunta:</strong> @detail.TimePerQuestion s</div>
+            <div><strong>Dificultad inicial:</strong> @detail.InitialDifficulty</div>
+            <div><strong>Progresión:</strong> @detail.DifficultyProgression</div>
+            <div><strong>Puntuación:</strong> @detail.Scoring (@detail.PointsPerRound pts)</div>
+            <div><strong>Puntos asegurados:</strong> @detail.SecuredPoints</div>
+            <div><strong>Retiro:</strong> @detail.WithdrawalPolicy</div>
+            <div><strong>Finalización:</strong> @detail.FinishPolicy</div>
+            <div><strong>Premio final:</strong> @(detail.FinalRewardId?.ToString() ?? "-")</div>
+            <div><strong>Consolación:</strong> @(detail.ConsolationRewardId?.ToString() ?? "-")</div>
+            <div><strong>Inicio:</strong> @(detail.ScheduledAt?.ToLocalTime().ToString("g") ?? "-")</div>
+            <div><strong>Estado:</strong> @detail.Status</div>
+        </div>
+    </QuizCard>
+
+    <GameTransitionsBar State="@detail.Status" RowVersion="@detail.RowVersion" OnTransition="HandleTransition" />
+
+    <h3>Historial de transiciones</h3>
+    @if (detail.History.Count == 0)
+    {
+        <p>Sin transiciones registradas.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var h in detail.History)
+            {
+                <li>@h.Timestamp.ToLocalTime().ToString("g"): @h.From → @h.To por @h.ActorId @(h.Reason is not null ? $"({h.Reason})" : "")</li>
+            }
+        </ul>
+    }
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <div class="validation-errors" role="alert">@error</div>
+    }
+}
+else
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private GC.GameDetail? detail;
+    private bool isLoading = true;
+    private string error = string.Empty;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            detail = await GameService.GetAsync(Id);
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+        finally { isLoading = false; }
+    }
+
+    private async Task HandleTransition((GC.GameStateView To, string RowVersion) args)
+    {
+        if (detail is null) return;
+        try
+        {
+            detail = args.To switch
+            {
+                GC.GameStateView.Scheduled => await GameService.ScheduleAsync(Id, detail.ScheduledAt ?? DateTimeOffset.UtcNow.AddMinutes(10), args.RowVersion),
+                GC.GameStateView.Ready => await GameService.ReadyAsync(Id, args.RowVersion),
+                GC.GameStateView.Running => detail.Status == GC.GameStateView.Paused ? await GameService.ResumeAsync(Id, args.RowVersion) : await GameService.StartAsync(Id, args.RowVersion),
+                GC.GameStateView.Paused => await GameService.PauseAsync(Id, args.RowVersion),
+                GC.GameStateView.Finished => await GameService.FinishAsync(Id, args.RowVersion),
+                GC.GameStateView.Cancelled => await GameService.CancelAsync(Id, args.RowVersion),
+                _ => detail
+            };
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+        }
+    }
+}

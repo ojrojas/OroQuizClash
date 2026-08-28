@@ -1,0 +1,99 @@
+@page "/admin/games/list"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.GameConfiguration
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared.GameConfiguration
+@inject IGameConfigurationService GameService
+@inject NavigationManager Navigation
+
+<PageTitle>Juegos — QuizArena Admin</PageTitle>
+
+<div class="page-header">
+    <h1>Juegos configurables</h1>
+    <QuizButton Icon="plus" OnClick="GoCreate">Crear juego</QuizButton>
+</div>
+
+<div class="toolbar">
+    <QuizSelect Id="filter-status" Label="Estado" Value="@selectedStatus" ValueChanged="OnStatusChanged" Options="@statusOptions" Placeholder="Todos los estados" />
+    <QuizSelect Id="filter-category" Label="Categoría" Value="@selectedCategory" ValueChanged="OnCategoryChanged" Options="@categoryOptions" Placeholder="Todas las categorías" />
+    <QuizInput Id="filter-search" Label="Buscar" Placeholder="Nombre…" Value="@search" ValueChanged="OnSearchChanged" />
+</div>
+
+@if (state == PageState.Loading)
+{
+    <LoadingSkeleton Rows="3" />
+}
+else if (state == PageState.Error)
+{
+    <ErrorState Message="@error" OnRetry="LoadAsync" />
+}
+else if (games is not null)
+{
+    <QuizTable Caption="Juegos" ColumnCount="5" Loading="false" Page="@currentPage" TotalPages="@totalPages" PageChanged="OnPageChanged">
+        <HeaderCells><th>Nombre</th><th>Estado</th><th>Rondas</th><th>Inicio</th><th></th></HeaderCells>
+        <BodyRows>
+            @foreach (var g in games)
+            {
+                <tr>
+                    <td>@g.Name</td>
+                    <td><GameStateBadge State="@g.Status" /></td>
+                    <td>@g.NumberOfRounds</td>
+                    <td>@(g.ScheduledAt?.ToLocalTime().ToString("g") ?? "-")</td>
+                    <td><a href="@($"/admin/games/{g.Id}")">Detalle</a> | <a href="@($"/admin/games/{g.Id}/edit")">Editar</a></td>
+                </tr>
+            }
+        </BodyRows>
+    </QuizTable>
+    <p>Total: @totalCount juegos</p>
+}
+else
+{
+    <EmptyState Title="Sin juegos" Message="No hay juegos configurables." />
+}
+
+@code {
+    private enum PageState { Loading, Ready, Error, Empty }
+    private PageState state = PageState.Loading;
+    private string error = string.Empty;
+    private IReadOnlyList<GC.GameSummary>? games;
+    private int currentPage = 1;
+    private int totalPages;
+    private int totalCount;
+    private string? selectedStatus;
+    private string? selectedCategory;
+    private string? search;
+    private IReadOnlyList<QuizSelect.OptionDef> statusOptions = Enum.GetNames<GC.GameStateView>().Select(n => new QuizSelect.OptionDef(n, n)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> categoryOptions = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        state = PageState.Loading;
+        try
+        {
+            var filter = new GC.GameFilter(
+                Status: string.IsNullOrWhiteSpace(selectedStatus) ? null : Enum.TryParse<GC.GameStateView>(selectedStatus, out var s) ? s : null,
+                CategoryId: string.IsNullOrWhiteSpace(selectedCategory) ? null : Guid.TryParse(selectedCategory, out var g) ? g : null,
+                Search: string.IsNullOrWhiteSpace(search) ? null : search,
+                Page: currentPage,
+                PageSize: 20);
+            var result = await GameService.ListAsync(filter);
+            games = result.Items;
+            totalCount = result.TotalCount;
+            totalPages = result.TotalPages;
+            state = games.Count == 0 ? PageState.Empty : PageState.Ready;
+        }
+        catch (ApiErrorException ex)
+        {
+            error = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            state = PageState.Error;
+        }
+    }
+
+    private void GoCreate(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => Navigation.NavigateTo("/admin/games/new");
+    private Task OnStatusChanged(string? v) { selectedStatus = v; currentPage = 1; return LoadAsync(); }
+    private Task OnCategoryChanged(string? v) { selectedCategory = v; currentPage = 1; return LoadAsync(); }
+    private Task OnSearchChanged(string? v) { search = v; currentPage = 1; return LoadAsync(); }
+    private Task OnPageChanged(int p) { currentPage = p; return LoadAsync(); }
+}

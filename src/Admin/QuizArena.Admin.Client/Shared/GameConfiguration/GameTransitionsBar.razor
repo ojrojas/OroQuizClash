@@ -1,0 +1,34 @@
+@using QuizArena.Admin.Client.Models.GameConfiguration
+@using QuizArena.Admin.Client.Shared
+
+<div class="transitions-bar" role="toolbar" aria-label="Transiciones de estado">
+    <QuizButton Variant="primary" Disabled="@(!CanSchedule)" OnClick="HandleSchedule">Programar</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanReady)" OnClick="HandleReady">Marcar Ready</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanStart)" OnClick="HandleStart">Iniciar</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanPause)" OnClick="HandlePause">Pausar</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanResume)" OnClick="HandleResume">Reanudar</QuizButton>
+    <QuizButton Variant="primary" Disabled="@(!CanFinish)" OnClick="HandleFinish">Finalizar</QuizButton>
+    <QuizButton Variant="ghost" Disabled="@(!CanCancel)" OnClick="HandleCancel">Cancelar</QuizButton>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GameStateView State { get; set; }
+    [Parameter] public string RowVersion { get; set; } = string.Empty;
+    [Parameter] public EventCallback<(GameStateView To, string RowVersion)> OnTransition { get; set; }
+
+    private bool CanSchedule => State == GameStateView.Configured;
+    private bool CanReady => State == GameStateView.Scheduled;
+    private bool CanStart => State == GameStateView.Ready;
+    private bool CanPause => State == GameStateView.Running;
+    private bool CanResume => State == GameStateView.Paused;
+    private bool CanFinish => State == GameStateView.Running || State == GameStateView.Paused;
+    private bool CanCancel => State == GameStateView.Draft || State == GameStateView.Configured || State == GameStateView.Scheduled;
+
+    private Task HandleSchedule(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Scheduled, RowVersion));
+    private Task HandleReady(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Ready, RowVersion));
+    private Task HandleStart(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Running, RowVersion));
+    private Task HandlePause(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Paused, RowVersion));
+    private Task HandleResume(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Running, RowVersion));
+    private Task HandleFinish(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Finished, RowVersion));
+    private Task HandleCancel(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnTransition.InvokeAsync((GameStateView.Cancelled, RowVersion));
+}

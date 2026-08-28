@@ -1,0 +1,74 @@
+@using QuizArena.Admin.Client.Models.GameConfiguration
+@using QuizArena.Admin.Client.Services
+
+<div class="game-config-form" role="form" aria-label="Configuración de juego">
+    @if (IsReadOnly)
+    {
+        <div class="form-readonly-banner" role="alert">Configuración inmutable tras Ready/Running — solo lectura</div>
+    }
+
+    <QuizInput Id="game-name" Label="Nombre del juego" Value="@Form.Name" ValueChanged="@(v => Update(nameof(Form.Name), v))" Disabled="@IsReadOnly" />
+    @if (FieldErrors.TryGetValue(nameof(Form.Name), out var nameErr)) { <div class="validation-message" role="alert" aria-live="polite">@string.Join(", ", nameErr)</div> }
+
+    <div class="form-row">
+        <QuizInput Id="game-desc" Label="Descripción" Value="@(Form.Description ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.Description), v))" Disabled="@IsReadOnly" />
+    </div>
+    @if (FieldErrors.TryGetValue(nameof(Form.Description), out var descErr)) { <div class="validation-message" role="alert">@string.Join(", ", descErr)</div> }
+
+    <QuizSelect Id="game-category" Label="Categoría" Value="@Form.CategoryId.ToString()" ValueChanged="@(v => Update(nameof(Form.CategoryId), v))" Options="@categoryOptions" Disabled="@IsReadOnly" Placeholder="Seleccione categoría" />
+    @if (FieldErrors.TryGetValue(nameof(Form.CategoryId), out var catErr)) { <div class="validation-message" role="alert">@string.Join(", ", catErr)</div> }
+
+    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--space-3);">
+        <QuizInput Id="game-rounds" Label="Número de rondas" Value="@Form.NumberOfRounds.ToString()" ValueChanged="@(v => Update(nameof(Form.NumberOfRounds), v))" Disabled="@IsReadOnly" />
+        <QuizInput Id="game-maxplayers" Label="Máximo jugadores" Value="@Form.MaxPlayers.ToString()" ValueChanged="@(v => Update(nameof(Form.MaxPlayers), v))" Disabled="@IsReadOnly" />
+        <QuizInput Id="game-time" Label="Tiempo por pregunta (s)" Value="@Form.TimePerQuestion.ToString()" ValueChanged="@(v => Update(nameof(Form.TimePerQuestion), v))" Disabled="@IsReadOnly" />
+        <QuizSelect Id="game-difficulty" Label="Dificultad inicial" Value="@Form.InitialDifficulty.ToString()" ValueChanged="@(v => Update(nameof(Form.InitialDifficulty), v))" Options="@difficultyOptions" Disabled="@IsReadOnly" />
+    </div>
+
+    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-3);">
+        <QuizSelect Id="game-progression" Label="Progresión dificultad" Value="@PolicyCatalogs.ToApi(Form.DifficultyProgression)" ValueChanged="@(v => Update(nameof(Form.DifficultyProgression), v))" Options="@progressionOptions" Disabled="@IsReadOnly" />
+        <QuizSelect Id="game-scoring" Label="Puntuación" Value="@PolicyCatalogs.ToApi(Form.Scoring)" ValueChanged="@(v => Update(nameof(Form.Scoring), v))" Options="@scoringOptions" Disabled="@IsReadOnly" />
+        <QuizInput Id="game-points" Label="Puntos por ronda" Value="@Form.PointsPerRound.ToString()" ValueChanged="@(v => Update(nameof(Form.PointsPerRound), v))" Disabled="@IsReadOnly" />
+        <QuizSelect Id="game-secured" Label="Puntos asegurados" Value="@Form.SecuredPoints.ToString()" ValueChanged="@(v => Update(nameof(Form.SecuredPoints), v))" Options="@securedOptions" Disabled="@IsReadOnly" />
+    </div>
+
+    <div class="form-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-3);">
+        <QuizSelect Id="game-withdrawal" Label="Reglas de retiro" Value="@PolicyCatalogs.ToApi(Form.WithdrawalPolicy)" ValueChanged="@(v => Update(nameof(Form.WithdrawalPolicy), v))" Options="@withdrawalOptions" Disabled="@IsReadOnly" />
+        <QuizSelect Id="game-finish" Label="Reglas de finalización" Value="@PolicyCatalogs.ToApi(Form.FinishPolicy)" ValueChanged="@(v => Update(nameof(Form.FinishPolicy), v))" Options="@lossOptions" Disabled="@IsReadOnly" />
+        <QuizSelect Id="game-finalreward" Label="Premio final" Value="@(Form.FinalRewardId?.ToString() ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.FinalRewardId), v))" Options="@rewardOptions" Disabled="@IsReadOnly" Placeholder="Ninguno" />
+        <QuizSelect Id="game-consolation" Label="Premio consolación" Value="@(Form.ConsolationRewardId?.ToString() ?? string.Empty)" ValueChanged="@(v => Update(nameof(Form.ConsolationRewardId), v))" Options="@rewardOptions" Disabled="@IsReadOnly" Placeholder="Ninguno" />
+    </div>
+
+    <ScheduledAtPicker Value="@Form.ScheduledAt" ValueChanged="@(v => Update(nameof(Form.ScheduledAt), v))" Disabled="@IsReadOnly" />
+    @if (FieldErrors.TryGetValue(nameof(Form.ScheduledAt), out var schedErr)) { <div class="validation-message" role="alert">@string.Join(", ", schedErr)</div> }
+
+    @foreach (var kv in FieldErrors.Where(kv => kv.Key != nameof(Form.Name) && kv.Key != nameof(Form.Description) && kv.Key != nameof(Form.CategoryId) && kv.Key != nameof(Form.ScheduledAt)))
+    {
+        <div class="validation-message" role="alert">@kv.Key: @string.Join(", ", kv.Value)</div>
+    }
+
+    <div style="margin-top:var(--space-4);">
+        <QuizButton Variant="primary" OnClick="HandleSubmit" Disabled="@IsReadOnly" Loading="@IsSubmitting">Guardar configuración</QuizButton>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GameConfigurationForm Form { get; set; } = default!;
+    [Parameter] public bool IsReadOnly { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, string[]> FieldErrors { get; set; } = new Dictionary<string, string[]>();
+    [Parameter] public EventCallback<GameConfigurationForm> OnSubmit { get; set; }
+    [Parameter] public EventCallback<(string Field, string Value)> OnFieldChanged { get; set; }
+
+    private IReadOnlyList<QuizSelect.OptionDef> categoryOptions = [];
+    private IReadOnlyList<QuizSelect.OptionDef> difficultyOptions = Enumerable.Range(1,5).Select(i => new QuizSelect.OptionDef(i.ToString(), i.ToString())).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> progressionOptions = GameCatalogs.DifficultyStrategies.Select(v => new QuizSelect.OptionDef(v.Value, v.Label)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> scoringOptions = GameCatalogs.ScoringSystems.Select(v => new QuizSelect.OptionDef(v.Value, v.Label)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> withdrawalOptions = GameCatalogs.WithdrawalPolicies.Select(v => new QuizSelect.OptionDef(v.Value, v.Label)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> lossOptions = GameCatalogs.LossPolicies.Select(v => new QuizSelect.OptionDef(v.Value, v.Label)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> securedOptions = Enum.GetNames<SecuredPointsPolicy>().Select(n => new QuizSelect.OptionDef(n, n)).ToList();
+    private IReadOnlyList<QuizSelect.OptionDef> rewardOptions = [];
+
+    private Task Update(string field, string value) => OnFieldChanged.InvokeAsync((field, value));
+    private Task HandleSubmit(Microsoft.AspNetCore.Components.Web.MouseEventArgs _) => OnSubmit.InvokeAsync(Form);
+}

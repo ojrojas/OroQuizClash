@@ -1,0 +1,97 @@
+@page "/admin/games/new"
+@page "/admin/games/configuration/new"
+@attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
+@using GC = QuizArena.Admin.Client.Models.GameConfiguration
+@using QuizArena.Admin.Client.Services
+@using QuizArena.Admin.Client.Shared
+@using QuizArena.Admin.Client.Shared.GameConfiguration
+@inject IGameConfigurationService GameService
+@inject NavigationManager Navigation
+@inject ToastService Toasts
+
+<PageTitle>Crear juego — QuizArena Admin</PageTitle>
+
+<h1>Crear juego</h1>
+
+<GameStateBadge State="@GC.GameStateView.Draft" />
+
+@if (isSubmitting)
+{
+    <LoadingSkeleton Rows="4" />
+}
+else
+{
+    <GameConfigurationForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+    @if (!string.IsNullOrEmpty(generalError))
+    {
+        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
+    }
+}
+
+@code {
+    private GC.GameConfigurationForm form = new("", null, Guid.Empty, 5, 10, 30, 3, GC.DifficultyStrategy.Linear, GC.ScoringSystem.Standard, 100, GC.SecuredPointsPolicy.None, GC.WithdrawalPolicy.LoseAll, GC.LossPolicy.LoseAll, null, null, null);
+    private Dictionary<string, string[]> fieldErrors = new();
+    private string generalError = string.Empty;
+    private bool isSubmitting;
+
+    private Task HandleFieldChanged((string Field, string Value) args)
+    {
+        var (field, value) = args;
+        form = field switch
+        {
+            nameof(GC.GameConfigurationForm.Name) => form with { Name = value },
+            nameof(GC.GameConfigurationForm.Description) => form with { Description = string.IsNullOrWhiteSpace(value) ? null : value },
+            nameof(GC.GameConfigurationForm.CategoryId) when Guid.TryParse(value, out var g) => form with { CategoryId = g },
+            nameof(GC.GameConfigurationForm.NumberOfRounds) when int.TryParse(value, out var n) => form with { NumberOfRounds = n },
+            nameof(GC.GameConfigurationForm.MaxPlayers) when int.TryParse(value, out var n) => form with { MaxPlayers = n },
+            nameof(GC.GameConfigurationForm.TimePerQuestion) when int.TryParse(value, out var n) => form with { TimePerQuestion = n },
+            nameof(GC.GameConfigurationForm.InitialDifficulty) when int.TryParse(value, out var n) => form with { InitialDifficulty = n },
+            nameof(GC.GameConfigurationForm.DifficultyProgression) when Enum.TryParse<GC.DifficultyStrategy>(value, out var v) => form with { DifficultyProgression = v },
+            nameof(GC.GameConfigurationForm.Scoring) when Enum.TryParse<GC.ScoringSystem>(value, out var v) => form with { Scoring = v },
+            nameof(GC.GameConfigurationForm.SecuredPoints) when Enum.TryParse<GC.SecuredPointsPolicy>(value, out var v) => form with { SecuredPoints = v },
+            nameof(GC.GameConfigurationForm.WithdrawalPolicy) when Enum.TryParse<GC.WithdrawalPolicy>(value, out var v) => form with { WithdrawalPolicy = v },
+            nameof(GC.GameConfigurationForm.FinishPolicy) when Enum.TryParse<GC.LossPolicy>(value, out var v) => form with { FinishPolicy = v },
+            nameof(GC.GameConfigurationForm.FinalRewardId) => form with { FinalRewardId = string.IsNullOrWhiteSpace(value) ? null : Guid.TryParse(value, out var g2) ? g2 : null },
+            nameof(GC.GameConfigurationForm.ConsolationRewardId) => form with { ConsolationRewardId = string.IsNullOrWhiteSpace(value) ? null : Guid.TryParse(value, out var g2) ? g2 : null },
+            nameof(GC.GameConfigurationForm.ScheduledAt) when DateTimeOffset.TryParse(value, out var dto) => form with { ScheduledAt = dto },
+            _ => form
+        };
+        if (field == nameof(GC.GameConfigurationForm.ScheduledAt) && string.IsNullOrWhiteSpace(value)) form = form with { ScheduledAt = null };
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSubmit(GC.GameConfigurationForm _)
+    {
+        fieldErrors.Clear();
+        generalError = string.Empty;
+        var validation = form.Validate();
+        if (validation.Count > 0)
+        {
+            fieldErrors = new(validation);
+            return;
+        }
+        isSubmitting = true;
+        try
+        {
+            var req = new GC.CreateGameRequest(form.Name, form.Description, form.CategoryId, form.NumberOfRounds, form.MaxPlayers, form.TimePerQuestion, form.InitialDifficulty, form.DifficultyProgression, form.Scoring, form.PointsPerRound, form.SecuredPoints, form.WithdrawalPolicy, form.FinishPolicy, form.FinalRewardId, form.ConsolationRewardId, form.ScheduledAt);
+            var detail = await GameService.CreateAsync(req);
+            Toasts.Success($"Juego creado: {detail.Name} ({detail.Status})");
+            Navigation.NavigateTo($"/admin/games/{detail.Id}");
+        }
+        catch (ApiErrorException ex)
+        {
+            if (ex.ErrorView.FieldErrors is not null)
+                fieldErrors = new(ex.ErrorView.FieldErrors);
+            generalError = ex.ErrorView.Detail ?? ex.ErrorView.Title;
+            if (ex.ErrorView.Code == "Unauthorized") generalError = "Sesión expirada — re-autenticar. Borrador preservado localmente.";
+        }
+        catch (Exception)
+        {
+            generalError = "No se pudo crear el juego. Reintente.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
