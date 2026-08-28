@@ -14,8 +14,11 @@ using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Shared.Errors;
 using OroQuizClash.Infrastructure.Specifications;
 
+using OroQuizClash.Application.Authorization;
+
 namespace OroQuizClash.Application.Features.Games;
 
+[RequiresPermission("Game.Play")]
 public sealed record SubmitAnswerCommand(
     Guid GameId,
     Guid PlayerId,

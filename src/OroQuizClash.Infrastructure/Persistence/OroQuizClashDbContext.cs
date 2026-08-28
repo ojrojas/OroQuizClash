@@ -5,6 +5,7 @@ using BuildingBlocks.Kernel.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
+using OroQuizClash.Domain.Audit;
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Questions;
@@ -24,6 +25,10 @@ public sealed class OroQuizClashDbContext(DbContextOptions<OroQuizClashDbContext
     public DbSet<Reward> Rewards => Set<Reward>();
 
     public DbSet<RewardRedemption> RewardRedemptions => Set<RewardRedemption>();
+
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,3 +1,5 @@
+using System.Threading.RateLimiting;
+
 using BuildingBlocks.CQRS.Behaviors;
 using BuildingBlocks.CQRS.DependencyInjection;
 using BuildingBlocks.EventBus.Abstractions;
@@ -9,6 +11,7 @@ using BuildingBlocks.ServiceDefaults.Endpoints;
 using BuildingBlocks.ServiceDefaults.Middleware;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,6 +21,7 @@ using OroQuizClash.Domain.Games.Strategies;
 using OroQuizClash.Domain.Questions;
 using OroQuizClash.Domain.Questions.Services;
 using OroQuizClash.Domain.Rewards;
+using OroQuizClash.Api.Authorization;
 using OroQuizClash.Infrastructure.Categories;
 using OroQuizClash.Infrastructure.Counters;
 using OroQuizClash.Infrastructure.Persistence;
@@ -28,11 +32,16 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<OroQuizClash.Infrastructure.Services.IIdempotencyService, OroQuizClash.Infrastructure.Services.IdempotencyService>();
 builder.Services.AddCqrs(c => c
     .RegisterHandlersFromAssemblyContaining<Program>()
     .RegisterHandlersFromAssembly(typeof(OroQuizClash.Application.Features.Games.CreateGameCommand).Assembly)
     .AddOpenBehavior(typeof(LoggingBehavior<,>))
-    .AddOpenBehavior(typeof(ValidationBehavior<,>)));
+    .AddOpenBehavior(typeof(ValidationBehavior<,>))
+    .AddOpenBehavior(typeof(OroQuizClash.Application.Behaviors.AuthorizationBehavior<,>))
+    .AddOpenBehavior(typeof(OroQuizClash.Application.Behaviors.IdempotencyBehavior<,>))
+    .AddOpenBehavior(typeof(OroQuizClash.Application.Behaviors.AuditBehavior<,>)));
 
 var connectionString = builder.Configuration.GetConnectionString("oroclash") ?? "Data Source=oroclash.db";
 builder.Services.AddDbContext<OroQuizClashDbContext>(o =>
@@ -59,6 +68,8 @@ builder.Services.AddScoped<OroQuizClash.Domain.Categories.IQuestionCounter, EfQu
 builder.Services.AddScoped<OroQuizClash.Domain.Questions.Services.IQuestionCounter>(sp => (OroQuizClash.Domain.Questions.Services.IQuestionCounter)sp.GetRequiredService<OroQuizClash.Domain.Categories.IQuestionCounter>());
 builder.Services.AddScoped<IRepository<Reward, RewardId>>(sp => new EfRepository<Reward, RewardId>(sp.GetRequiredService<OroQuizClashDbContext>()));
 builder.Services.AddScoped<IRepository<RewardRedemption, RewardRedemptionId>>(sp => new EfRepository<RewardRedemption, RewardRedemptionId>(sp.GetRequiredService<OroQuizClashDbContext>()));
+builder.Services.AddScoped<IRepository<OroQuizClash.Domain.Audit.AuditEntry, Guid>>(sp => new EfRepository<OroQuizClash.Domain.Audit.AuditEntry, Guid>(sp.GetRequiredService<OroQuizClashDbContext>()));
+builder.Services.AddScoped<IRepository<OroQuizClash.Domain.Audit.IdempotencyRecord, Guid>>(sp => new EfRepository<OroQuizClash.Domain.Audit.IdempotencyRecord, Guid>(sp.GetRequiredService<OroQuizClashDbContext>()));
 builder.Services.AddScoped<IQuestionSelectionStrategy, RandomQuestionSelectionStrategy>();
 builder.Services.AddScoped<IDifficultyProgressionStrategy, LinearDifficultyStrategy>();
 
@@ -82,17 +93,67 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("AdminOrGameManager", policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.HasClaim(c => c.Type == "roles" && (c.Value == "ADMIN" || c.Value == "GAME_MANAGER")) ||
-            ctx.User.HasClaim(c => c.Type == "role" && (c.Value == "ADMIN" || c.Value == "GAME_MANAGER")) ||
-            ctx.User.IsInRole("ADMIN") || ctx.User.IsInRole("GAME_MANAGER")))
-    .AddPolicy("AdminOrRewardManager", policy =>
-        policy.RequireAssertion(ctx =>
-            ctx.User.HasClaim(c => c.Type == "roles" && (c.Value == "ADMIN" || c.Value == "REWARD_MANAGER")) ||
-            ctx.User.HasClaim(c => c.Type == "role" && (c.Value == "ADMIN" || c.Value == "REWARD_MANAGER")) ||
-            ctx.User.IsInRole("ADMIN") || ctx.User.IsInRole("REWARD_MANAGER")));
+builder.Services.AddAuthorizationBuilder().AddSecurityPolicies();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.Headers.RetryAfter = "1";
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter = ((TimeSpan)retryAfter!).TotalSeconds.ToString();
+        }
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            type = "https://httpstatuses.com/429",
+            title = "Too Many Requests",
+            status = 429,
+            detail = "Rate limit exceeded. Retry after 1s.",
+            code = "RateLimitExceeded"
+        }, cancellationToken: ct);
+    };
+    var gamePlayLimit = builder.Configuration.GetValue("Security:RateLimit:GamePlay:PermitLimit", 5);
+    var gamePlayWindow = builder.Configuration.GetValue("Security:RateLimit:GamePlay:WindowSeconds", 1);
+    options.AddPolicy("GamePlayLimiter", ctx =>
+    {
+        var sub = ctx.User.FindFirst("sub")?.Value ?? ctx.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        var gameId = ctx.Request.RouteValues["gameId"]?.ToString() ?? ctx.Request.RouteValues["id"]?.ToString() ?? "global";
+        var key = $"{sub}:{gameId}";
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = gamePlayLimit,
+            Window = TimeSpan.FromSeconds(gamePlayWindow),
+            QueueLimit = 0
+        });
+    });
+    var sensitiveLimit = builder.Configuration.GetValue("Security:RateLimit:Sensitive:PermitLimit", 10);
+    var sensitiveWindow = builder.Configuration.GetValue("Security:RateLimit:Sensitive:WindowSeconds", 10);
+    options.AddPolicy("SensitiveLimiter", ctx =>
+    {
+        var sub = ctx.User.FindFirst("sub")?.Value ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(sub, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = sensitiveLimit,
+            Window = TimeSpan.FromSeconds(sensitiveWindow),
+            QueueLimit = 0
+        });
+    });
+    var readLimit = builder.Configuration.GetValue("Security:RateLimit:Read:PermitLimit", 100);
+    var readWindow = builder.Configuration.GetValue("Security:RateLimit:Read:WindowSeconds", 10);
+    options.AddPolicy("ReadLimiter", ctx =>
+    {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = readLimit,
+            Window = TimeSpan.FromSeconds(readWindow),
+            QueueLimit = 0
+        });
+    });
+});
 
 var app = builder.Build();
 
@@ -110,6 +171,7 @@ catch (Exception ex)
 }
 
 app.UseExceptionHandler();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints();

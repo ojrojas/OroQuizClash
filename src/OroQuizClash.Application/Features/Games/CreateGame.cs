@@ -15,8 +15,11 @@ using OroQuizClash.Domain.Games.Enumerations;
 using OroQuizClash.Domain.Games.ValueObjects;
 using OroQuizClash.Domain.Shared.Errors;
 
+using OroQuizClash.Application.Authorization;
+
 namespace OroQuizClash.Application.Features.Games;
 
+[RequiresPermission("Game.Create")]
 public sealed record CreateGameCommand(
     string Name,
     Guid CategoryId,

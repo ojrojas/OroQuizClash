@@ -11,8 +11,11 @@ using Microsoft.AspNetCore.Routing;
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Categories.ValueObjects;
 
+using OroQuizClash.Application.Authorization;
+
 namespace OroQuizClash.Application.Features.Categories;
 
+[RequiresPermission("Category.Write")]
 public sealed record CreateCategoryCommand(
     string Name,
     string? Description,
