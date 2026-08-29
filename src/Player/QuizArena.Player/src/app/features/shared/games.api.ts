@@ -46,4 +46,12 @@ export class GamesApi {
   getLeaderboard(gameId: string): Observable<any> {
     return this.http.get(`${this.base}/games/${gameId}/leaderboard`);
   }
+
+  getPlayers(gameId: string): Observable<any> {
+    return this.http.get(`${this.base}/games/${gameId}/players`);
+  }
+
+  getCurrentRound(gameId: string): Observable<any> {
+    return this.http.get(`${this.base}/games/${gameId}/rounds/current`);
+  }
 }

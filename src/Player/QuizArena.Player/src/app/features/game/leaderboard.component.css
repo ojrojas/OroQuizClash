@@ -1,0 +1,5 @@
+.multiplayer-public { display:flex; flex-direction:column; gap:var(--space-3,12px); }
+.players { display:flex; flex-wrap:wrap; gap:var(--space-2,8px); }
+.leaderboard { display:grid; grid-template-columns:1fr; gap:var(--space-2,8px); }
+@media (min-width:768px){ .leaderboard { grid-template-columns:repeat(4,1fr); } }
+.metric { min-height:44px; border-radius:var(--radius-md,8px); border:1px solid var(--color-border,#DBEAFE); background:var(--color-surface,#FFF); display:flex; align-items:center; padding:var(--space-3,12px); }

@@ -11,11 +11,12 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
 import { QuestionComponent } from './question.component';
 import { TimerComponent } from './timer.component';
 import { ScorePanelComponent } from './score-panel.component';
+import { LeaderboardComponent } from './leaderboard.component';
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent, QuestionComponent, TimerComponent, ScorePanelComponent, PlayerRoundsComponent],
+  imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent, QuestionComponent, TimerComponent, ScorePanelComponent, PlayerRoundsComponent, LeaderboardComponent],
   providers: [PlayerGameStore, PlayerRoundsStore, AnswerInteractionStore],
   template: `
     <div class="game-cinematic" data-theme="player" style="display:grid; grid-template-areas:'header header' 'sidebar center' 'footer footer'; grid-template-columns:280px 1fr; gap:var(--space-4,16px); padding:16px; min-height:100vh;">
@@ -35,12 +36,13 @@ import { ScorePanelComponent } from './score-panel.component';
         <div role="status" aria-live="assertive" style="grid-area:center; text-align:center;">Estado terminal: {{ store.status().playerStatus }} - {{ store.status().gameStatus }}</div>
         <app-score-panel />
       } @else {
-        <header style="grid-area:header; display:flex; justify-content:space-between; align-items:center; background: var(--player-gradient-premium, linear-gradient(135deg,#6c4ef6,#9b59ff)); padding:var(--space-4,16px); border-radius:12px; color:white;">
+        <header style="grid-area:header; display:flex; justify-content:space-between; align-items:center; background: var(--player-gradient-premium, linear-gradient(135deg,#6c4ef6,#9b59ff)); padding:var(--space-4,16px); border-radius:12px; color:white; flex-wrap:wrap; gap:var(--space-3,12px);">
           <div>
             <div>Current Round: {{ store.currentRoundDisplay() }}</div>
             <div>Current Level: {{ store.score().currentLevel }} ({{ store.round()?.level }})</div>
             <div>Player Status: {{ store.status().playerStatus }}</div>
           </div>
+          <app-leaderboard />
           <app-timer />
         </header>
 
