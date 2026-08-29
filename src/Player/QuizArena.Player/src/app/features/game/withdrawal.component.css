@@ -1,0 +1,7 @@
+.metrics { display:flex; flex-direction:column; gap:var(--space-2,8px); }
+.metric { padding:var(--space-3,12px); min-height:44px; border-radius:var(--radius-md,8px); border:1px solid var(--color-border,#DBEAFE); background:var(--color-surface,#FFF); }
+.dialog { max-width:400px; background:var(--color-surface,#FFF); border:1px solid var(--color-border,#DBEAFE); border-radius:var(--radius-lg,12px); padding:var(--space-6,24px); display:flex; flex-direction:column; gap:var(--space-3,12px); }
+.warning { color:var(--color-destructive,#DC2626); font-weight:600; }
+.withdraw-secure { color:var(--color-warning,#D97706); font-weight:600; }
+.withdrawal-action { min-height:44px; min-width:44px; }
+@media (prefers-reduced-motion: reduce){ *{ animation:none; } }

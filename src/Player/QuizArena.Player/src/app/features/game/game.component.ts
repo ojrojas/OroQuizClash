@@ -66,13 +66,23 @@ import { LeaderboardComponent } from './leaderboard.component';
         </footer>
 
         @if (showWithdrawConfirm) {
-          <div role="dialog" aria-modal="true" aria-label="Confirmar retiro" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;">
-            <div style="background:white; padding:24px; border-radius:12px; max-width:400px;">
-              <p>¿Confirmar retiro? Perderás puntos no asegurados según {{ store.securedPoints().policy }}</p>
-              <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button (click)="confirmWithdraw()" style="min-height:44px; min-width:44px;">Confirmar</button>
-                <button (click)="showWithdrawConfirm=false" style="min-height:44px; min-width:44px;">Cancelar</button>
+          <div role="dialog" aria-modal="true" aria-label="Confirmar retiro" style="position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;" (click)="showWithdrawConfirm=false">
+            <div style="background:var(--color-surface,#FFF); padding:var(--space-6,24px); border-radius:var(--radius-lg,12px); max-width:400px; display:flex; flex-direction:column; gap:var(--space-3,12px); border:1px solid var(--color-border,#DBEAFE);" (click)="$event.stopPropagation()" role="document">
+              <h2>Confirmar retiro</h2>
+              <div class="metrics" role="group" aria-label="Puntuaciones" style="display:flex; flex-direction:column; gap:var(--space-2,8px);">
+                <div role="status" aria-live="polite" [attr.aria-label]="'Current Points ' + store.score().totalPoints">Current Points {{ store.score().totalPoints }} pts</div>
+                <div role="status" aria-live="polite" [attr.aria-label]="'Secured Points ' + store.securedPoints().securedPoints">Secured Points {{ store.securedPoints().securedPoints }} pts @if (store.securedPoints().checkpointRoundNumber) { <span>· checkpoint {{ store.securedPoints().checkpointRoundNumber }}</span> }</div>
+                <div role="status" aria-live="polite" [attr.aria-label]="store.potentialReward() === '—' ? 'Potential no disponible' : 'Potential Points ' + store.potentialReward()">Potential Points {{ store.potentialReward() }}</div>
               </div>
+              <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626); font-weight:600;">If you continue and answer incorrectly, you may lose your accumulated points.</div>
+              <div role="alert" aria-live="assertive" style="color:var(--color-warning,#D97706); font-weight:600;">Withdraw now and secure {{ store.securedPoints().securedPoints }} points?</div>
+              <div style="display:flex; gap:var(--space-3,12px); justify-content:flex-end;">
+                <button (click)="confirmWithdraw()" style="min-height:44px; min-width:44px;" aria-label="Confirmar retiro">Confirmar</button>
+                <button (click)="showWithdrawConfirm=false" style="min-height:44px; min-width:44px;" aria-label="Cancelar">Cancelar</button>
+              </div>
+              @if (store.ui().error) {
+                <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626);">Error: {{ store.ui().error!.detail }} CorrelationId: {{ store.ui().error!.correlationId }}</div>
+              }
             </div>
           </div>
         }
