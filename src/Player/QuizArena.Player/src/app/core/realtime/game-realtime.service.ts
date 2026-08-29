@@ -8,6 +8,7 @@ export type GameEvent =
   | { type: 'QuestionAvailable'; payload: any }
   | { type: 'ScoreUpdated'; payload: any }
   | { type: 'RoundCompleted'; payload: any }
+  | { type: 'PlayerWithdrawn'; payload: any }
   | { type: 'GameFinished'; payload: any }
   | { type: 'Reconnected' };
 
@@ -32,6 +33,7 @@ export class GameRealtimeService {
     this.conn.on('QuestionAvailable', p => this.events$.next({ type: 'QuestionAvailable', payload: p }));
     this.conn.on('ScoreUpdated', p => this.events$.next({ type: 'ScoreUpdated', payload: p }));
     this.conn.on('RoundCompleted', p => this.events$.next({ type: 'RoundCompleted', payload: p }));
+    this.conn.on('PlayerWithdrawn', p => this.events$.next({ type: 'PlayerWithdrawn', payload: p }));
     this.conn.on('GameFinished', p => this.events$.next({ type: 'GameFinished', payload: p }));
     this.conn.onreconnected(() => this.events$.next({ type: 'Reconnected' }));
 

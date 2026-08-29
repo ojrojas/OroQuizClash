@@ -54,9 +54,6 @@ export class WithdrawalComponent {
   }
 
   confirm() {
-    const gameId = this.store.game()?.gameId ?? '';
-    const key = sessionStorage.getItem(`idemp-withdraw-${gameId}`) ?? crypto.randomUUID();
-    sessionStorage.setItem(`idemp-withdraw-${gameId}`, key);
     this.showConfirm.set(false);
     this.store.withdraw();
   }

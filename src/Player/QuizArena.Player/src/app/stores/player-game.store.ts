@@ -132,7 +132,13 @@ export const PlayerGameStore = signalStore(
     )),
 
     withdraw: rxMethod<void>(pipe(
-      switchMap(() => (store as any)._api.withdraw(store.game()!.gameId)),
+      switchMap(() => {
+        const gameId = store.game()?.gameId ?? (store as any)._pendingGameId ?? '';
+        const storageKey = `idemp-withdraw-${gameId}`;
+        const key = sessionStorage.getItem(storageKey) ?? crypto.randomUUID();
+        sessionStorage.setItem(storageKey, key);
+        return (store as any)._api.withdraw(gameId, key);
+      }),
       tapResponse({
         next: (gs: GameSession) => patchState(store, { gameSession: gs, status: { ...store.status(), playerStatus: 'WITHDRAWN', isTerminal: true, canAnswer: false } }),
         error: (err: ProblemDetails) => patchState(store, { ui: { ...store.ui(), error: err } }),
@@ -154,7 +160,7 @@ export const PlayerGameStore = signalStore(
     bindRealtime(gameId: string, accessTokenFactory: () => string) {
       (store as any)._realtime.connect(gameId, accessTokenFactory);
       (store as any)._realtime.events$.subscribe((evt: any) => {
-        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished'].includes(evt.type)) {
+        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn'].includes(evt.type)) {
           if (evt.type === 'ScoreUpdated') {
             patchState(store, { _isPulse: true } as any);
             setTimeout(() => patchState(store, { _isPulse: false } as any), 600);
