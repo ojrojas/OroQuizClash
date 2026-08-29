@@ -1,0 +1,129 @@
+.player-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  background: var(--color-surface, #fff);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.ladder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ladder-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-surface, #fff);
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.ladder-row.current {
+  border-color: var(--color-primary, #6c4ef6);
+  box-shadow: var(--shadow-premium, 0 4px 16px rgba(108,78,246,0.3));
+  transform: scale(1.02);
+  transition: all 300ms ease-out;
+  background: var(--color-primary-subtle, #f5f3ff);
+}
+
+.ladder-row.completed {
+  opacity: 0.7;
+}
+
+.ladder-row.secured {
+  background: var(--color-success-subtle, #ecfdf5);
+}
+
+.ladder-row.final {
+  background: var(--player-gradient-final, linear-gradient(135deg,#f59e0b,#fbbf24));
+  color: var(--color-final-contrast, #1f2937);
+}
+
+.ladder-row.animating {
+  animation: ladderPulse 300ms ease-out;
+}
+
+@keyframes ladderPulse {
+  0% { box-shadow: var(--shadow-premium, 0 4px 16px rgba(108,78,246,0.3)); }
+  50% { box-shadow: var(--shadow-premium, 0 4px 16px rgba(108,78,246,0.5)); }
+  100% { box-shadow: var(--shadow-premium, 0 4px 16px rgba(108,78,246,0.3)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ladder-row,
+  .ladder-row.current {
+    transition: none;
+    transform: none;
+    animation: none;
+  }
+}
+
+.badge {
+  font-size: var(--font-size-sm, 12px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--color-surface-muted, #f3f4f6);
+  margin-left: auto;
+}
+
+.badge.current-reward {
+  background: var(--color-primary, #6c4ef6);
+  color: var(--color-primary-contrast, #fff);
+}
+
+.badge.next-reward {
+  opacity: 0.6;
+}
+
+.badge.secured-reward {
+  background: var(--color-success, #10b981);
+  color: var(--color-success-contrast, #fff);
+}
+
+.badge.final-reward {
+  background: var(--player-gradient-final, linear-gradient(135deg,#f59e0b,#fbbf24));
+  color: var(--color-final-contrast, #1f2937);
+}
+
+.sr-only {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.secured-summary {
+  font-size: var(--font-size-sm, 12px);
+  padding: var(--space-2, 8px);
+  text-align: center;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.secured-summary.muted {
+  opacity: 0.6;
+}
+
+.check {
+  margin-left: var(--space-2, 8px);
+  color: var(--color-success, #10b981);
+  font-weight: bold;
+}
+
+.empty-state {
+  font-size: var(--font-size-md, 14px);
+  color: var(--color-text-muted, #6b7280);
+}

@@ -2,6 +2,8 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { PlayerGameStore } from '../../stores/player-game.store';
+import { PlayerRoundsStore } from '../../stores/player-rounds.store';
+import { PlayerRoundsComponent } from './player-rounds.component';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
@@ -12,10 +14,16 @@ import { ScorePanelComponent } from './score-panel.component';
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent, QuestionComponent, TimerComponent, ScorePanelComponent],
-  providers: [PlayerGameStore],
+  imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent, QuestionComponent, TimerComponent, ScorePanelComponent, PlayerRoundsComponent],
+  providers: [PlayerGameStore, PlayerRoundsStore],
   template: `
-    <div class="game-cinematic" data-theme="player" style="display:grid; grid-template-areas:'header' 'center' 'footer'; gap:var(--space-4,16px); padding:16px; min-height:100vh;">
+    <div class="game-cinematic" data-theme="player" style="display:grid; grid-template-areas:'header header' 'sidebar center' 'footer footer'; grid-template-columns:280px 1fr; gap:var(--space-4,16px); padding:16px; min-height:100vh;">
+      <style>
+        @media (max-width:1023px) {
+          .game-cinematic { grid-template-areas:'header' 'sidebar' 'center' 'footer' !important; grid-template-columns:1fr !important; }
+          .game-sidebar { position:static !important; }
+        }
+      </style>
       @if (store.ui().isHydrating) {
         <app-loading-skeleton [rows]="4" />
       } @else if (store.ui().error) {
@@ -34,6 +42,10 @@ import { ScorePanelComponent } from './score-panel.component';
           </div>
           <app-timer />
         </header>
+
+        <aside style="grid-area:sidebar;" class="game-sidebar">
+          <app-player-rounds [gameId]="gameId" />
+        </aside>
 
         <main style="grid-area:center;">
           <h2 aria-live="polite">{{ store.question()?.text }}</h2>
@@ -69,15 +81,19 @@ import { ScorePanelComponent } from './score-panel.component';
 })
 export class GameComponent implements OnInit, OnDestroy {
   store = inject(PlayerGameStore);
+  roundsStore = inject(PlayerRoundsStore);
   private route = inject(ActivatedRoute);
   private oidc = inject(OidcSecurityService);
   showWithdrawConfirm = false;
+  gameId = '';
 
   ngOnInit() {
-    const gameId = this.route.snapshot.paramMap.get('gameId')!;
-    this.store.hydrateFor(gameId);
+    this.gameId = this.route.snapshot.paramMap.get('gameId')!;
+    this.store.hydrateFor(this.gameId);
     this.store.startTimerTick();
-    this.store.bindRealtime(gameId, () => this.oidc.getAccessToken());
+    this.store.bindRealtime(this.gameId, () => this.oidc.getAccessToken());
+    this.roundsStore.hydrateLadder(this.gameId);
+    this.roundsStore.bindRealtimeLadder(this.gameId);
   }
 
   ngOnDestroy() {
@@ -87,6 +103,7 @@ export class GameComponent implements OnInit, OnDestroy {
   hydrate() {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.store.hydrateFor(gameId);
+    this.roundsStore.hydrateLadder(gameId);
   }
 
   openWithdraw() { this.showWithdrawConfirm = true; }
