@@ -83,7 +83,7 @@ public sealed class RewardCatalogHandlerTests
 
         var handler = new GetRewardsHandler(_rewardRepo, Substitute.For<IRepository<Game, GameId>>());
         var result = await handler.HandleAsync(
-            new GetRewardsQuery(null, false),
+            new GetRewardsQuery(null, false, null),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);

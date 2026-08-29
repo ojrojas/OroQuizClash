@@ -34,6 +34,21 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'rewards',
+    loadComponent: () => import('./features/rewards/rewards-catalog.component').then(m => m.RewardsCatalogComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
+    path: 'rewards/history',
+    loadComponent: () => import('./features/rewards/redemption-history.component').then(m => m.RedemptionHistoryComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
+    path: 'rewards/:rewardId',
+    loadComponent: () => import('./features/rewards/reward-detail.component').then(m => m.RewardDetailComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
     path: 'auth/callback',
     loadComponent: () => import('./core/auth/callback.component').then(m => m.CallbackComponent),
   },
