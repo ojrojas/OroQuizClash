@@ -48,12 +48,27 @@ export const PlayerGameStore = signalStore(
     _realtime: inject(GameRealtimeService),
   })),
 
-  withComputed(({ timer, _now, status, round, answer }) => ({
+  withComputed(({ timer, _now, status, round, answer, score, securedPoints, game }) => ({
     remainingSeconds: computed(() => Math.max(0, Math.floor((new Date(timer().expiresAt).getTime() - _now()) / 1000))),
     isExpired: computed(() => timer().state === 'EXPIRED' || (timer().state === 'RUNNING' && new Date(timer().expiresAt).getTime() <= _now())),
     isTerminal: computed(() => status().isTerminal),
     canAnswer: computed(() => status().canAnswer && round()?.status === 'IN_PROGRESS' && answer()?.state === 'PENDING'),
     displayScore: computed(() => `${status().isTerminal ? 'Final' : ''} ${status().gameStatus}`),
+    potentialReward: computed(() => {
+      const g: any = game();
+      const rewardName = g?.configuration?.rewardRules?.rewardId ? 'Pack Oro' : null;
+      if (!rewardName) return '—';
+      const nextThreshold = 500;
+      const current = score().totalPoints;
+      return current >= nextThreshold ? '¡Recompensa alcanzada!' : `Próximo: ${rewardName} ${nextThreshold} pts`;
+    }),
+    currentRoundDisplay: computed(() => {
+      const gs: any = status();
+      const g: any = game();
+      const max = g?.configuration?.maxRounds ?? 10;
+      const cur = (g as any)?.currentRoundNumber ?? round()?.roundNumber ?? 0;
+      return `Ronda ${cur}/${max}`;
+    }),
   })),
 
   withMethods((store) => ({
