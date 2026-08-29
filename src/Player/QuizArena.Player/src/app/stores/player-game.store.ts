@@ -22,6 +22,7 @@ type PlayerGameState = {
   ui: { isLoading: boolean; error: ProblemDetails | null; isHydrating: boolean };
   _now: number;
   _tickSub: any;
+  _isPulse: boolean;
 };
 
 const initialState: PlayerGameState = {
@@ -38,6 +39,7 @@ const initialState: PlayerGameState = {
   ui: { isLoading: false, error: null, isHydrating: false },
   _now: Date.now(),
   _tickSub: null,
+  _isPulse: false,
 };
 
 export const PlayerGameStore = signalStore(
@@ -48,7 +50,7 @@ export const PlayerGameStore = signalStore(
     _realtime: inject(GameRealtimeService),
   })),
 
-  withComputed(({ timer, _now, status, round, answer, score, securedPoints, game }) => ({
+  withComputed(({ timer, _now, status, round, answer, score, securedPoints, game, _isPulse }) => ({
     remainingSeconds: computed(() => Math.max(0, Math.floor((new Date(timer().expiresAt).getTime() - _now()) / 1000))),
     isExpired: computed(() => timer().state === 'EXPIRED' || (timer().state === 'RUNNING' && new Date(timer().expiresAt).getTime() <= _now())),
     isTerminal: computed(() => status().isTerminal),
@@ -68,6 +70,11 @@ export const PlayerGameStore = signalStore(
       const max = g?.configuration?.maxRounds ?? 10;
       const cur = (g as any)?.currentRoundNumber ?? round()?.roundNumber ?? 0;
       return `Ronda ${cur}/${max}`;
+    }),
+    isScorePulse: computed(() => _isPulse()),
+    isSecured: computed(() => {
+      const sp = securedPoints();
+      return sp.securedPoints > 0 && sp.checkpointRoundNumber != null;
     }),
   })),
 
@@ -148,6 +155,10 @@ export const PlayerGameStore = signalStore(
       (store as any)._realtime.connect(gameId, accessTokenFactory);
       (store as any)._realtime.events$.subscribe((evt: any) => {
         if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished'].includes(evt.type)) {
+          if (evt.type === 'ScoreUpdated') {
+            patchState(store, { _isPulse: true } as any);
+            setTimeout(() => patchState(store, { _isPulse: false } as any), 600);
+          }
           (store as any).hydrateFor(gameId);
         }
         if (evt.type === 'Reconnected') (store as any).hydrateFor(gameId);
