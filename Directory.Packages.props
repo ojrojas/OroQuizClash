@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Microsoft.Extensions -->
+    <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.5.3" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.5.3" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.5.3" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.5.3" />

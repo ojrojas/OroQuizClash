@@ -113,6 +113,20 @@ var admin = builder.AddProject<Projects.QuizArena_Admin>("quizarena-admin")
     .WithHttpHealthCheck("/health");
 
 // ---------------------------------------------------------------------------
+// QuizArena.Player — Angular 22 SPA (SPEC-027)
+// - PKCE public SPA (angular-auth-oidc-client) contra identity-api
+// - Proxy /api → oroclash-api, /hubs → oroclash-api SignalR
+// - En dev se sirve con `npm start` (ng serve) orquestado por Aspire AddNpmApp
+// ---------------------------------------------------------------------------
+
+var player = builder.AddContainer("quizarena-player", "node", "22-alpine")
+    .WithBindMount("../src/Player/QuizArena.Player", "/app")
+    .WithHttpEndpoint(port: 4200, targetPort: 4200, name: "http")
+    .WithEnvironment("API_URL", api.GetEndpoint("http"))
+    .WithEnvironment("IDENTITY_AUTHORITY", identityServer.GetEndpoint("http"))
+    .WithArgs("sh", "-c", "cd /app && npm install && npm start");
+
+// ---------------------------------------------------------------------------
 // Notas para `aspire start` / `aspire deploy`:
 // - Local:  `aspire start` levanta sqlserver + postgres (pgAdmin) + redis + rabbitmq (management)
 //           + identity-server (5080/5086) + oroclash-api. Dashboard en https://localhost:17113

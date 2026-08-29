@@ -1,0 +1,10 @@
+@import "../../../design-system/tokens/design-tokens.css";
+
+/* Player theme overrides per design-system/overrides/player.md */
+:root[data-theme="player"] {
+  --color-primary: var(--player-primary, #6c4ef6);
+  --color-bg: var(--player-bg, #0f0f1e);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; font-family: var(--font-sans, system-ui); background: var(--color-bg); color: var(--color-text); }

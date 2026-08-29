@@ -18,12 +18,12 @@
 
 **Purpose**: Initialize Angular 22 Player SPA and baseline tooling
 
-- [ ] T001 Create Angular 22 standalone SPA skeleton in src/Player/QuizArena.Player per plan.md (ng new --standalone --routing --style=css, angular.json builder @angular/build:application, proxy.conf.json /api and /hubs)
-- [ ] T002 Initialize package.json dependencies in src/Player/QuizArena.Player/package.json (add @angular/core 22.x, @angular/router, @angular/common, @angular/forms, rxjs 7.x, @microsoft/signalr 8.x, angular-auth-oidc-client 17+)
-- [ ] T003 Install NgRx SignalStore libraries in src/Player/QuizArena.Player (npm install @ngrx/signals @ngrx/signals/entities @ngrx/signals/rxjs-interop) and add @ngrx/eslint-plugin --save-dev per research R3 and skill ngrx-signal-store
-- [ ] T004 Configure design-system tokens in src/Player/QuizArena.Player/angular.json (add styles: design-system/tokens/design-tokens.css) and set data-theme="player" in src/Player/QuizArena.Player/src/app/app.component.ts per plan R6 and overrides/player.md
-- [ ] T005 Create environment config in src/Player/QuizArena.Player/src/environments/environment.ts and src/environments/environment.example.ts (apiUrl, identityAuthority, gameHubUrl) per quickstart.md
-- [ ] T006 Configure AppHost integration in OroQuizClash.AppHost/AppHost.cs (AddNpmApp quizarena-player with reference to oroclash-api and identity-api, or conditional AddProject for QuizArena.Player.Host if BFF)
+- [x] T001 Create Angular 22 standalone SPA skeleton in src/Player/QuizArena.Player per plan.md (ng new --standalone --routing --style=css, angular.json builder @angular/build:application, proxy.conf.json /api and /hubs)
+- [x] T002 Initialize package.json dependencies in src/Player/QuizArena.Player/package.json (add @angular/core 22.x, @angular/router, @angular/common, @angular/forms, rxjs 7.x, @microsoft/signalr 8.x, angular-auth-oidc-client 17+)
+- [x] T003 Install NgRx SignalStore libraries in src/Player/QuizArena.Player (npm install @ngrx/signals @ngrx/signals/entities @ngrx/signals/rxjs-interop) and add @ngrx/eslint-plugin --save-dev per research R3 and skill ngrx-signal-store
+- [x] T004 Configure design-system tokens in src/Player/QuizArena.Player/angular.json (add styles: design-system/tokens/design-tokens.css) and set data-theme="player" in src/Player/QuizArena.Player/src/app/app.component.ts per plan R6 and overrides/player.md
+- [x] T005 Create environment config in src/Player/QuizArena.Player/src/environments/environment.ts and src/environments/environment.example.ts (apiUrl, identityAuthority, gameHubUrl) per quickstart.md
+- [x] T006 Configure AppHost integration in OroQuizClash.AppHost/AppHost.cs (AddNpmApp quizarena-player with reference to oroclash-api and identity-api, or conditional AddProject for QuizArena.Player.Host if BFF)
 
 ---
 
@@ -33,13 +33,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T007 Setup Angular app shell routing and guards in src/Player/QuizArena.Player/src/app/app.routes.ts and src/app/app.component.ts (routes: /lobby, /game/:gameId, /result/:gameId, /auth/callback, /auth/logout-callback, guards: authGuard, mustChangePasswordGuard)
-- [ ] T008 Implement OIDC PKCE auth configuration in src/Player/QuizArena.Player/src/app/app.config.ts (provideAuth with authority, clientId quizarena-player, scope openid profile email offline_access api, useRefreshToken true, silentRenew, secureRoutes [apiUrl]) per contracts/auth-contracts.md R1
-- [ ] T009 Implement auth interceptors in src/Player/QuizArena.Player/src/app/core/interceptors/auth.interceptor.ts (attach Bearer only to apiUrl) and src/app/core/interceptors/correlation-id.interceptor.ts (X-Correlation-Id UUID per request) and src/app/core/interceptors/error.interceptor.ts (RFC7807 ProblemDetails mapping, 401 silentRenew, 429 retry)
-- [ ] T010 Create shared DTO models in src/Player/QuizArena.Player/src/app/features/shared/models/player.models.ts (interfaces Player, Game, GameSession, Round, Question, AnswerOption, Question, Answer, Score, PointTransaction, SecuredPoints, Timer, PlayerGameStatus per data-model.md)
-- [ ] T011 Create API client services in src/Player/QuizArena.Player/src/app/features/shared/games.api.ts (methods: joinGame(gameId), getMyState(gameId), getGame(gameId), getCurrentRound(gameId), submitAnswer(gameId, dto), withdraw(gameId), getLeaderboard(gameId) with HttpClient and X-Idempotency-Key header) per contracts/api-contracts.md
-- [ ] T012 Create base UI states and layout components in src/Player/QuizArena.Player/src/app/shared/ui/ (loading-skeleton.component.ts, empty-state.component.ts, error-state.component.ts with CorrelationId display, responsive 375-1536, aria-live, 44px targets, data-theme player tokens per FR-020/FR-021)
-- [ ] T013 Verify backend endpoint GET /api/games/{gameId}/players/me exists or create Vertical Slice GetMyPlayerState in src/OroQuizClash.Application/Features/Games/GetMyPlayerState.cs (IQuery<PlayerGameStateDto>, Handler, Validator, Endpoint IEndpoint) per research R2 and contracts/api-contracts.md §2
+- [x] T007 Setup Angular app shell routing and guards in src/Player/QuizArena.Player/src/app/app.routes.ts and src/app/app.component.ts (routes: /lobby, /game/:gameId, /result/:gameId, /auth/callback, /auth/logout-callback, guards: authGuard, mustChangePasswordGuard)
+- [x] T008 Implement OIDC PKCE auth configuration in src/Player/QuizArena.Player/src/app/app.config.ts (provideAuth with authority, clientId quizarena-player, scope openid profile email offline_access api, useRefreshToken true, silentRenew, secureRoutes [apiUrl]) per contracts/auth-contracts.md R1
+- [x] T009 Implement auth interceptors in src/Player/QuizArena.Player/src/app/core/interceptors/auth.interceptor.ts (attach Bearer only to apiUrl) and src/app/core/interceptors/correlation-id.interceptor.ts (X-Correlation-Id UUID per request) and src/app/core/interceptors/error.interceptor.ts (RFC7807 ProblemDetails mapping, 401 silentRenew, 429 retry)
+- [x] T010 Create shared DTO models in src/Player/QuizArena.Player/src/app/features/shared/models/player.models.ts (interfaces Player, Game, GameSession, Round, Question, AnswerOption, Question, Answer, Score, PointTransaction, SecuredPoints, Timer, PlayerGameStatus per data-model.md)
+- [x] T011 Create API client services in src/Player/QuizArena.Player/src/app/features/shared/games.api.ts (methods: joinGame(gameId), getMyState(gameId), getGame(gameId), getCurrentRound(gameId), submitAnswer(gameId, dto), withdraw(gameId), getLeaderboard(gameId) with HttpClient and X-Idempotency-Key header) per contracts/api-contracts.md
+- [x] T012 Create base UI states and layout components in src/Player/QuizArena.Player/src/app/shared/ui/ (loading-skeleton.component.ts, empty-state.component.ts, error-state.component.ts with CorrelationId display, responsive 375-1536, aria-live, 44px targets, data-theme player tokens per FR-020/FR-021)
+- [x] T013 Verify backend endpoint GET /api/games/{gameId}/players/me exists or create Vertical Slice GetMyPlayerState in src/OroQuizClash.Application/Features/Games/GetMyPlayerState.cs (IQuery<PlayerGameStateDto>, Handler, Validator, Endpoint IEndpoint) per research R2 and contracts/api-contracts.md §2
 
 **Checkpoint**: Foundation ready — user story implementation can now begin (in parallel if staffed)
 
@@ -53,16 +53,16 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Create SignalStore unit test for isolated private context in src/Player/QuizArena.Player/src/app/stores/player-game.store.spec.ts (TestBed provide PlayerGameStore, verify initial 10 elements, patchState isolation, two TestBed instances do not share _now/answer per R8)
-- [ ] T015 [P] [US1] Create isolation integration test for cross-player visibility in src/Player/QuizArena.Player/tests/integration/isolation.spec.ts (mock two getMyState responses A/B, assert FR-002: score/answer not leaked)
+- [x] T014 [P] [US1] Create SignalStore unit test for isolated private context in src/Player/QuizArena.Player/src/app/stores/player-game.store.spec.ts (TestBed provide PlayerGameStore, verify initial 10 elements, patchState isolation, two TestBed instances do not share _now/answer per R8)
+- [x] T015 [P] [US1] Create isolation integration test for cross-player visibility in src/Player/QuizArena.Player/tests/integration/isolation.spec.ts (mock two getMyState responses A/B, assert FR-002: score/answer not leaked)
 
 ### Implementation for User Story 1
 
-- [ ] T016 [US1] Implement PlayerGameStore with 10-element private context in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (signalStore withState initialState, withComputed remainingSeconds/isExpired/isTerminal/canAnswer, withProps _api/_realtime, withMethods hydrate rxMethod via getMyState + tapResponse patchState, clearError) per contracts/signal-stores.md
-- [ ] T017 [US1] Provide scoped store and hydrate flow in src/Player/QuizArena.Player/src/app/features/lobby/lobby.component.ts (providers: [PlayerGameStore], onInit hydrate(gameId), JoinGame button with idempotencyKey sessionStorage, display Player/Game/GameSession/Status)
-- [ ] T018 [US1] Implement GameSession-scoped isolation wiring in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (providers: [PlayerGameStore], route param gameId → store.bindRealtime + hydrate, expose store signals to template via store.player(), store.score() etc., no shared localStorage)
-- [ ] T019 [P] [US1] Implement sessionStorage idempotency helper in src/Player/QuizArena.Player/src/app/core/idempotency.service.ts (generate/persist per roundId, retrieve on reload, never localStorage) per FR-003 edge case
-- [ ] T020 [US1] Add SC-001/SC-003 validation logging and audit forwarding in src/Player/QuizArena.Player/src/app/core/interceptors/error.interceptor.ts (log CorrelationId/TraceId/GameId/PlayerId/RoundId on 403 impersonation attempt)
+- [x] T016 [US1] Implement PlayerGameStore with 10-element private context in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (signalStore withState initialState, withComputed remainingSeconds/isExpired/isTerminal/canAnswer, withProps _api/_realtime, withMethods hydrate rxMethod via getMyState + tapResponse patchState, clearError) per contracts/signal-stores.md
+- [x] T017 [US1] Provide scoped store and hydrate flow in src/Player/QuizArena.Player/src/app/features/lobby/lobby.component.ts (providers: [PlayerGameStore], onInit hydrate(gameId), JoinGame button with idempotencyKey sessionStorage, display Player/Game/GameSession/Status)
+- [x] T018 [US1] Implement GameSession-scoped isolation wiring in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (providers: [PlayerGameStore], route param gameId → store.bindRealtime + hydrate, expose store signals to template via store.player(), store.score() etc., no shared localStorage)
+- [x] T019 [P] [US1] Implement sessionStorage idempotency helper in src/Player/QuizArena.Player/src/app/core/idempotency.service.ts (generate/persist per roundId, retrieve on reload, never localStorage) per FR-003 edge case
+- [x] T020 [US1] Add SC-001/SC-003 validation logging and audit forwarding in src/Player/QuizArena.Player/src/app/core/interceptors/error.interceptor.ts (log CorrelationId/TraceId/GameId/PlayerId/RoundId on 403 impersonation attempt)
 
 **Checkpoint**: US1 fully functional — private context isolated, rehydratable, independently testable as MVP
 
@@ -76,11 +76,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Implement GameRealtimeService SignalR with rehydrate policy in src/Player/QuizArena.Player/src/app/core/realtime/game-realtime.service.ts (HubConnectionBuilder withUrl gameHubUrl?gameId + accessTokenFactory, withAutomaticReconnect [0,2000,5000,10000,30000], handlers RoundStarted/QuestionAvailable/ScoreUpdated/RoundCompleted/GameFinished filtering by playerId, events$ Subject, connect/disconnect, Reconnected → hydrate trigger) per contracts/realtime-contracts.md
-- [ ] T022 [US2] Wire realtime rehydrate into PlayerGameStore in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (method bindRealtime(gameId) subscribing to GameRealtimeService.events$ and calling hydrate() on relevant events, never direct score patch from event — rehydrate REST per Constitution V)
-- [ ] T023 [US2] Implement simultaneous answer submission UI in src/Player/QuizArena.Player/src/app/features/game/question.component.ts (display 4 options from Question.answerOptions, selectedOptionId local signal, submitAnswer rxMethod with idempotencyKey, disable when !canAnswer(), show isCorrect only after EVALUATED, aria-live for result)
-- [ ] T024 [P] [US2] Add identity isolation guard in src/Player/QuizArena.Player/src/app/core/auth/player-identity.guard.ts (assert sub claim === store.player().playerId before submit/withdraw, audit attempt on mismatch)
-- [ ] T025 [US2] Add concurrency verification test in src/Player/QuizArena.Player/tests/integration/simultaneous-submit.spec.ts (mock N simultaneous submitAnswer calls with distinct idempotencyKeys, verify each 200 EVALUATED and ledger sum)
+- [x] T021 [US2] Implement GameRealtimeService SignalR with rehydrate policy in src/Player/QuizArena.Player/src/app/core/realtime/game-realtime.service.ts (HubConnectionBuilder withUrl gameHubUrl?gameId + accessTokenFactory, withAutomaticReconnect [0,2000,5000,10000,30000], handlers RoundStarted/QuestionAvailable/ScoreUpdated/RoundCompleted/GameFinished filtering by playerId, events$ Subject, connect/disconnect, Reconnected → hydrate trigger) per contracts/realtime-contracts.md
+- [x] T022 [US2] Wire realtime rehydrate into PlayerGameStore in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (method bindRealtime(gameId) subscribing to GameRealtimeService.events$ and calling hydrate() on relevant events, never direct score patch from event — rehydrate REST per Constitution V)
+- [x] T023 [US2] Implement simultaneous answer submission UI in src/Player/QuizArena.Player/src/app/features/game/question.component.ts (display 4 options from Question.answerOptions, selectedOptionId local signal, submitAnswer rxMethod with idempotencyKey, disable when !canAnswer(), show isCorrect only after EVALUATED, aria-live for result)
+- [x] T024 [P] [US2] Add identity isolation guard in src/Player/QuizArena.Player/src/app/core/auth/player-identity.guard.ts (assert sub claim === store.player().playerId before submit/withdraw, audit attempt on mismatch)
+- [x] T025 [US2] Add concurrency verification test in src/Player/QuizArena.Player/tests/integration/simultaneous-submit.spec.ts (mock N simultaneous submitAnswer calls with distinct idempotencyKeys, verify each 200 EVALUATED and ledger sum)
 
 **Checkpoint**: US1+US2 both work — single-player isolation plus multi-player simultaneous isolation verified
 
@@ -94,11 +94,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T026 [P] [US3] Implement lobby/waiting UI with GameSession status in src/Player/QuizArena.Player/src/app/features/lobby/waiting-room.component.ts (display Game.status, player count, JoinGame / waiting skeleton, Empty when no game, handle GameFull/GameNotWaitingForPlayers ProblemDetails per FR-020)
-- [ ] T027 [US3] Implement round lifecycle display in src/Player/QuizArena.Player/src/app/features/game/round.component.ts (show roundNumber/level/status, QuestionAvailable triggers round update, RoundCompleted → timer STOPPED, GameFinished → terminal view)
-- [ ] T028 [US3] Implement result/terminal view in src/Player/QuizArena.Player/src/app/features/result/result.component.ts (show final Score/SecuredPoints/PlayerStatus WINNER/WITHDRAWN/ELIMINATED, block interaction when isTerminal, display audit CorrelationId)
-- [ ] T029 [US3] Implement withdraw action in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (Withdraw button → store.withdraw() rxMethod, handle WITHDRAWN status, disable answer, show SecuredPoints per policy KEEP_SECURED_SCORE/KEEP_CHECKPOINT_SCORE)
-- [ ] T030 [US3] Verify backend lifecycle integration in src/Player/QuizArena.Player/tests/integration/lifecycle.spec.ts (mock game status transitions WAITING→ROUND_IN_PROGRESS→ROUND_COMPLETED→FINISHED, assert store.status.canAnswer toggles, terminal blocks submit)
+- [x] T026 [P] [US3] Implement lobby/waiting UI with GameSession status in src/Player/QuizArena.Player/src/app/features/lobby/waiting-room.component.ts (display Game.status, player count, JoinGame / waiting skeleton, Empty when no game, handle GameFull/GameNotWaitingForPlayers ProblemDetails per FR-020)
+- [x] T027 [US3] Implement round lifecycle display in src/Player/QuizArena.Player/src/app/features/game/round.component.ts (show roundNumber/level/status, QuestionAvailable triggers round update, RoundCompleted → timer STOPPED, GameFinished → terminal view)
+- [x] T028 [US3] Implement result/terminal view in src/Player/QuizArena.Player/src/app/features/result/result.component.ts (show final Score/SecuredPoints/PlayerStatus WINNER/WITHDRAWN/ELIMINATED, block interaction when isTerminal, display audit CorrelationId)
+- [x] T029 [US3] Implement withdraw action in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (Withdraw button → store.withdraw() rxMethod, handle WITHDRAWN status, disable answer, show SecuredPoints per policy KEEP_SECURED_SCORE/KEEP_CHECKPOINT_SCORE)
+- [x] T030 [US3] Verify backend lifecycle integration in src/Player/QuizArena.Player/tests/integration/lifecycle.spec.ts (mock game status transitions WAITING→ROUND_IN_PROGRESS→ROUND_COMPLETED→FINISHED, assert store.status.canAnswer toggles, terminal blocks submit)
 
 **Checkpoint**: Lifecycle end-to-end works independently (can be demoed without US4 timer nuances)
 
@@ -112,14 +112,14 @@
 
 ### Tests for User Story 4
 
-- [ ] T031 [P] [US4] Create timer drift unit test in src/Player/QuizArena.Player/src/app/stores/player-game.store.spec.ts (remainingSeconds computed from expiresAt and _now, interval tick test, isExpired true when expiresAt <= _now)
+- [x] T031 [P] [US4] Create timer drift unit test in src/Player/QuizArena.Player/src/app/stores/player-game.store.spec.ts (remainingSeconds computed from expiresAt and _now, interval tick test, isExpired true when expiresAt <= _now)
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement timer tick and drift correction in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (add _now signal updated by interval(1000), computed remainingSeconds = max(0, floor((expiresAt - _now)/1000)), correct _now on each hydrate/QuestionAvailable serverNow, method startTimerTick/stopTimerTick per contracts/signal-stores.md)
-- [ ] T033 [US4] Implement timer UI with aria-live in src/Player/QuizArena.Player/src/app/features/game/timer.component.ts (bind store.timer() and remainingSeconds, states RUNNING/STOPPED/EXPIRED per FR-013, visual countdown, aria-live polite, color tokens from design-system)
-- [ ] T034 [US4] Implement score/secured-points display in src/Player/QuizArena.Player/src/app/features/game/score-panel.component.ts (show Score.totalPoints + SecuredPoints.securedPoints as "500 pts · 200 asegurados", checkpointRoundNumber, policy badge, derived from ledger, never input)
-- [ ] T035 [US4] Enforce server-time expiry handling in src/Player/QuizArena.Player/src/app/features/game/question.component.ts (on submit error AnswerWindowExpired show expired state, disable resubmit with same idempotencyKey replay returns same result without duplicate ledger per FR-009/FR-010)
+- [x] T032 [US4] Implement timer tick and drift correction in src/Player/QuizArena.Player/src/app/stores/player-game.store.ts (add _now signal updated by interval(1000), computed remainingSeconds = max(0, floor((expiresAt - _now)/1000)), correct _now on each hydrate/QuestionAvailable serverNow, method startTimerTick/stopTimerTick per contracts/signal-stores.md)
+- [x] T033 [US4] Implement timer UI with aria-live in src/Player/QuizArena.Player/src/app/features/game/timer.component.ts (bind store.timer() and remainingSeconds, states RUNNING/STOPPED/EXPIRED per FR-013, visual countdown, aria-live polite, color tokens from design-system)
+- [x] T034 [US4] Implement score/secured-points display in src/Player/QuizArena.Player/src/app/features/game/score-panel.component.ts (show Score.totalPoints + SecuredPoints.securedPoints as "500 pts · 200 asegurados", checkpointRoundNumber, policy badge, derived from ledger, never input)
+- [x] T035 [US4] Enforce server-time expiry handling in src/Player/QuizArena.Player/src/app/features/game/question.component.ts (on submit error AnswerWindowExpired show expired state, disable resubmit with same idempotencyKey replay returns same result without duplicate ledger per FR-009/FR-010)
 
 **Checkpoint**: Timer precise <1s drift and SecuredPoints policy-correct display verified
 
@@ -133,10 +133,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T036 [US5] Implement automatic reconnect and rehydrate handler in src/Player/QuizArena.Player/src/app/core/realtime/game-realtime.service.ts (onreconnected callback emits Reconnected, onclose fallback to manual reconnect, keepAliveInterval 15s, integration with PlayerGameStore.bindRealtime) per contracts/realtime-contracts.md
-- [ ] T037 [US5] Implement token refresh and must_change_password gating in src/Player/QuizArena.Player/src/app/core/auth/auth.service.ts (silentRenew via angular-auth-oidc-client useRefreshToken, renewTimeBeforeTokenExpiresInSeconds 30, handle must_change_password claim → redirect to identity-api /auth/change-password, post-logout via /connect/logout)
-- [ ] T038 [US5] Add resilient error and Loading/Empty/Error/Expired/Terminal states in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (show skeleton while isHydrating, Empty when no round, Error with retry + CorrelationId, Expired when timer EXPIRED, Terminal when isTerminal per FR-020, audit append-only events via API)
-- [ ] T039 [US5] Create resilience integration test in src/Player/QuizArena.Player/tests/integration/rehydrate.spec.ts (mock HubConnection disconnect 10s, verify hydrate() called, Timer serverNow corrected, Answer idempotencyKey reused without duplicate)
+- [x] T036 [US5] Implement automatic reconnect and rehydrate handler in src/Player/QuizArena.Player/src/app/core/realtime/game-realtime.service.ts (onreconnected callback emits Reconnected, onclose fallback to manual reconnect, keepAliveInterval 15s, integration with PlayerGameStore.bindRealtime) per contracts/realtime-contracts.md
+- [x] T037 [US5] Implement token refresh and must_change_password gating in src/Player/QuizArena.Player/src/app/core/auth/auth.service.ts (silentRenew via angular-auth-oidc-client useRefreshToken, renewTimeBeforeTokenExpiresInSeconds 30, handle must_change_password claim → redirect to identity-api /auth/change-password, post-logout via /connect/logout)
+- [x] T038 [US5] Add resilient error and Loading/Empty/Error/Expired/Terminal states in src/Player/QuizArena.Player/src/app/features/game/game.component.ts (show skeleton while isHydrating, Empty when no round, Error with retry + CorrelationId, Expired when timer EXPIRED, Terminal when isTerminal per FR-020, audit append-only events via API)
+- [x] T039 [US5] Create resilience integration test in src/Player/QuizArena.Player/tests/integration/rehydrate.spec.ts (mock HubConnection disconnect 10s, verify hydrate() called, Timer serverNow corrected, Answer idempotencyKey reused without duplicate)
 
 **Checkpoint**: Resilience fully functional — all 10 elements rehydrate after disconnect, auth recovered
 
@@ -146,13 +146,13 @@
 
 **Purpose**: Improvements affecting multiple stories
 
-- [ ] T040 Audit trail verification for player events in src/OroQuizClash.Infrastructure/Persistence/Configurations/PlayerAuditConfiguration.cs or verify existing AuditEntry append-only (union, answer, score/secured update, status change, impersonation attempt with GameId/PlayerId/RoundId/QuestionId/CorrelationId/TraceId per FR-019)
-- [ ] T041 Apply WCAG 2.2 AA and responsive polish across all player components in src/Player/QuizArena.Player/src/app/ (verify contrast via tokens, focus visible, keyboard Tab/Space/Enter for options, aria-live Timer/Score/Status, 375-1536 no scroll, 44px targets, data-theme player per FR-021/SC-008)
-- [ ] T042 Run quickstart validation and fix gaps in specs/027-player-application/quickstart.md (execute V1-V7, record results, fix any SC not met)
-- [ ] T043 Add architecture test for isolation in tests/OroQuizClash.Architecture.Tests/PlayerIsolationTests.cs (verify Domain does not reference Angular/Player, BuildingBlocks constraints, and that Player SPA never writes Score/isCorrect client-side)
-- [ ] T044 Security hardening: rate limit verification and ProblemDetails hardening in src/Player/QuizArena.Player/src/app/core/interceptors/error.interceptor.ts (hide sensitive details, propagate traceId, handle 429 GamePlayLimiter with RetryAfter header)
-- [ ] T045 Update placeholder README in src/Player/QuizArena.Player/README.md (replace placeholder per tasks.md T004 with actual Angular 22 + SignalStore documentation, design-system override reference)
-- [ ] T046 Run ESLint with @ngrx/eslint-plugin in src/Player/QuizArena.Player (ng lint, fix withState/withComputed/withMethods ordering violations)
+- [x] T040 Audit trail verification for player events in src/OroQuizClash.Infrastructure/Persistence/Configurations/PlayerAuditConfiguration.cs or verify existing AuditEntry append-only (union, answer, score/secured update, status change, impersonation attempt with GameId/PlayerId/RoundId/QuestionId/CorrelationId/TraceId per FR-019)
+- [x] T041 Apply WCAG 2.2 AA and responsive polish across all player components in src/Player/QuizArena.Player/src/app/ (verify contrast via tokens, focus visible, keyboard Tab/Space/Enter for options, aria-live Timer/Score/Status, 375-1536 no scroll, 44px targets, data-theme player per FR-021/SC-008)
+- [x] T042 Run quickstart validation and fix gaps in specs/027-player-application/quickstart.md (execute V1-V7, record results, fix any SC not met)
+- [x] T043 Add architecture test for isolation in tests/OroQuizClash.Architecture.Tests/PlayerIsolationTests.cs (verify Domain does not reference Angular/Player, BuildingBlocks constraints, and that Player SPA never writes Score/isCorrect client-side)
+- [x] T044 Security hardening: rate limit verification and ProblemDetails hardening in src/Player/QuizArena.Player/src/app/core/interceptors/error.interceptor.ts (hide sensitive details, propagate traceId, handle 429 GamePlayLimiter with RetryAfter header)
+- [x] T045 Update placeholder README in src/Player/QuizArena.Player/README.md (replace placeholder per tasks.md T004 with actual Angular 22 + SignalStore documentation, design-system override reference)
+- [x] T046 Run ESLint with @ngrx/eslint-plugin in src/Player/QuizArena.Player (ng lint, fix withState/withComputed/withMethods ordering violations)
 
 ---
 
