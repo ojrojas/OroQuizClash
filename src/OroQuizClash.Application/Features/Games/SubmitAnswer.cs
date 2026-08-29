@@ -108,11 +108,42 @@ public sealed class SubmitAnswerEndpoint : IEndpoint
             ISender sender,
             CancellationToken ct) =>
         {
-            // Player identity is ALWAYS the authenticated JWT sub — a player can only
-            // submit their own answer (SPEC-011 FR-003). Body cannot override it.
             var playerId = GameClaims.GetSub(http.User);
 
-            var command = body with { GameId = id, PlayerId = playerId };
+            // Support X-Idempotency-Key header per spec 031; body field is fallback
+            Guid? idempotencyFromHeader = null;
+            if (http.Request.Headers.TryGetValue("X-Idempotency-Key", out var headerVal) && Guid.TryParse(headerVal.ToString(), out var parsed))
+                idempotencyFromHeader = parsed;
+
+            // Support selectedOptionId alias from Angular client (camelCase)
+            if (body.AnswerOptionId == Guid.Empty && http.Request.Headers.ContainsKey("X-Correlation-Id"))
+            {
+                // No-op: correlation is handled by middleware
+            }
+
+            // If body deserialized with selectedOptionId but AnswerOptionId empty, try to read raw json
+            Guid answerOptionId = body.AnswerOptionId;
+            if (answerOptionId == Guid.Empty)
+            {
+                try
+                {
+                    http.Request.EnableBuffering();
+                    using var reader = new System.IO.StreamReader(http.Request.Body, leaveOpen: true);
+                    var raw = await reader.ReadToEndAsync(ct);
+                    http.Request.Body.Position = 0;
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(raw);
+                        if (doc.RootElement.TryGetProperty("selectedOptionId", out var sel) && Guid.TryParse(sel.GetString(), out var selGuid))
+                            answerOptionId = selGuid;
+                        else if (doc.RootElement.TryGetProperty("SelectedOptionId", out var sel2) && Guid.TryParse(sel2.GetString(), out var selGuid2))
+                            answerOptionId = selGuid2;
+                    }
+                }
+                catch { }
+            }
+
+            var command = body with { GameId = id, PlayerId = playerId, AnswerOptionId = answerOptionId != Guid.Empty ? answerOptionId : body.AnswerOptionId, IdempotencyKey = idempotencyFromHeader ?? body.IdempotencyKey };
             var result = await sender.SendAsync(command, ct);
             return result.ToHttpResult();
         }).RequireAuthorization();

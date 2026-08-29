@@ -34,7 +34,8 @@ export class GamesApi {
 
   submitAnswer(gameId: string, dto: { roundId: string; questionId: string; selectedOptionId: string; idempotencyKey: string }): Observable<Answer> {
     const headers = new HttpHeaders({ 'X-Idempotency-Key': dto.idempotencyKey });
-    return this.http.post<Answer>(`${this.base}/games/${gameId}/answers`, dto, { headers });
+    const body: any = { ...dto, answerOptionId: dto.selectedOptionId };
+    return this.http.post<Answer>(`${this.base}/games/${gameId}/answers`, body, { headers });
   }
 
   withdraw(gameId: string, idempotencyKey?: string): Observable<GameSession> {

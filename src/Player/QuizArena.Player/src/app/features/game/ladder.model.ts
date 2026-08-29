@@ -101,6 +101,7 @@ export function buildLadder(
     const rule = rewardRules.find(x => x.roundThreshold === roundNumber);
     if (rule) currentReward = `${rule.pointsRequired} pts`;
     else if (pointsPerRound != null && pointsPerRound > 0) currentReward = `${pointsPerRound * roundNumber} pts`;
+    else if (pointsPerRound == null) currentReward = `${100 * roundNumber} pts`;
     else currentReward = null;
 
     // placeholder logic: if no rule and no pointsPerRound, keep null -> component shows "—"

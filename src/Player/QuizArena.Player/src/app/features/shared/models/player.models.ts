@@ -63,6 +63,8 @@ export interface Question {
 export interface AnswerOption {
   optionId: string;
   text: string;
+  displayOrder?: number;
+  isCorrect?: boolean | null;
 }
 
 export interface Answer {

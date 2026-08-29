@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { PlayerRoundsStore } from '../../stores/player-rounds.store';
+import { AnswerInteractionStore } from '../../stores/answer-interaction.store';
 import { PlayerRoundsComponent } from './player-rounds.component';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
@@ -15,7 +16,7 @@ import { ScorePanelComponent } from './score-panel.component';
   selector: 'app-game',
   standalone: true,
   imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent, QuestionComponent, TimerComponent, ScorePanelComponent, PlayerRoundsComponent],
-  providers: [PlayerGameStore, PlayerRoundsStore],
+  providers: [PlayerGameStore, PlayerRoundsStore, AnswerInteractionStore],
   template: `
     <div class="game-cinematic" data-theme="player" style="display:grid; grid-template-areas:'header header' 'sidebar center' 'footer footer'; grid-template-columns:280px 1fr; gap:var(--space-4,16px); padding:16px; min-height:100vh;">
       <style>
@@ -82,6 +83,7 @@ import { ScorePanelComponent } from './score-panel.component';
 export class GameComponent implements OnInit, OnDestroy {
   store = inject(PlayerGameStore);
   roundsStore = inject(PlayerRoundsStore);
+  answerStore = inject(AnswerInteractionStore);
   private route = inject(ActivatedRoute);
   private oidc = inject(OidcSecurityService);
   showWithdrawConfirm = false;
@@ -94,6 +96,13 @@ export class GameComponent implements OnInit, OnDestroy {
     this.store.bindRealtime(this.gameId, () => this.oidc.getAccessToken());
     this.roundsStore.hydrateLadder(this.gameId);
     this.roundsStore.bindRealtimeLadder(this.gameId);
+    this.answerStore.hydrateAnswer(this.gameId);
+    // hydrate answer on realtime events
+    (this.store as any)._realtime.events$?.subscribe?.((evt: any) => {
+      if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'Reconnected'].includes(evt.type)) {
+        this.answerStore.hydrateAnswer(this.gameId);
+      }
+    });
   }
 
   ngOnDestroy() {
@@ -104,6 +113,7 @@ export class GameComponent implements OnInit, OnDestroy {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.store.hydrateFor(gameId);
     this.roundsStore.hydrateLadder(gameId);
+    this.answerStore.hydrateAnswer(gameId);
   }
 
   openWithdraw() { this.showWithdrawConfirm = true; }

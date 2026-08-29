@@ -1,0 +1,172 @@
+.question-answering {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.question-text {
+  font-size: var(--typography-title-m-size, 20px);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--color-foreground, #0F172A);
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3, 12px);
+}
+
+@media (min-width: 768px) {
+  .options-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.answer-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border, #DBEAFE);
+  background: var(--color-surface, #FFFFFF);
+  color: var(--color-foreground, #1E3A8A);
+  transition: all 200ms var(--motion-ease-out, ease);
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font-size: var(--typography-body-m-size, 16px);
+}
+
+.answer-option:hover,
+.answer-option.hover {
+  border-color: var(--color-primary, #2563EB);
+  box-shadow: var(--shadow-md, 0 4px 8px rgba(15,23,42,0.12));
+  transform: scale(1.01);
+}
+
+.answer-option:focus-visible {
+  outline: 2px solid var(--color-primary, #2563EB);
+  outline-offset: 2px;
+}
+
+.answer-option.selected {
+  background: var(--color-primary-subtle, rgba(37,99,235,0.08));
+  border-color: var(--color-primary, #2563EB);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(15,23,42,0.08));
+}
+
+.answer-option.locked {
+  opacity: 0.9;
+  cursor: not-allowed;
+}
+
+.answer-option.evaluating {
+  background: var(--color-primary-subtle, rgba(37,99,235,0.08));
+  animation: pulse 600ms ease infinite;
+}
+
+.answer-option.correct {
+  background: var(--color-success, #16A34A);
+  color: var(--color-success-contrast, #FFFFFF);
+  border-color: var(--color-success, #16A34A);
+}
+
+.answer-option.incorrect {
+  background: var(--color-error, #DC2626);
+  background: var(--color-destructive, #DC2626);
+  color: var(--color-on-destructive, #FFFFFF);
+  border-color: var(--color-destructive, #DC2626);
+}
+
+.answer-option.timeout {
+  background: var(--color-warning, #D97706);
+  color: var(--color-on-primary, #FFFFFF);
+  border-color: var(--color-warning, #D97706);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .answer-option,
+  .answer-option:hover,
+  .answer-option.hover {
+    transition: none;
+    transform: none;
+    animation: none;
+  }
+}
+
+.confirm-btn {
+  margin-top: var(--space-3, 12px);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-primary, #2563EB);
+  color: var(--color-on-primary, #FFFFFF);
+  border: none;
+  min-height: 44px;
+  min-width: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border, #DBEAFE);
+  border-top-color: var(--color-primary, #2563EB);
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.evaluating {
+  font-size: var(--typography-label-m-size, 14px);
+  color: var(--color-muted-foreground, #475569);
+}
+
+.result.correct {
+  background: var(--color-success, #16A34A);
+  color: var(--color-on-primary, #FFFFFF);
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius-md, 8px);
+}
+
+.result.incorrect {
+  background: var(--color-destructive, #DC2626);
+  color: var(--color-on-destructive, #FFFFFF);
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius-md, 8px);
+}
+
+.result.timeout {
+  background: var(--color-warning, #D97706);
+  color: var(--color-on-primary, #FFFFFF);
+  padding: var(--space-3, 12px);
+  border-radius: var(--radius-md, 8px);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.option-label {
+  flex: 1;
+}

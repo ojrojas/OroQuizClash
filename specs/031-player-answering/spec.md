@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-29
 
-**Status**: Draft
+**Status**: Ready for Review
 
 **Input**: User description: "031 — Player Answering Tecnología Angular 22 Objetivo Definir la interacción del jugador con las cuatro respuestas. Descripción Cada pregunta deberá presentar exactamente cuatro opciones. Estados: Idle Hover Selected Locked Evaluating Correct Incorrect Timeout El jugador deberá poder seleccionar una única respuesta. Una vez bloqueada, la respuesta no podrá modificarse. El resultado deberá ser proporcionado por el backend."
 

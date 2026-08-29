@@ -66,13 +66,27 @@ public sealed class GetMyPlayerStateHandler(IRepository<Game, GameId> repository
         var isTerminal = player.ParticipationStatus.Name != "ACTIVE" || game.Status.IsTerminal;
         var canAnswer = !isTerminal && currentRound?.Status.Name == "ROUND_IN_PROGRESS" && (answer is null || answer.Status.Name == "NOT_ANSWERED" || answer.Status.Name == "PENDING");
 
+        // Filter isCorrect for PLAYER: only expose when EVALUATED (Server Truth V)
+        bool? exposedIsCorrect = null;
+        string? exposedSelected = null;
+        string answerStateName = "PENDING";
+        if (answer is not null)
+        {
+            answerStateName = answer.Status.Name;
+            exposedSelected = answer.AnswerOptionId.Value.ToString();
+            if (answerStateName == "EVALUATED" || answerStateName == "CORRECT" || answerStateName == "INCORRECT")
+                exposedIsCorrect = answer.Correct;
+            else
+                exposedIsCorrect = null;
+        }
+
         var response = new PlayerGameStateResponse(
             new PlayerDto(query.PlayerId.ToString(), player.DisplayName ?? "Player", "", null, Array.Empty<string>(), false),
             new GameDto(game.Id.Value.ToString(), game.Name, game.Status.Name, game.Configuration.CategoryId.Value.ToString(), "", game.Configuration, game.Configuration.MaxPlayers, game.Configuration.MinPlayers),
             new GameSessionDto(player.Id.Value.ToString(), query.PlayerId.ToString(), game.Id.Value.ToString(), player.ParticipationStatus.Name, player.JoinedAt.ToString("O"), player.CurrentRoundNumber, Convert.ToBase64String(game.RowVersion ?? Array.Empty<byte>())),
             currentRound is null ? null : new RoundDto(currentRound.Id.Value.ToString(), game.Id.Value.ToString(), currentRound.RoundNumber, currentRound.Difficulty.ToString(), currentRound.Status.Name, currentRound.QuestionId.Value.ToString(), currentRound.StartedAt.ToString("O"), expiresAt.ToString("O"), ""),
             question is null ? null : new QuestionDto(question.Id.Value.ToString(), question.CategoryId.Value.ToString(), question.Text, question.AnswerOptions.Select(o => new AnswerOptionDto(o.Id.Value.ToString(), o.Text)).ToArray(), question.Difficulty.Name),
-            answer is null ? new AnswerDto(null, query.PlayerId.ToString(), game.Id.Value.ToString(), currentRound?.Id.Value.ToString() ?? "", currentRound?.QuestionId.Value.ToString() ?? "", null, null, "PENDING", null, "") : new AnswerDto(answer.Id.Value.ToString(), query.PlayerId.ToString(), game.Id.Value.ToString(), answer.RoundId.Value.ToString(), answer.QuestionId.Value.ToString(), answer.AnswerOptionId.Value.ToString(), answer.EvaluatedAt?.ToString("O") ?? answer.CreatedAt.ToString("O"), answer.Status.Name, answer.Correct, answer.Id.Value.ToString()),
+            answer is null ? new AnswerDto(null, query.PlayerId.ToString(), game.Id.Value.ToString(), currentRound?.Id.Value.ToString() ?? "", currentRound?.QuestionId.Value.ToString() ?? "", null, null, "PENDING", null, "") : new AnswerDto(answer.Id.Value.ToString(), query.PlayerId.ToString(), game.Id.Value.ToString(), answer.RoundId.Value.ToString(), answer.QuestionId.Value.ToString(), exposedSelected, answer.EvaluatedAt?.ToString("O") ?? answer.CreatedAt.ToString("O"), answerStateName, exposedIsCorrect, answer.Id.Value.ToString()),
             new ScoreDto(query.PlayerId.ToString(), game.Id.Value.ToString(), player.Score.CurrentPoints, game.Answers.Count(a => a.PlayerId == query.PlayerId && a.Correct == true), player.Score.CurrentPoints.ToString()),
             new SecuredPointsDto(query.PlayerId.ToString(), game.Id.Value.ToString(), player.Score.SecuredPoints, player.Score.SecuredPoints > 0 ? player.CurrentRoundNumber : null, game.Configuration.WithdrawalPolicy.Name),
             new TimerDto(game.Configuration.TimeLimitPerQuestionSeconds, expiresAt.ToString("O"), remaining, timerState, serverNow.ToString("O")),
