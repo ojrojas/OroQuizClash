@@ -9,6 +9,16 @@ export class GamesApi {
   private http = inject(HttpClient);
   private base = environment.apiUrl;
 
+  getGames(params: { status?: string; page?: number; pageSize?: number; search?: string; categoryId?: string }): Observable<{ items: any[]; totalCount: number; page: number; pageSize: number; totalPages: number }> {
+    const httpParams: any = {};
+    if (params.status) httpParams['status'] = params.status;
+    if (params.page) httpParams['page'] = String(params.page);
+    if (params.pageSize) httpParams['pageSize'] = String(params.pageSize);
+    if (params.search) httpParams['search'] = params.search;
+    if (params.categoryId) httpParams['categoryId'] = params.categoryId;
+    return this.http.get<{ items: any[]; totalCount: number; page: number; pageSize: number; totalPages: number }>(`${this.base}/games`, { params: httpParams });
+  }
+
   joinGame(gameId: string, idempotencyKey?: string): Observable<GameSession> {
     const headers = idempotencyKey ? new HttpHeaders({ 'X-Idempotency-Key': idempotencyKey }) : undefined;
     return this.http.post<GameSession>(`${this.base}/games/${gameId}/players`, { idempotencyKey }, { headers });

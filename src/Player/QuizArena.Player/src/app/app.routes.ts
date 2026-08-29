@@ -9,6 +9,21 @@ export const routes: Routes = [
     canActivate: [authGuard, mustChangePasswordGuard],
   },
   {
+    path: 'player/lobby',
+    loadComponent: () => import('./features/lobby/lobby.component').then(m => m.LobbyComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
+    path: 'lobby/:gameId',
+    loadComponent: () => import('./features/lobby/game-detail.component').then(m => m.GameDetailComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
+    path: 'player/lobby/:gameId',
+    loadComponent: () => import('./features/lobby/game-detail.component').then(m => m.GameDetailComponent),
+    canActivate: [authGuard, mustChangePasswordGuard],
+  },
+  {
     path: 'game/:gameId',
     loadComponent: () => import('./features/game/game.component').then(m => m.GameComponent),
     canActivate: [authGuard, mustChangePasswordGuard],

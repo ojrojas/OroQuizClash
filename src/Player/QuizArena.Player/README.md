@@ -32,3 +32,6 @@ ng lint # @ngrx/eslint-plugin withState/withComputed/withMethods ordering
 ```
 
 Spec: `specs/027-player-application/` (US1-US5, FR-001..021, SC-001..009)
+
+## Player Lobby (028)
+`src/app/features/lobby/` — Available Games 8 cols (`Game Name, Category, Difficulty, Number of Rounds, Players, Start Time, Prize, Status`) via `GET /api/games?status=WAITING_FOR_PLAYERS` paginado (`LobbyStore` `signalStore` `games/totalCount/page/pageSize` `load` rxMethod + `GamesApi.getGames`), table ≥1024px / cards ≤768px stacked 375px same 8 fields, `players.display "current/max"` `prize "—"` fallback, paginator `totalCount/page/pageSize`, `Join Game` per row `sessionStorage idemp-join-{gameId}` `X-Idempotency-Key` → `POST /api/games/{id}/players` idempotente `UNIQUE (GameId,UserId)` → redirect `/player/game/:id`, `View Game Information` → `GET /api/games/{id}` modal/page `game-detail.component.ts` 8+extended `TimeLimit/Points/Policies` `StartTime` local, `Leave Lobby` → `router.navigate(['/'])` no API (FR-007), `data-theme="player"` `design-tokens.css` WCAG 2.2 AA `aria-live` 44px, `X-Correlation-Id` per request `ErrorState` `CorrelationId/TraceId`.
