@@ -1,0 +1,72 @@
+- generic [ref=f4e125]:
+  - link "Skip to main content" [ref=f4e126] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f4e127]:
+    - generic [ref=f4e128]:
+      - generic [ref=f4e129]: QA
+      - generic [ref=f4e130]: QuizArena
+    - list [ref=f4e131]:
+      - listitem [ref=f4e132]:
+        - link "Dashboard" [ref=f4e133] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f4e139]:
+        - link "Games" [ref=f4e140] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f4e145]:
+        - link "Game Configuration" [ref=f4e146] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f4e148]:
+        - link "Categories" [ref=f4e149] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f4e152]:
+        - link "Question Bank" [ref=f4e153] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f4e157]:
+        - link "Players" [ref=f4e158] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f4e164]:
+        - link "Rewards" [ref=f4e165] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f4e171]:
+        - link "Live Games" [ref=f4e172] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f4e179]:
+        - link "Reports" [ref=f4e180] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f4e183]:
+        - link "Audit" [ref=f4e184] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f4e188]:
+      - generic [ref=f4e189]: Administrator
+      - generic [ref=f4e190]: ADMIN
+      - generic [ref=f4e191]: GAME MANAGER
+      - generic [ref=f4e192]: REWARD MANAGER
+      - generic [ref=f4e193]: PLAYER
+      - generic [ref=f4e194]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f4e195]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f4e196]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f4e197]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f4e198]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f4e199]:
+    - banner [ref=f4e200]:
+      - button "Toggle navigation" [ref=f4e201] [cursor=pointer]
+      - generic [ref=f4e203]: QuizArena Admin
+      - generic [ref=f4e204]:
+        - generic [ref=f4e205]: Admin Administrator
+        - button "Logout" [ref=f4e207] [cursor=pointer]
+    - main [ref=f4e212]:
+      - heading "Matemáticas E2E Test" [level=1] [ref=f4e292]
+      - generic "Draft" [ref=f4e293]:
+        - generic "Preguntas válidas" [ref=f4e296]: 0/5
+      - paragraph [ref=f4e297]: "Área: Ciencias | Nivel: Primaria | Edad: 0-0 | Dificultad: 1"
+      - paragraph [ref=f4e298]: "Público: Categoría de prueba E2E para flujo completo"
+      - paragraph [ref=f4e299]: "Preguntas válidas: 0 / 5 (no elegible)"
+      - toolbar "Transiciones de categoría" [ref=f4e300]:
+        - button "Publicar" [disabled] [ref=f4e301]
+        - button "Desactivar" [disabled] [ref=f4e303]
+        - button "Activar" [disabled] [ref=f4e305]
+        - button "Archivar" [disabled] [ref=f4e307]
+  - region "Notifications" [ref=f4e309]:
+    - status [ref=f4e310]:
+      - strong [ref=f4e314]: "Categoría creada: Matemáticas E2E Test"
+      - button "Dismiss notification" [ref=f4e315] [cursor=pointer]

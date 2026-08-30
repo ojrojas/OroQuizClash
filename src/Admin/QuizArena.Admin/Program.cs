@@ -1,83 +1,38 @@
+using System.Security.Claims;
 using BuildingBlocks.ServiceDefaults;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using BuildingBlocks.ServiceDefaults.TokenStorage;
+using Microsoft.AspNetCore.Authentication;
+using QuizArena.Admin;
 using QuizArena.Admin.Client;
 using QuizArena.Admin.Client.Services;
 using QuizArena.Admin.Components;
+using QuizArena.Admin.Extensions;
 using QuizArena.Admin.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// OTel, health checks (/health, /alive), resilience — BuildingBlocks.ServiceDefaults.
 builder.AddServiceDefaults();
 
-// ---------------------------------------------------------------------------
-// Authentication: OIDC authorization_code + refresh_token against OroIdentityServer
-// (Constitution VI — sole identity authority). Tokens live ONLY in the server
-// sign-in cookie (BFF pattern); the browser never sees them (FR-030, SC-003).
-// ---------------------------------------------------------------------------
-
-builder.Services.AddAuthentication(AuthenticationEndpoints.OidcScheme)
-    .AddOpenIdConnect(AuthenticationEndpoints.OidcScheme, oidcOptions =>
-    {
-        oidcOptions.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        oidcOptions.Authority = builder.Configuration["Identity:Authority"];
-        oidcOptions.ClientId = builder.Configuration["Identity:ClientId"] ?? "quizarena-admin";
-        oidcOptions.ClientSecret = builder.Configuration["Identity:ClientSecret"];
-        oidcOptions.ResponseType = OpenIdConnectResponseType.Code;
-        oidcOptions.RequireHttpsMetadata = false; // Aspire internal http endpoint; TLS terminated at proxy
-        oidcOptions.MapInboundClaims = false;
-        oidcOptions.GetClaimsFromUserInfoEndpoint = true;
-        oidcOptions.TokenValidationParameters.NameClaimType = "name";
-        oidcOptions.TokenValidationParameters.RoleClaimType = "roles";
-        oidcOptions.TokenValidationParameters.ValidateIssuer = false;
-        oidcOptions.TokenValidationParameters.ValidateAudience = false;
-
-        var apiScope = builder.Configuration["Identity:ApiScope"];
-        if (!string.IsNullOrWhiteSpace(apiScope))
-        {
-            oidcOptions.Scope.Add(apiScope);
-        }
-        // Callback paths default to /signin-oidc, /signout-callback-oidc, /signout-oidc
-        // and must match the quizarena-admin client registration in OroIdentityServer.
-    })
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme);
-
-// Non-interactive refresh: reissue the cookie with a fresh access_token when it nears
-// expiry; sign the user out if the refresh_token can no longer be exchanged.
-builder.Services.ConfigureCookieOidc(CookieAuthenticationDefaults.AuthenticationScheme, AuthenticationEndpoints.OidcScheme);
-
-// Local policies mirror QuizArena.Api SecurityPolicies (contracts/oidc-config.md §6).
-// The API remains the final authority (403) — the UI only hides what is not allowed.
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy(AdminPolicies.AdminOnly, policy => policy.RequireAssertion(ctx =>
-        ctx.User.HasClaim(c => (c.Type == "roles" || c.Type == "role") && c.Value == AdminRoles.Admin)));
-    options.AddPolicy(AdminPolicies.AdminOrGameManager, policy => policy.RequireAssertion(ctx =>
-        ctx.User.HasClaim(c => (c.Type == "roles" || c.Type == "role") &&
-            (c.Value == AdminRoles.Admin || c.Value == AdminRoles.GameManager))));
-    options.AddPolicy(AdminPolicies.RewardManagerOrAdmin, policy => policy.RequireAssertion(ctx =>
-        ctx.User.HasClaim(c => (c.Type == "roles" || c.Type == "role") &&
-            (c.Value == AdminRoles.Admin || c.Value == AdminRoles.RewardManager))));
-    // Dashboard/Reports are visible to all three roles (research R8: REWARD_MANAGER sees
-    // Dashboard, Rewards and Reports).
-    options.AddPolicy(AdminPolicies.AnyAdminRole, policy => policy.RequireAssertion(ctx =>
-        ctx.User.HasClaim(c => (c.Type == "roles" || c.Type == "role") &&
-            (c.Value == AdminRoles.Admin || c.Value == AdminRoles.GameManager || c.Value == AdminRoles.RewardManager))));
-});
-
-// Flow the AuthenticationState (claims only — never tokens) server → client.
-builder.Services.AddCascadingAuthenticationState();
+var identityAuthority = builder.Configuration["Oidc:Authority"] ?? builder.Configuration["Identity:Authority"] ?? "http://localhost:5080";
+var webClientId = builder.Configuration["Oidc:ClientId"] ?? builder.Configuration["Identity:ClientId"] ?? "quizarena-admin";
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents()
     .AddAuthenticationStateSerialization(options => options.SerializeAllClaims = true);
 
+builder.Services.AddCascadingAuthenticationState();
+
+builder.AddAuthenticationServerService();
+builder.AddAuthorizationServerService();
+
+builder.AddIdentityServerOpenIddict(identityAuthority, webClientId);
+
+builder.Services.AddRedisTokenStore();
+builder.Services.AddServiceDiscovery();
+
 // BFF: YARP forwarder + Aspire service discovery; Server*Services attach the Bearer
-// token per request from the ambient HttpContext.
+// token per request from the ambient HttpContext via Redis.
 builder.Services.AddHttpForwarderWithServiceDiscovery();
 builder.Services.AddAdminServerServices();
 builder.Services.AddAdminApiHttpClient<IGamesAdminService, ServerGamesAdminService>();
@@ -112,21 +67,52 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Capture access_token for the Blazor circuit (where HttpContext is null)
+// EduCoreWeb BFF: token lives in cookie+Redis, circuit needs it via scoped holder
+app.Use(async (ctx, next) =>
+{
+    var holder = ctx.RequestServices.GetRequiredService<AccessTokenHolder>();
+    // Try cookie first
+    var token = await ctx.GetTokenAsync("access_token");
+    if (string.IsNullOrEmpty(token))
+    {
+        var sid = ctx.User.FindFirstValue(QuizArena.Admin.OidcBffEndpointExtensions.TokenStorageClaim);
+        if (!string.IsNullOrEmpty(sid))
+        {
+            var store = ctx.RequestServices.GetRequiredService<RedisTokenStore>();
+            token = await store.GetAccessTokenAsync(sid);
+        }
+    }
+    holder.Token = token;
+    holder.Sid = ctx.User.FindFirstValue(QuizArena.Admin.OidcBffEndpointExtensions.TokenStorageClaim);
+    await next();
+});
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+
+// BFF y OIDC deben mapearse ANTES del fallback Razor para que /bff/* y /hubs/* no sean capturados por UI (404)
+// YARP forwarder tiene prioridad sobre Razor fallback
+app.MapOidcBffEndpoints(builder.Configuration);
+// Keep /authentication/login as alias to /Account/Login for WASM compatibility (spec 017)
+app.MapGroup("/authentication").MapLoginAndLogout();
+
+// DEBUG: token check for 401 diagnosis
+app.MapGet("/debug/token", async (HttpContext ctx, BuildingBlocks.ServiceDefaults.TokenStorage.RedisTokenStore store) =>
+{
+    var cookieToken = await ctx.GetTokenAsync("access_token");
+    var sid = ctx.User.FindFirstValue(QuizArena.Admin.OidcBffEndpointExtensions.TokenStorageClaim);
+    string? redisToken = null;
+    if (!string.IsNullOrEmpty(sid)) redisToken = await store.GetAccessTokenAsync(sid);
+    return Results.Json(new { hasCookieToken = !string.IsNullOrEmpty(cookieToken), cookiePrefix = cookieToken?.Substring(0, Math.Min(20, cookieToken.Length)), hasRedisToken = !string.IsNullOrEmpty(redisToken), redisPrefix = redisToken?.Substring(0, Math.Min(20, redisToken.Length)), user = ctx.User.Identity?.Name, roles = string.Join(",", ctx.User.Claims.Where(c => c.Type == "roles" || c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value)), sid });
+}).RequireAuthorization();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(QuizArena.Admin.Client._Imports).Assembly);
-
-// BFF forwarders: /bff/{**} → oroclash-api /api/{**} and /hubs/game (both RequireAuthorization).
-app.MapBffForwarder();
-app.MapGameHubForwarder();
-
-// OIDC challenge / sign-out endpoints (no credential forms — Constitution VI).
-app.MapGroup("/authentication").MapLoginAndLogout();
 
 app.MapDefaultEndpoints();
 

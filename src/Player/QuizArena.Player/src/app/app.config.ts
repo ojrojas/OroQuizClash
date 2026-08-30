@@ -18,13 +18,21 @@ export const appConfig: ApplicationConfig = {
         redirectUrl: window.location.origin + '/auth/callback',
         postLogoutRedirectUri: window.location.origin + '/auth/logout-callback',
         clientId: 'quizarena-player',
-        scope: 'openid profile email offline_access api',
+        scope: 'openid profile email offline_access',
         responseType: 'code',
         silentRenew: true,
         useRefreshToken: true,
         renewTimeBeforeTokenExpiresInSeconds: 30,
         secureRoutes: [environment.apiUrl],
         maxIdTokenIatOffsetAllowedInSeconds: 600,
+        // Dev: permite http y evita validación estricta de issuer vs authority (cert dev https://localhost:5086 vs http)
+        // En prod cambiar a requireHttps:true y authority https
+        triggerAuthorizationResultEvent: true,
+        // @ts-ignore - opciones no tipadas en v17 pero soportadas por la lib
+        requireHttps: false,
+        strictDiscoveryDocumentValidation: false,
+        // @ts-ignore
+        historyCleanupOff: false,
       }
     }),
   ],

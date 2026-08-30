@@ -1,0 +1,152 @@
+- generic [ref=f9e2]:
+  - link "Skip to main content" [ref=f9e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f9e4]:
+    - generic [ref=f9e5]:
+      - generic [ref=f9e6]: QA
+      - generic [ref=f9e7]: QuizArena
+    - list [ref=f9e8]:
+      - listitem [ref=f9e9]:
+        - link "Dashboard" [ref=f9e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f9e16]:
+        - link "Games" [ref=f9e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f9e22]:
+        - link "Game Configuration" [ref=f9e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f9e25]:
+        - link "Categories" [ref=f9e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f9e29]:
+        - link "Question Bank" [ref=f9e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f9e34]:
+        - link "Players" [ref=f9e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f9e41]:
+        - link "Rewards" [ref=f9e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f9e48]:
+        - link "Live Games" [ref=f9e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f9e56]:
+        - link "Reports" [ref=f9e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f9e60]:
+        - link "Audit" [ref=f9e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f9e65]:
+      - generic [ref=f9e66]: Administrator
+      - generic [ref=f9e67]: ADMIN
+      - generic [ref=f9e68]: GAME MANAGER
+      - generic [ref=f9e69]: REWARD MANAGER
+      - generic [ref=f9e70]: PLAYER
+      - generic [ref=f9e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f9e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f9e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f9e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f9e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f9e76]:
+    - banner [ref=f9e77]:
+      - button "Toggle navigation" [ref=f9e78] [cursor=pointer]
+      - generic [ref=f9e80]: QuizArena Admin
+      - generic [ref=f9e81]:
+        - generic [ref=f9e82]: Admin Administrator
+        - button "Logout" [ref=f9e84] [cursor=pointer]
+    - main [ref=f9e89]:
+      - heading "Auditoría" [level=1] [ref=f9e90]
+      - generic [ref=f9e91]:
+        - generic [ref=f9e92]:
+          - generic [ref=f9e93]: Who
+          - textbox "Who" [ref=f9e94]:
+            - /placeholder: sub o nombre
+        - generic [ref=f9e95]:
+          - generic [ref=f9e96]: What
+          - textbox "What" [ref=f9e97]:
+            - /placeholder: CreateCategory
+        - generic [ref=f9e98]:
+          - generic [ref=f9e99]: Desde
+          - textbox "Desde" [ref=f9e100]
+        - generic [ref=f9e101]:
+          - generic [ref=f9e102]: Hasta
+          - textbox "Hasta" [ref=f9e103]
+        - generic [ref=f9e104]:
+          - generic [ref=f9e105]: Where
+          - textbox "Where" [ref=f9e106]:
+            - /placeholder: CorrelationId
+        - generic [ref=f9e107]:
+          - generic [ref=f9e108]: Entity
+          - combobox "Entity" [ref=f9e109]:
+            - option "Todos" [disabled] [selected]
+            - option "Game"
+            - option "Category"
+            - option "Question"
+            - option "GamePlayer"
+            - option "Reward"
+            - option "RewardRedemption"
+            - option "Player"
+        - generic [ref=f9e110]:
+          - generic [ref=f9e111]: EntityId
+          - textbox "EntityId" [ref=f9e112]:
+            - /placeholder: GUID
+        - generic [ref=f9e113]:
+          - generic [ref=f9e114]: Action
+          - combobox "Action" [ref=f9e115]:
+            - option "Todos" [disabled] [selected]
+            - option "CREATE"
+            - option "UPDATE"
+            - option "DELETE"
+            - option "ACTIVATE"
+            - option "DEACTIVATE"
+            - option "ARCHIVE"
+            - option "APPROVE"
+            - option "REJECT"
+            - option "DELIVER"
+            - option "CANCEL"
+            - option "START"
+            - option "FINISH"
+            - option "JOIN"
+            - option "WITHDRAW"
+        - generic [ref=f9e116]:
+          - generic [ref=f9e117]: Result
+          - combobox "Result" [ref=f9e118]:
+            - option "Todos" [disabled] [selected]
+            - option "Success"
+            - option "Failed"
+        - button "Buscar" [ref=f9e119] [cursor=pointer]
+        - button "Limpiar" [ref=f9e121] [cursor=pointer]
+      - table [ref=f9e125]:
+        - caption [ref=f9e126]: Auditoría
+        - rowgroup [ref=f9e127]:
+          - row [ref=f9e128]:
+            - columnheader "When" [ref=f9e129]
+            - columnheader "Who" [ref=f9e130]
+            - columnheader "What" [ref=f9e131]
+            - columnheader "Where" [ref=f9e132]
+            - columnheader "Entity" [ref=f9e133]
+            - columnheader "Previous" [ref=f9e134]
+            - columnheader "New" [ref=f9e135]
+            - columnheader "Action" [ref=f9e136]
+            - columnheader "Result" [ref=f9e137]
+            - columnheader [ref=f9e138]
+        - rowgroup [ref=f9e139]:
+          - row [ref=f9e140]:
+            - cell "01/01/0001 00:00" [ref=f9e141]
+            - cell "(01a04ee9)" [ref=f9e142]
+            - cell [ref=f9e143]
+            - cell [ref=f9e144]:
+              - text: (00-a8bee)
+              - button "Copiar" [ref=f9e145] [cursor=pointer]
+            - cell "(00000000)" [ref=f9e147]
+            - cell "—" [ref=f9e148]
+            - cell "—" [ref=f9e149]
+            - cell "CreateCategory" [ref=f9e150]
+            - cell [ref=f9e153]
+            - cell [ref=f9e155]:
+              - button "Detalle" [ref=f9e156] [cursor=pointer]
+      - generic [ref=f9e158]:
+        - button "Anterior" [disabled] [ref=f9e159]
+        - generic [ref=f9e161]: Página 1 de 0 (0 total)
+        - button "Siguiente" [disabled] [ref=f9e162]
+  - region "Notifications"

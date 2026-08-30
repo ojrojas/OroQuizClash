@@ -1,4 +1,4 @@
-@import "../../../design-system/tokens/design-tokens.css";
+@import "../../../../design-system/tokens/design-tokens.css";
 
 /* Player theme overrides per design-system/overrides/player.md */
 :root[data-theme="player"] {

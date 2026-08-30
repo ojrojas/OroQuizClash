@@ -1,0 +1,70 @@
+- generic [ref=f5e2]:
+  - link "Skip to main content" [ref=f5e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f5e4]:
+    - generic [ref=f5e5]:
+      - generic [ref=f5e6]: QA
+      - generic [ref=f5e7]: QuizArena
+    - list [ref=f5e8]:
+      - listitem [ref=f5e9]:
+        - link "Dashboard" [ref=f5e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f5e16]:
+        - link "Games" [ref=f5e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f5e22]:
+        - link "Game Configuration" [ref=f5e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f5e25]:
+        - link "Categories" [ref=f5e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f5e29]:
+        - link "Question Bank" [ref=f5e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f5e34]:
+        - link "Players" [ref=f5e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f5e41]:
+        - link "Rewards" [ref=f5e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f5e48]:
+        - link "Live Games" [ref=f5e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f5e56]:
+        - link "Reports" [ref=f5e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f5e60]:
+        - link "Audit" [ref=f5e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f5e65]:
+      - generic [ref=f5e66]: Administrator
+      - generic [ref=f5e67]: ADMIN
+      - generic [ref=f5e68]: GAME MANAGER
+      - generic [ref=f5e69]: REWARD MANAGER
+      - generic [ref=f5e70]: PLAYER
+      - generic [ref=f5e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f5e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f5e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f5e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f5e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f5e76]:
+    - banner [ref=f5e77]:
+      - button "Toggle navigation" [ref=f5e78] [cursor=pointer]
+      - generic [ref=f5e80]: QuizArena Admin
+      - generic [ref=f5e81]:
+        - generic [ref=f5e82]: Admin Administrator
+        - button "Logout" [ref=f5e84] [cursor=pointer]
+    - main [ref=f5e89]:
+      - heading "Jugadores" [level=1] [ref=f5e90]
+      - generic [ref=f5e91]:
+        - generic [ref=f5e92]:
+          - generic [ref=f5e93]: Buscar
+          - textbox "Buscar" [ref=f5e94]:
+            - /placeholder: Nombre, email o sub
+        - button "Buscar" [ref=f5e95] [cursor=pointer]
+        - button "Limpiar" [ref=f5e97] [cursor=pointer]
+      - alert [ref=f5e99]:
+        - heading "Something went wrong" [level=3] [ref=f5e102]
+        - paragraph [ref=f5e103]: No se pudo cargar.
+        - button "Retry" [ref=f5e104] [cursor=pointer]
+  - region "Notifications"

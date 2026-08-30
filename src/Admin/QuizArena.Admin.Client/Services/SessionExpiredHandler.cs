@@ -14,13 +14,9 @@ public sealed class SessionExpiredHandler(NavigationManager navigation) : Delega
     {
         var response = await base.SendAsync(request, cancellationToken);
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized &&
-            !navigation.Uri.Contains("/authentication/", StringComparison.OrdinalIgnoreCase))
-        {
-            var returnUrl = Uri.EscapeDataString(navigation.Uri);
-            navigation.NavigateTo($"authentication/login?returnUrl={returnUrl}", forceLoad: true);
-        }
-
+        // No auto-navigate on 401 — deja que la página muestre el banner sessionExpired
+        // (evita ocultar formularios/modales abiertos por redirección forzada)
+        // El Dashboard/LiveGameDetail ya manejan 401 via sessionExpired=true
         return response;
     }
 }

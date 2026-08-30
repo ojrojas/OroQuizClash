@@ -1,0 +1,121 @@
+- generic [ref=f8e2]:
+  - link "Skip to main content" [ref=f8e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f8e4]:
+    - generic [ref=f8e5]:
+      - generic [ref=f8e6]: QA
+      - generic [ref=f8e7]: QuizArena
+    - list [ref=f8e8]:
+      - listitem [ref=f8e9]:
+        - link "Dashboard" [ref=f8e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f8e16]:
+        - link "Games" [ref=f8e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f8e22]:
+        - link "Game Configuration" [ref=f8e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f8e25]:
+        - link "Categories" [ref=f8e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f8e29]:
+        - link "Question Bank" [ref=f8e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f8e34]:
+        - link "Players" [ref=f8e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f8e41]:
+        - link "Rewards" [ref=f8e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f8e48]:
+        - link "Live Games" [ref=f8e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f8e56]:
+        - link "Reports" [ref=f8e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f8e60]:
+        - link "Audit" [ref=f8e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f8e65]:
+      - generic [ref=f8e66]: Administrator
+      - generic [ref=f8e67]: ADMIN
+      - generic [ref=f8e68]: GAME MANAGER
+      - generic [ref=f8e69]: REWARD MANAGER
+      - generic [ref=f8e70]: PLAYER
+      - generic [ref=f8e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f8e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f8e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f8e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f8e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f8e76]:
+    - banner [ref=f8e77]:
+      - button "Toggle navigation" [ref=f8e78] [cursor=pointer]
+      - generic [ref=f8e80]: QuizArena Admin
+      - generic [ref=f8e81]:
+        - generic [ref=f8e82]: Admin Administrator
+        - button "Logout" [ref=f8e84] [cursor=pointer]
+    - main [ref=f8e89]:
+      - heading "Reportes analíticos" [level=1] [ref=f8e90]
+      - form "Filtros de reporte" [ref=f8e91]:
+        - generic [ref=f8e92]:
+          - generic [ref=f8e93]: Desde
+          - textbox "Desde" [ref=f8e94]
+        - generic [ref=f8e95]:
+          - generic [ref=f8e96]: Hasta
+          - textbox "Hasta" [ref=f8e97]
+        - generic [ref=f8e98]:
+          - generic [ref=f8e99]: Categoría
+          - textbox "Categoría" [ref=f8e100]:
+            - /placeholder: Historia
+        - generic [ref=f8e101]:
+          - generic [ref=f8e102]: Juego
+          - textbox "Juego" [ref=f8e103]:
+            - /placeholder: Quiz 001
+        - generic [ref=f8e104]:
+          - generic [ref=f8e105]: Jugador
+          - textbox "Jugador" [ref=f8e106]:
+            - /placeholder: ana
+        - generic [ref=f8e107]:
+          - generic [ref=f8e108]: Nivel
+          - combobox "Nivel" [ref=f8e109]:
+            - option "Todos" [disabled] [selected]
+            - option "Nivel 1"
+            - option "Nivel 2"
+            - option "Nivel 3"
+            - option "Nivel 4"
+            - option "Nivel 5"
+        - generic [ref=f8e110]:
+          - generic [ref=f8e111]: Resultado
+          - combobox "Resultado" [ref=f8e112]:
+            - option "Todos" [disabled] [selected]
+            - option "FINISHED"
+            - option "CANCELLED"
+            - option "WITHDRAWN"
+            - option "Approved"
+            - option "Rejected"
+            - option "Correct"
+            - option "Incorrect"
+            - option "DRAFT"
+            - option "READY"
+        - button "Aplicar filtros" [ref=f8e113] [cursor=pointer]:
+          - generic [ref=f8e114]: Aplicar
+        - button "Limpiar" [ref=f8e115] [cursor=pointer]
+      - generic [ref=f8e117]: Filtros combinados AND — Fecha, Categoría, Juego, Jugador, Nivel, Resultado — paginados server-side
+      - region "Reportes" [ref=f8e118]:
+        - generic [ref=f8e119]:
+          - tablist "Secciones de reportes" [ref=f8e120]:
+            - tab "Operativo" [ref=f8e121] [cursor=pointer]
+            - tab "Rendimiento" [ref=f8e122] [cursor=pointer]
+            - tab "Recompensas" [ref=f8e123] [cursor=pointer]
+          - tabpanel [ref=f8e124]:
+            - alert [ref=f8e125]:
+              - heading "Something went wrong" [level=3] [ref=f8e128]
+              - paragraph [ref=f8e129]: No se pudo cargar.
+              - button "Retry" [ref=f8e130] [cursor=pointer]
+      - generic [ref=f8e135]:
+        - generic [ref=f8e136]:
+          - text: CorrelationId propagado — errores como
+          - code [ref=f8e137]: ProblemDetails
+          - text: RFC7807 sin fuga.
+        - generic [ref=f8e138]: Paginación server-side — sin cargar colecciones completas.
+  - region "Notifications"

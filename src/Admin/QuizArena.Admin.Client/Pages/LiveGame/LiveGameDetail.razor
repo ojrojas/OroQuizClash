@@ -59,11 +59,21 @@ else
     private LiveGamePoller? poller;
     private HubConnection? hubConnection;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         await ReloadAsync();
-        StartPolling();
+        // Auto-polling desactivado por defecto para no ocultar formularios/modales
+        // Solo SignalR + refresh manual. Si se requiere polling, usar intervalo 60s y respetar foco.
         await StartHubAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if GameId changed (avoid re-triggering polling on every parent re-render that hides forms)
+        if (view is not null && view.GameId != GameId)
+        {
+            await ReloadAsync();
+        }
     }
 
     private async Task ReloadAsync()
@@ -100,19 +110,28 @@ else
         poller = new LiveGamePoller();
         poller.Start(async ct =>
         {
-            if (sessionExpired) return;
+            if (sessionExpired || isBusy) return;
+            // Pause polling when a modal/drawer is open or page is hidden (evita ocultar formularios)
             try
             {
-                // Respect visibilityState if available
-                try
-                {
-                    var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible'");
-                    if (!visible) return;
-                }
-                catch { }
+                var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible' && document.hasFocus()");
+                if (!visible) return;
+            }
+            catch { }
+            // Don't poll if any dialog is open (check for modal overlay in DOM)
+            try
+            {
+                var hasModal = await JSRuntime.InvokeAsync<bool>("eval", "!!document.querySelector('.quiz-modal-overlay')");
+                if (hasModal) return;
+            }
+            catch { }
+            try
+            {
                 var updated = await LiveGameService.GetLiveGameAsync(GameId, ct);
                 await InvokeAsync(() =>
                 {
+                    // Preserve local isBusy state — don't overwrite while operation in progress
+                    if (isBusy) return;
                     view = updated;
                     StateHasChanged();
                 });

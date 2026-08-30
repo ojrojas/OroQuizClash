@@ -488,3 +488,8 @@ $RECYCLE.BIN/
 
 dist/
 .angular/
+
+.pnpm-store/*
+
+# OIDC dev encryption certificates (contain private keys, persisted by AppHost bind mount)
+.oidc-certs/

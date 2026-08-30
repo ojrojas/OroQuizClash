@@ -20,10 +20,10 @@ import { deriveRewardStatus, formatRemaining } from './rewards-display.model';
         </div>
       </header>
 
-      @if (store.isHydrating) {
+      @if (store.isHydrating()) {
         <app-loading-skeleton [rows]="6" />
-      } @else if (store.error) {
-        <app-error-state [message]="store.error!.detail" [correlationId]="store.error!.correlationId" [traceId]="store.error!.traceId" (retry)="hydrate()" />
+      } @else if (store.error()) {
+        <app-error-state [message]="store.error()!.detail" [correlationId]="store.error()!.correlationId" [traceId]="store.error()!.traceId" (retry)="hydrate()" />
       } @else if (store.catalog().length === 0) {
         <app-empty-state message="No hay recompensas disponibles">
           <a routerLink="/player" style="min-height:44px; display:inline-flex; align-items:center;">Explorar juego</a>

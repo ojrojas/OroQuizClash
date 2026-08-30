@@ -1,0 +1,109 @@
+- generic [ref=f4e125]:
+  - link "Skip to main content" [ref=f4e126] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f4e127]:
+    - generic [ref=f4e128]:
+      - generic [ref=f4e129]: QA
+      - generic [ref=f4e130]: QuizArena
+    - list [ref=f4e131]:
+      - listitem [ref=f4e132]:
+        - link "Dashboard" [ref=f4e133] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f4e139]:
+        - link "Games" [ref=f4e140] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f4e145]:
+        - link "Game Configuration" [ref=f4e146] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f4e148]:
+        - link "Categories" [ref=f4e149] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f4e152]:
+        - link "Question Bank" [ref=f4e153] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f4e157]:
+        - link "Players" [ref=f4e158] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f4e164]:
+        - link "Rewards" [ref=f4e165] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f4e171]:
+        - link "Live Games" [ref=f4e172] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f4e179]:
+        - link "Reports" [ref=f4e180] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f4e183]:
+        - link "Audit" [ref=f4e184] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f4e188]:
+      - generic [ref=f4e189]: Administrator
+      - generic [ref=f4e190]: ADMIN
+      - generic [ref=f4e191]: GAME MANAGER
+      - generic [ref=f4e192]: REWARD MANAGER
+      - generic [ref=f4e193]: PLAYER
+      - generic [ref=f4e194]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f4e195]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f4e196]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f4e197]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f4e198]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f4e199]:
+    - banner [ref=f4e200]:
+      - button "Toggle navigation" [ref=f4e201] [cursor=pointer]
+      - generic [ref=f4e203]: QuizArena Admin
+      - generic [ref=f4e204]:
+        - generic [ref=f4e205]: Admin Administrator
+        - button "Logout" [ref=f4e207] [cursor=pointer]
+    - main [ref=f4e212]:
+      - heading "Crear categoría" [active] [level=1] [ref=f4e248]
+      - form "Formulario de categoría" [ref=f4e249]:
+        - generic [ref=f4e250]:
+          - generic [ref=f4e251]: Nombre **
+          - textbox "Nombre *" [ref=f4e252]
+        - generic [ref=f4e253]:
+          - generic [ref=f4e254]: Descripción
+          - textbox "Descripción" [ref=f4e255]
+        - generic [ref=f4e256]:
+          - generic [ref=f4e257]: Área de conocimiento **
+          - textbox "Área de conocimiento *" [ref=f4e258]
+        - generic [ref=f4e259]:
+          - generic [ref=f4e260]: Nivel académico **
+          - textbox "Nivel académico *" [ref=f4e261]
+        - generic [ref=f4e262]:
+          - generic [ref=f4e263]:
+            - generic [ref=f4e264]: Edad mínima
+            - spinbutton "Edad mínima" [ref=f4e265]: "0"
+          - generic [ref=f4e266]:
+            - generic [ref=f4e267]: Edad máxima
+            - spinbutton "Edad máxima" [ref=f4e268]: "0"
+          - generic [ref=f4e269]:
+            - generic [ref=f4e270]: Dificultad
+            - combobox "Dificultad" [ref=f4e271]:
+              - option "1" [selected]
+              - option "2"
+              - option "3"
+              - option "4"
+              - option "5"
+          - generic [ref=f4e272]:
+            - generic [ref=f4e273]: Público objetivo **
+            - textbox "Público objetivo *" [ref=f4e274]: General
+        - generic [ref=f4e275]:
+          - generic [ref=f4e276]: Tags (coma separados)
+          - textbox "Tags (coma separados)" [ref=f4e277]
+          - paragraph [ref=f4e278]: Máx 10 tags, 2–30 chars
+        - generic [ref=f4e279]:
+          - generic [ref=f4e280]:
+            - generic [ref=f4e281]: Color (#RRGGBB)
+            - textbox "Color (#RRGGBB)" [ref=f4e282]
+          - generic [ref=f4e283]:
+            - generic [ref=f4e284]: Icono Lucide
+            - textbox "Icono Lucide" [ref=f4e285]
+          - generic [ref=f4e286]:
+            - generic [ref=f4e287]: Reglas de progresión **
+            - combobox "Reglas de progresión *" [ref=f4e288]:
+              - option "Linear" [selected]
+              - option "Progressive"
+              - option "Adaptive"
+              - option "CategorySpecific"
+        - button "Guardar categoría" [ref=f4e290] [cursor=pointer]
+  - region "Notifications"

@@ -11,17 +11,10 @@
 
 <h1>Crear premio</h1>
 
-@if (isSubmitting)
+<RewardFormWrapper Form="@form" FieldErrors="@fieldErrors" ConcurrencyError="@concurrencyError" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" OnCancel="GoBack" IsSubmitting="@isSubmitting" />
+@if (!string.IsNullOrEmpty(generalError))
 {
-    <LoadingSkeleton Rows="4" />
-}
-else
-{
-    <RewardFormWrapper Form="@form" FieldErrors="@fieldErrors" ConcurrencyError="@concurrencyError" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" OnCancel="GoBack" IsSubmitting="@isSubmitting" />
-    @if (!string.IsNullOrEmpty(generalError))
-    {
-        <div class="validation-errors" role="alert" aria-live="polite" style="color:var(--color-destructive-text);margin-top:var(--space-3);">@generalError</div>
-    }
+    <div class="validation-errors" role="alert" aria-live="polite" style="color:var(--color-destructive-text);margin-top:var(--space-3);">@generalError</div>
 }
 
 @code {

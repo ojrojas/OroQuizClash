@@ -1,0 +1,166 @@
+- generic [ref=f2e2]:
+  - link "Skip to main content" [ref=f2e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: QA
+      - generic [ref=f2e7]: QuizArena
+    - list [ref=f2e8]:
+      - listitem [ref=f2e9]:
+        - link "Dashboard" [ref=f2e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f2e16]:
+        - link "Games" [ref=f2e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f2e22]:
+        - link "Game Configuration" [ref=f2e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f2e25]:
+        - link "Categories" [ref=f2e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f2e29]:
+        - link "Question Bank" [ref=f2e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f2e34]:
+        - link "Players" [ref=f2e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f2e41]:
+        - link "Rewards" [ref=f2e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f2e48]:
+        - link "Live Games" [ref=f2e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f2e56]:
+        - link "Reports" [ref=f2e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f2e60]:
+        - link "Audit" [ref=f2e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f2e65]:
+      - generic [ref=f2e66]: Administrator
+      - generic [ref=f2e67]: ADMIN
+      - generic [ref=f2e68]: GAME MANAGER
+      - generic [ref=f2e69]: REWARD MANAGER
+      - generic [ref=f2e70]: PLAYER
+      - generic [ref=f2e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f2e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f2e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f2e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f2e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f2e76]:
+    - banner [ref=f2e77]:
+      - button "Toggle navigation" [ref=f2e78] [cursor=pointer]
+      - generic [ref=f2e80]: QuizArena Admin
+      - generic [ref=f2e81]:
+        - generic [ref=f2e82]: Admin Administrator
+        - button "Logout" [ref=f2e84] [cursor=pointer]
+    - main [ref=f2e89]:
+      - generic [ref=f2e90]:
+        - heading "Categories" [level=1] [ref=f2e91]
+        - button "New category" [ref=f2e92] [cursor=pointer]
+      - generic [ref=f2e96]:
+        - generic [ref=f2e97]:
+          - generic [ref=f2e98]:
+            - generic [ref=f2e99]: Search
+            - textbox "Search" [ref=f2e100]:
+              - /placeholder: Search…
+              - text: search
+          - generic [ref=f2e101]:
+            - generic [ref=f2e102]: Status
+            - combobox "Status" [ref=f2e103]:
+              - option "All" [disabled]
+              - option "Draft" [selected]
+              - option "Active"
+              - option "Inactive"
+              - option "Archived"
+        - table [ref=f2e105]:
+          - caption [ref=f2e106]: Categories
+          - rowgroup [ref=f2e107]:
+            - row [ref=f2e108]:
+              - columnheader "Name" [ref=f2e109]
+              - columnheader "Area" [ref=f2e110]
+              - columnheader "Status" [ref=f2e111]
+              - columnheader "Questions" [ref=f2e112]
+              - columnheader [ref=f2e113]
+          - rowgroup [ref=f2e114]:
+            - row [ref=f2e115]:
+              - cell "Anatomía Humana" [ref=f2e116]
+              - cell "Ciencias" [ref=f2e117]
+              - cell "Active" [ref=f2e118]
+              - cell "20" [ref=f2e121]
+              - cell [ref=f2e122]:
+                - button "Edit" [ref=f2e123] [cursor=pointer]
+                - button "Deactivate" [ref=f2e125] [cursor=pointer]
+            - row [ref=f2e127]:
+              - cell "Astronomía" [ref=f2e128]
+              - cell "Ciencias" [ref=f2e129]
+              - cell "Active" [ref=f2e130]
+              - cell "20" [ref=f2e133]
+              - cell [ref=f2e134]:
+                - button "Edit" [ref=f2e135] [cursor=pointer]
+                - button "Deactivate" [ref=f2e137] [cursor=pointer]
+            - row [ref=f2e139]:
+              - cell "Biología Celular" [ref=f2e140]
+              - cell "Ciencias" [ref=f2e141]
+              - cell "Active" [ref=f2e142]
+              - cell "20" [ref=f2e145]
+              - cell [ref=f2e146]:
+                - button "Edit" [ref=f2e147] [cursor=pointer]
+                - button "Deactivate" [ref=f2e149] [cursor=pointer]
+            - row [ref=f2e151]:
+              - cell "Ciencias de la Tierra" [ref=f2e152]
+              - cell "Ciencias" [ref=f2e153]
+              - cell "Active" [ref=f2e154]
+              - cell "20" [ref=f2e157]
+              - cell [ref=f2e158]:
+                - button "Edit" [ref=f2e159] [cursor=pointer]
+                - button "Deactivate" [ref=f2e161] [cursor=pointer]
+            - row [ref=f2e163]:
+              - cell "Ecología y Medio Ambiente" [ref=f2e164]
+              - cell "Ciencias" [ref=f2e165]
+              - cell "Active" [ref=f2e166]
+              - cell "20" [ref=f2e169]
+              - cell [ref=f2e170]:
+                - button "Edit" [ref=f2e171] [cursor=pointer]
+                - button "Deactivate" [ref=f2e173] [cursor=pointer]
+            - row [ref=f2e175]:
+              - cell "Física Electricidad y Magnetismo" [ref=f2e176]
+              - cell "Ciencias" [ref=f2e177]
+              - cell "Active" [ref=f2e178]
+              - cell "20" [ref=f2e181]
+              - cell [ref=f2e182]:
+                - button "Edit" [ref=f2e183] [cursor=pointer]
+                - button "Deactivate" [ref=f2e185] [cursor=pointer]
+            - row [ref=f2e187]:
+              - cell "Física Mecánica" [ref=f2e188]
+              - cell "Ciencias" [ref=f2e189]
+              - cell "Active" [ref=f2e190]
+              - cell "20" [ref=f2e193]
+              - cell [ref=f2e194]:
+                - button "Edit" [ref=f2e195] [cursor=pointer]
+                - button "Deactivate" [ref=f2e197] [cursor=pointer]
+            - row [ref=f2e199]:
+              - cell "Genética y Herencia" [ref=f2e200]
+              - cell "Ciencias" [ref=f2e201]
+              - cell "Active" [ref=f2e202]
+              - cell "19" [ref=f2e205]
+              - cell [ref=f2e206]:
+                - button "Edit" [ref=f2e207] [cursor=pointer]
+                - button "Deactivate" [ref=f2e209] [cursor=pointer]
+            - row [ref=f2e211]:
+              - cell "Química Inorgánica" [ref=f2e212]
+              - cell "Ciencias" [ref=f2e213]
+              - cell "Active" [ref=f2e214]
+              - cell "20" [ref=f2e217]
+              - cell [ref=f2e218]:
+                - button "Edit" [ref=f2e219] [cursor=pointer]
+                - button "Deactivate" [ref=f2e221] [cursor=pointer]
+            - row [ref=f2e223]:
+              - cell "Química Orgánica" [ref=f2e224]
+              - cell "Ciencias" [ref=f2e225]
+              - cell "Active" [ref=f2e226]
+              - cell "20" [ref=f2e229]
+              - cell [ref=f2e230]:
+                - button "Edit" [ref=f2e231] [cursor=pointer]
+                - button "Deactivate" [ref=f2e233] [cursor=pointer]
+  - region "Notifications"

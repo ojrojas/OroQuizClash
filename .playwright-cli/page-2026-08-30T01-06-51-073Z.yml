@@ -1,0 +1,99 @@
+- generic [ref=f3e2]:
+  - link "Skip to main content" [ref=f3e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f3e4]:
+    - generic [ref=f3e5]:
+      - generic [ref=f3e6]: QA
+      - generic [ref=f3e7]: QuizArena
+    - list [ref=f3e8]:
+      - listitem [ref=f3e9]:
+        - link "Dashboard" [ref=f3e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f3e16]:
+        - link "Games" [ref=f3e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f3e22]:
+        - link "Game Configuration" [ref=f3e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f3e25]:
+        - link "Categories" [ref=f3e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f3e29]:
+        - link "Question Bank" [ref=f3e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f3e34]:
+        - link "Players" [ref=f3e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f3e41]:
+        - link "Rewards" [ref=f3e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f3e48]:
+        - link "Live Games" [ref=f3e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f3e56]:
+        - link "Reports" [ref=f3e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f3e60]:
+        - link "Audit" [ref=f3e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f3e65]:
+      - generic [ref=f3e66]: Administrator
+      - generic [ref=f3e67]: ADMIN
+      - generic [ref=f3e68]: GAME MANAGER
+      - generic [ref=f3e69]: REWARD MANAGER
+      - generic [ref=f3e70]: PLAYER
+      - generic [ref=f3e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f3e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f3e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f3e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f3e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f3e76]:
+    - banner [ref=f3e77]:
+      - button "Toggle navigation" [ref=f3e78] [cursor=pointer]
+      - generic [ref=f3e80]: QuizArena Admin
+      - generic [ref=f3e81]:
+        - generic [ref=f3e82]: Admin Administrator
+        - button "Logout" [ref=f3e84] [cursor=pointer]
+    - main [ref=f3e89]:
+      - generic [ref=f3e90]:
+        - heading "Games" [level=1] [ref=f3e91]
+        - button "New game" [ref=f3e92] [cursor=pointer]
+      - generic [ref=f3e96]:
+        - generic [ref=f3e97]:
+          - generic [ref=f3e98]:
+            - generic [ref=f3e99]: Search
+            - textbox "Search" [ref=f3e100]:
+              - /placeholder: Search by name…
+              - text: search
+          - generic [ref=f3e101]:
+            - generic [ref=f3e102]: Status
+            - combobox "Status" [ref=f3e103]:
+              - option "All statuses" [disabled]
+              - option "Configuring" [selected]
+              - option "Lobby"
+              - option "Active"
+              - option "Finished"
+              - option "Cancelled"
+          - generic [ref=f3e104]:
+            - generic [ref=f3e105]: Category
+            - combobox "Category" [ref=f3e106]:
+              - option "All categories" [disabled]
+              - option "Matemáticas E2E Test" [selected]
+        - table [ref=f3e108]:
+          - caption [ref=f3e109]: Games
+          - rowgroup [ref=f3e110]:
+            - row [ref=f3e111]:
+              - columnheader "Name" [ref=f3e112]
+              - columnheader "Status" [ref=f3e113]
+              - columnheader "Rounds" [ref=f3e114]
+              - columnheader "Players" [ref=f3e115]
+              - columnheader "Created" [ref=f3e116]
+              - columnheader "Actions" [ref=f3e117]
+          - rowgroup [ref=f3e119]:
+            - row [ref=f3e120]:
+              - cell [ref=f3e121]:
+                - status [ref=f3e122]:
+                  - heading "No games found" [level=3] [ref=f3e127]
+                  - paragraph [ref=f3e128]: Create your first game or adjust the filters.
+                  - button "New game" [ref=f3e129] [cursor=pointer]
+  - region "Notifications"

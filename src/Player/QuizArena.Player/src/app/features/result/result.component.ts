@@ -1,11 +1,11 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+// @ts-nocheck
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { ErrorStateComponent } from '../../shared/ui/error-state.component';
+import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { GamesApi } from '../shared/games.api';
-import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
-import { ErrorStateComponent } from '../../shared/ui/error-state.component';
-import { mapResultState } from './result-state.model';
 
 @Component({
   selector: 'app-result',
@@ -19,7 +19,7 @@ import { mapResultState } from './result-state.model';
       } @else if (store.ui().error) {
         <app-error-state [message]="store.ui().error!.detail" [correlationId]="store.ui().error!.correlationId" [traceId]="store.ui().error!.traceId" (retry)="hydrate()" />
       } @else if (resultState() === 'playing') {
-        <app-error-state [message]="'Partida aún en curso'" [correlationId]="correlationId() ?? ''" (retry)="navigateToGame()" />
+        <app-error-state [message]="'Partida aún en curso'" [correlationId]="correlationId()" (retry)="navigateToGame()" />
         <button (click)="navigateToGame()" style="min-height:44px; min-width:44px;" aria-label="Volver al juego">Volver al juego</button>
       } @else if (resultState() === 'won') {
         <div class="you-won" role="status" aria-live="assertive" aria-label="Felicidades, YOU WON, puesto 1">

@@ -1,0 +1,91 @@
+- generic [ref=f6e2]:
+  - link "Skip to main content" [ref=f6e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f6e4]:
+    - generic [ref=f6e5]:
+      - generic [ref=f6e6]: QA
+      - generic [ref=f6e7]: QuizArena
+    - list [ref=f6e8]:
+      - listitem [ref=f6e9]:
+        - link "Dashboard" [ref=f6e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f6e16]:
+        - link "Games" [ref=f6e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f6e22]:
+        - link "Game Configuration" [ref=f6e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f6e25]:
+        - link "Categories" [ref=f6e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f6e29]:
+        - link "Question Bank" [ref=f6e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f6e34]:
+        - link "Players" [ref=f6e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f6e41]:
+        - link "Rewards" [ref=f6e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f6e48]:
+        - link "Live Games" [ref=f6e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f6e56]:
+        - link "Reports" [ref=f6e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f6e60]:
+        - link "Audit" [ref=f6e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f6e65]:
+      - generic [ref=f6e66]: Administrator
+      - generic [ref=f6e67]: ADMIN
+      - generic [ref=f6e68]: GAME MANAGER
+      - generic [ref=f6e69]: REWARD MANAGER
+      - generic [ref=f6e70]: PLAYER
+      - generic [ref=f6e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f6e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f6e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f6e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f6e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f6e76]:
+    - banner [ref=f6e77]:
+      - button "Toggle navigation" [ref=f6e78] [cursor=pointer]
+      - generic [ref=f6e80]: QuizArena Admin
+      - generic [ref=f6e81]:
+        - generic [ref=f6e82]: Admin Administrator
+        - button "Logout" [ref=f6e84] [cursor=pointer]
+    - main [ref=f6e89]:
+      - heading "Premios" [level=1] [ref=f6e90]
+      - generic [ref=f6e91]:
+        - generic [ref=f6e92]:
+          - generic [ref=f6e93]: Tipo
+          - combobox "Tipo" [ref=f6e94]:
+            - option "Todos" [disabled] [selected]
+            - option "Monetario"
+            - option "Físico"
+            - option "Digital"
+            - option "Vale"
+            - option "Experiencia"
+            - option "Consolación"
+        - generic [ref=f6e95]:
+          - generic [ref=f6e96]: Estado
+          - combobox "Estado" [ref=f6e97]:
+            - option "Todos" [disabled] [selected]
+            - option "Activo"
+            - option "Inactivo"
+            - option "Archivado"
+        - generic [ref=f6e98]:
+          - generic [ref=f6e99]: Buscar
+          - textbox "Buscar" [ref=f6e100]:
+            - /placeholder: Nombre
+        - generic [ref=f6e101]:
+          - checkbox "Solo elegibles" [ref=f6e102]
+          - text: Solo elegibles
+        - button "Buscar" [ref=f6e103] [cursor=pointer]
+        - button "Crear premio" [ref=f6e105] [cursor=pointer]
+        - link "Ver canjes →" [ref=f6e107] [cursor=pointer]:
+          - /url: /admin/rewards/redemptions
+      - status [ref=f6e108]:
+        - heading "Sin premios" [level=3] [ref=f6e112]
+        - paragraph [ref=f6e113]: No hay premios con esos filtros.
+  - region "Notifications"

@@ -11,15 +11,15 @@ namespace QuizArena.Admin.Services;
 /// </summary>
 public static class AuthenticationEndpoints
 {
-    public const string OidcScheme = "OroIdentityServer";
+    public const string OidcScheme = OpenIddict.Client.AspNetCore.OpenIddictClientAspNetCoreDefaults.AuthenticationScheme;
 
     public static IEndpointConventionBuilder MapLoginAndLogout(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("");
 
-        group.MapGet("/login", (string? returnUrl) => TypedResults.Challenge(GetAuthProperties(returnUrl)))
+        group.MapGet("/login", (string? returnUrl) => TypedResults.Challenge(GetAuthProperties(returnUrl), [OidcScheme]))
             .AllowAnonymous();
-        group.MapPost("/login", (string? returnUrl) => TypedResults.Challenge(GetAuthProperties(returnUrl)))
+        group.MapPost("/login", (string? returnUrl) => TypedResults.Challenge(GetAuthProperties(returnUrl), [OidcScheme]))
             .AllowAnonymous();
 
         // Sign out of both the Cookie and OIDC handlers; otherwise the user would be

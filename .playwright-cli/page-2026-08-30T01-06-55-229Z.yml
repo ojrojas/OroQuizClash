@@ -1,0 +1,158 @@
+- generic [ref=f4e2]:
+  - link "Skip to main content" [ref=f4e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: QA
+      - generic [ref=f4e7]: QuizArena
+    - list [ref=f4e8]:
+      - listitem [ref=f4e9]:
+        - link "Dashboard" [ref=f4e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f4e16]:
+        - link "Games" [ref=f4e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f4e22]:
+        - link "Game Configuration" [ref=f4e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f4e25]:
+        - link "Categories" [ref=f4e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f4e29]:
+        - link "Question Bank" [ref=f4e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f4e34]:
+        - link "Players" [ref=f4e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f4e41]:
+        - link "Rewards" [ref=f4e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f4e48]:
+        - link "Live Games" [ref=f4e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f4e56]:
+        - link "Reports" [ref=f4e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f4e60]:
+        - link "Audit" [ref=f4e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f4e65]:
+      - generic [ref=f4e66]: Administrator
+      - generic [ref=f4e67]: ADMIN
+      - generic [ref=f4e68]: GAME MANAGER
+      - generic [ref=f4e69]: REWARD MANAGER
+      - generic [ref=f4e70]: PLAYER
+      - generic [ref=f4e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f4e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f4e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f4e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f4e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f4e76]:
+    - banner [ref=f4e77]:
+      - button "Toggle navigation" [ref=f4e78] [cursor=pointer]
+      - generic [ref=f4e80]: QuizArena Admin
+      - generic [ref=f4e81]:
+        - generic [ref=f4e82]: Admin Administrator
+        - button "Logout" [ref=f4e84] [cursor=pointer]
+    - main [ref=f4e89]:
+      - heading "New game" [level=1] [ref=f4e90]
+      - generic [ref=f4e93]:
+        - generic [ref=f4e94]:
+          - generic [ref=f4e95]:
+            - generic [ref=f4e96]: Name **
+            - textbox "Name *" [ref=f4e97]: form.Name
+          - generic [ref=f4e98]:
+            - generic [ref=f4e99]: Description
+            - textbox "Description" [ref=f4e100]: form.Description
+          - generic [ref=f4e101]:
+            - generic [ref=f4e102]: Category **
+            - combobox "Category *" [ref=f4e103]:
+              - option "Select a category" [disabled]
+              - option "Matemáticas E2E Test" [selected]
+          - generic [ref=f4e104]:
+            - generic [ref=f4e105]: Difficulty (1–5) **
+            - combobox "Difficulty (1–5) *" [ref=f4e106]:
+              - option "Select difficulty" [disabled]
+              - option "1" [selected]
+              - option "2"
+              - option "3"
+              - option "4"
+              - option "5"
+          - generic [ref=f4e107]:
+            - generic [ref=f4e108]: Rounds (5–10) **
+            - spinbutton "Rounds (5–10) *" [ref=f4e109]
+          - generic [ref=f4e110]:
+            - generic [ref=f4e111]: Questions per round (1–20) **
+            - spinbutton "Questions per round (1–20) *" [ref=f4e112]
+          - generic [ref=f4e113]:
+            - generic [ref=f4e114]: Time limit per round (5–300s) **
+            - spinbutton "Time limit per round (5–300s) *" [ref=f4e115]
+          - generic [ref=f4e116]:
+            - generic [ref=f4e117]: Minimum players (≥1) **
+            - spinbutton "Minimum players (≥1) *" [ref=f4e118]
+          - generic [ref=f4e119]:
+            - generic [ref=f4e120]: Maximum players (≥min) **
+            - spinbutton "Maximum players (≥min) *" [ref=f4e121]
+          - generic [ref=f4e122]:
+            - generic [ref=f4e123]: Entry fee
+            - spinbutton "Entry fee" [ref=f4e124]
+          - generic [ref=f4e125]:
+            - generic [ref=f4e126]: Reward pool
+            - spinbutton "Reward pool" [ref=f4e127]
+        - generic [ref=f4e128]:
+          - heading "Game policies" [level=2] [ref=f4e130]
+          - generic [ref=f4e132]:
+            - generic [ref=f4e133]:
+              - generic [ref=f4e134]: Difficulty strategy*
+              - combobox "Difficulty strategy" [ref=f4e135]:
+                - option "Select strategy" [disabled]
+                - option "Linear" [selected]
+                - option "Progressive"
+                - option "Adaptive"
+                - option "CategorySpecific"
+            - generic [ref=f4e136]:
+              - generic [ref=f4e137]: Scoring system*
+              - combobox "Scoring system" [ref=f4e138]:
+                - option "Select system" [disabled]
+                - option "Standard" [selected]
+                - option "ProgressiveBonus"
+            - generic [ref=f4e139]:
+              - generic [ref=f4e140]: Loss policy*
+              - combobox "Loss policy" [ref=f4e141]:
+                - option "Select policy" [disabled]
+                - option "LOSE_ALL" [selected]
+                - option "LOSE_CURRENT_ROUND"
+                - option "LOSE_UNSECURED_POINTS"
+                - option "FALLBACK_TO_CHECKPOINT"
+            - generic [ref=f4e142]:
+              - generic [ref=f4e143]: Withdrawal policy*
+              - combobox "Withdrawal policy" [ref=f4e144]:
+                - option "Select policy" [disabled]
+                - option "LOSE_ALL" [selected]
+                - option "KEEP_CURRENT_SCORE"
+                - option "KEEP_SECURED_SCORE"
+                - option "KEEP_CHECKPOINT_SCORE"
+            - generic [ref=f4e145]:
+              - generic [ref=f4e146]: Consolation policy*
+              - combobox "Consolation policy" [ref=f4e147]:
+                - option "Select policy" [disabled]
+                - option "None" [selected]
+                - option "FixedPoints"
+                - option "RewardBased"
+                - option "ParticipationBased"
+            - generic [ref=f4e148]:
+              - generic [ref=f4e149]: Reward type*
+              - combobox "Reward type" [ref=f4e150]:
+                - option "Select type" [disabled]
+                - option "None" [selected]
+                - option "Badge"
+                - option "Points"
+                - option "Item"
+                - option "Custom"
+            - generic [ref=f4e151]:
+              - generic [ref=f4e152]: Reward threshold
+              - spinbutton "Reward threshold" [ref=f4e153]
+        - generic [ref=f4e154]:
+          - button "Cancel" [ref=f4e155] [cursor=pointer]
+          - button "Create game" [ref=f4e157] [cursor=pointer]
+  - region "Notifications"

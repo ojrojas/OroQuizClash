@@ -6,7 +6,7 @@
 {
     <div class="quiz-modal-overlay" @onclick="OnOverlayClick">
         <div class="quiz-modal quiz-modal-@Size" role="dialog" aria-modal="true"
-             aria-labelledby="@titleId" @onkeydown="OnKeyDown" @ref="dialogRef">
+             aria-labelledby="@titleId" @onclick:stopPropagation @onkeydown="OnKeyDown" @ref="dialogRef">
             <header class="quiz-modal-header">
                 <h2 class="quiz-modal-title" id="@titleId">@Title</h2>
                 <button type="button" class="quiz-modal-close" aria-label="Close dialog" @onclick="CloseAsync">

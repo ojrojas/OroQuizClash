@@ -13,12 +13,15 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAdminServerServices(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        services.AddScoped<AccessTokenHolder>();
         services.AddTransient<BearerTokenHandler>();
         return services;
     }
 
     /// <summary>
     /// Registers a Server*Service typed HttpClient with the API base address and Bearer handler.
+    /// Uses Aspire service discovery (services__oroclash-api__http__0 → http://localhost:5199)
+    /// so http://oroclash-api resolves even outside Docker DNS.
     /// </summary>
     public static IHttpClientBuilder AddAdminApiHttpClient<TClient, TImplementation>(this IServiceCollection services)
         where TClient : class
@@ -26,5 +29,5 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<TClient, TImplementation>(httpClient =>
         {
             httpClient.BaseAddress = new Uri(BffForwarderExtensions.ApiServiceName);
-        }).AddHttpMessageHandler<BearerTokenHandler>();
+        }).AddServiceDiscovery().AddHttpMessageHandler<BearerTokenHandler>();
 }

@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography.X509Certificates;
 
 using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
@@ -80,6 +81,25 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var authority = builder.Configuration["Identity:Authority"] ?? "http://identity:5080";
+var tokenDecryptionKeys = new List<SecurityKey>();
+var certDir = builder.Configuration["Identity:TokenDecryptionCertificateDirectory"];
+if (!string.IsNullOrEmpty(certDir) && Directory.Exists(certDir))
+{
+    foreach (var pfx in Directory.EnumerateFiles(certDir, "*.pfx", SearchOption.AllDirectories))
+    {
+        try
+        {
+            var cert = X509CertificateLoader.LoadPkcs12FromFile(pfx, string.Empty, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+            if (cert.GetRSAPrivateKey() is not null)
+                tokenDecryptionKeys.Add(new X509SecurityKey(cert));
+        }
+        catch
+        {
+            // Ignore certs that cannot be loaded (e.g. unrelated or locked files).
+        }
+    }
+}
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -89,7 +109,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateAudience = false,
+            TokenDecryptionKeys = tokenDecryptionKeys
         };
     });
 

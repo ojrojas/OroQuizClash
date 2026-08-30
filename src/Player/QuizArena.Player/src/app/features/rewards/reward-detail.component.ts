@@ -12,10 +12,10 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
   imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent],
   template: `
     <div class="detail" data-theme="player">
-      @if (store.isHydrating) {
+      @if (store.isHydrating()) {
         <app-loading-skeleton [rows]="3" />
-      } @else if (store.error) {
-        <app-error-state [message]="store.error!.detail" [correlationId]="store.error!.correlationId" [traceId]="store.error!.traceId" (retry)="hydrate()" />
+      } @else if (store.error()) {
+        <app-error-state [message]="store.error()!.detail" [correlationId]="store.error()!.correlationId" [traceId]="store.error()!.traceId" (retry)="hydrate()" />
       } @else if (!selected()) {
         <div role="status" aria-live="polite">Recompensa no encontrada</div>
       } @else {
@@ -63,15 +63,15 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
                 <button (click)="confirm()" style="min-height:44px; min-width:44px;" aria-label="Confirmar canje">Confirmar</button>
                 <button (click)="showConfirm.set(false)" style="min-height:44px; min-width:44px;" aria-label="Cancelar">Cancelar</button>
               </div>
-              @if (store.redeemStatus && store.redeemStatus !== 'IDLE' && store.redeemStatus !== 'LOADING' && store.redeemStatus !== 'SUCCESS') {
-                <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626);">Error: {{ (store.redeemStatus | json) }} CorrelationId: {{ store.error?.correlationId }}</div>
+              @if (store.redeemStatus() && store.redeemStatus() !== 'IDLE' && store.redeemStatus() !== 'LOADING' && store.redeemStatus() !== 'SUCCESS') {
+                <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626);">Error: {{ (store.redeemStatus() | json) }} CorrelationId: {{ store.error()?.correlationId }}</div>
               }
             </div>
           </div>
         }
 
         @if (isError()) {
-          <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626);">Error: {{ errorDetail() }} CorrelationId: {{ store.error?.correlationId }}</div>
+          <div role="alert" aria-live="assertive" style="color:var(--color-destructive,#DC2626);">Error: {{ errorDetail() }} CorrelationId: {{ store.error()?.correlationId }}</div>
         }
       }
     </div>
@@ -131,12 +131,12 @@ export class RewardDetailComponent implements OnInit {
   });
 
   isError = computed(() => {
-    const s = this.store.redeemStatus as any;
+    const s = this.store.redeemStatus() as any;
     return s && s !== 'IDLE' && s !== 'LOADING' && s !== 'SUCCESS' && typeof s === 'object';
   });
 
   errorDetail = computed(() => {
-    const s = this.store.redeemStatus as any;
+    const s = this.store.redeemStatus() as any;
     return s?.detail ?? s?.title ?? 'Error';
   });
 
@@ -163,7 +163,7 @@ export class RewardDetailComponent implements OnInit {
     this.store.redeem(sel.id);
     // watch for success to show confirmation
     setTimeout(() => {
-      if (this.store.redeemStatus === 'SUCCESS') {
+      if (this.store.redeemStatus() === 'SUCCESS') {
         const last = this.store.history()[0];
         if (last) this.lastRedemptionId.set(last.id);
         this.showSuccess.set(true);

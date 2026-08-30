@@ -14,10 +14,10 @@ import { ConsolationBadgeComponent } from './consolation-badge.component';
   template: `
     <div class="history" data-theme="player" role="region" aria-label="Historial de canjes">
       <h2>Redemption History</h2>
-      @if (store.isHydrating) {
+      @if (store.isHydrating()) {
         <app-loading-skeleton [rows]="3" />
-      } @else if (store.error) {
-        <app-error-state [message]="store.error!.detail" [correlationId]="store.error!.correlationId" [traceId]="store.error!.traceId" (retry)="hydrate()" />
+      } @else if (store.error()) {
+        <app-error-state [message]="store.error()!.detail" [correlationId]="store.error()!.correlationId" [traceId]="store.error()!.traceId" (retry)="hydrate()" />
       } @else if (store.history().length === 0) {
         <app-empty-state message="Aún no has canjeado recompensas">
           <button (click)="goCatalog()" style="min-height:44px; min-width:44px;">Explorar recompensas</button>

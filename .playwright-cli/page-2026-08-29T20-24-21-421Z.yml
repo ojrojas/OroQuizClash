@@ -1,0 +1,7 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - heading "QuizArena Player" [level=1] [ref=e5]
+    - navigation "Autenticación" [ref=e6]:
+      - button "Iniciar sesión" [ref=e7] [cursor=pointer]
+  - main [ref=e8]:
+    - paragraph [ref=e9]: "No autenticado — usa “Iniciar sesión” arriba. Si quedas en blanco, abre la consola (F12) y revisa [Auth] logs. Authority: https://localhost:5086"

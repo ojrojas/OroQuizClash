@@ -54,7 +54,7 @@ else
     private bool isInitialLoading = true;
     private bool isRefreshing;
     private bool sessionExpired;
-    private bool autoRefreshEnabled = true;
+    private bool autoRefreshEnabled = false;
     private DateTimeOffset? lastRefreshAt;
     private HashSet<MetricId> retryingIds = new();
     private string error = string.Empty;
@@ -134,7 +134,9 @@ else
         StopAutoRefresh();
         if (!autoRefreshEnabled) return;
         timerCts = new CancellationTokenSource();
-        timer = new PeriodicTimer(TimeSpan.FromSeconds(45));
+        // EduCoreWeb: auto-refresh pausado por defecto, intervalo largo (60s) y respeta foco/visibilidad
+        // para no ocultar formularios/modales abiertos ni provocar fallos por 401
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(60));
         _ = RunAutoRefreshAsync(timerCts.Token);
     }
 

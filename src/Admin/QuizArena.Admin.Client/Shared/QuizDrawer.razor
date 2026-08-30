@@ -4,7 +4,7 @@
 {
     <div class="quiz-drawer-overlay" @onclick="CloseAsync">
         <aside class="quiz-drawer quiz-drawer-@Side" role="dialog" aria-modal="true"
-               aria-labelledby="@titleId" @onkeydown="OnKeyDown">
+               aria-labelledby="@titleId" @onclick:stopPropagation @onkeydown="OnKeyDown">
             <header class="quiz-drawer-header">
                 <h2 class="quiz-drawer-title" id="@titleId">@Title</h2>
                 <button type="button" class="quiz-drawer-close" aria-label="Close panel" @onclick="CloseAsync">

@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = AdminPolicies.AdminOrGameManager)]
 @inject ICategoriesService CategoriesService
 @inject ToastService Toasts
+@inject NavigationManager Navigation
 
 <PageTitle>Categories — QuizArena Admin</PageTitle>
 
@@ -85,8 +86,8 @@
     private async Task OnSearch(string? v) { search = v; page=1; await LoadAsync(); }
     private async Task OnStatus(string? v) { status = v; page=1; await LoadAsync(); }
     private async Task OnPage(int p) { page=p; await LoadAsync(); }
-    private void OpenCreate() { editing=null; form=new(string.Empty,null,string.Empty,string.Empty,0,0,1,[]); tagsText=null; fieldErrors=new Dictionary<string,string[]>(); formError=null; drawerOpen=true; }
-    private void OpenEdit(CategorySummary c) { editing=c; form=new(c.Name,c.Description,c.KnowledgeArea,c.AcademicLevel,c.AgeMin,c.AgeMax,c.Difficulty,c.Tags); tagsText=string.Join(", ", c.Tags); drawerOpen=true; }
+    private void OpenCreate() => Navigation.NavigateTo("/admin/categories/new");
+    private void OpenEdit(CategorySummary c) => Navigation.NavigateTo($"/admin/categories/{c.Id}/edit");
     private void CloseDrawer() => drawerOpen=false;
     private string? Err(string f) => fieldErrors.TryGetValue(f, out var m) ? string.Join("; ", m) : null;
     private async Task SaveAsync()

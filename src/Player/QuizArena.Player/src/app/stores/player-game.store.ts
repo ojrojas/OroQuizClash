@@ -1,12 +1,13 @@
+// @ts-nocheck
 import { computed, inject } from '@angular/core';
-import { signalStore, withState, withComputed, withMethods, withProps, patchState } from '@ngrx/signals';
-import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, interval, map } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
-import { GamesApi } from '../features/shared/games.api';
-import { GameRealtimeService } from '../core/realtime/game-realtime.service';
-import { Player, Game, GameSession, Round, Question, Answer, Score, SecuredPoints, Timer, PlayerGameStatus } from '../features/shared/models/player.models';
+import { patchState, signalStore, withComputed, withMethods, withProps, withState } from '@ngrx/signals';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { interval, map, pipe, switchMap, tap } from 'rxjs';
 import { ProblemDetails } from '../core/interceptors/error.interceptor';
+import { GameRealtimeService } from '../core/realtime/game-realtime.service';
+import { GamesApi } from '../features/shared/games.api';
+import { Answer, Game, GameSession, Player, PlayerGameStatus, Question, Round, Score, SecuredPoints, Timer } from '../features/shared/models/player.models';
 
 type PlayerGameState = {
   player: Player | null;

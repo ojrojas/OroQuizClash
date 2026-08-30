@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Yarp.ReverseProxy.Transforms;
 using Yarp.ReverseProxy.Transforms.Builder;
@@ -43,9 +44,20 @@ public static class BffForwarderExtensions
 
     private static void AddBearerTransform(TransformBuilderContext transformBuilder)
     {
-        transformBuilder.AddRequestTransform(static async transformContext =>
+        transformBuilder.AddRequestTransform(async transformContext =>
         {
-            var accessToken = await transformContext.HttpContext.GetTokenAsync("access_token");
+            var http = transformContext.HttpContext;
+            var accessToken = await http.GetTokenAsync("access_token");
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                var sid = http.User?.FindFirstValue(OidcBffEndpointExtensions.TokenStorageClaim);
+                if (!string.IsNullOrEmpty(sid))
+                {
+                    var store = http.RequestServices.GetRequiredService<BuildingBlocks.ServiceDefaults.TokenStorage.RedisTokenStore>();
+                    accessToken = await store.GetAccessTokenAsync(sid);
+                }
+            }
+
             if (!string.IsNullOrEmpty(accessToken))
             {
                 transformContext.ProxyRequest.Headers.Authorization = new("Bearer", accessToken);
