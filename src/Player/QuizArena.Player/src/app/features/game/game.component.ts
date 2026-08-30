@@ -1,7 +1,8 @@
-// @ts-nocheck
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, DestroyRef, ViewChild, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { PlayerRoundsStore } from '../../stores/player-rounds.store';
 import { AnswerInteractionStore } from '../../stores/answer-interaction.store';
@@ -13,6 +14,19 @@ import { QuestionComponent } from './question.component';
 import { TimerComponent } from './timer.component';
 import { ScorePanelComponent } from './score-panel.component';
 import { LeaderboardComponent } from './leaderboard.component';
+
+function safeUUID(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+function safeGet(k: string): string | null { try { return sessionStorage.getItem(k); } catch { return null; } }
+function safeSet(k: string, v: string): void { try { sessionStorage.setItem(k, v); } catch {} }
 
 @Component({
   selector: 'app-game',
@@ -63,7 +77,7 @@ import { LeaderboardComponent } from './leaderboard.component';
             <span>Secured Points: {{ store.securedPoints().securedPoints }}</span>
             @if (store.securedPoints().checkpointRoundNumber) { <small> checkpoint ronda {{ store.securedPoints().checkpointRoundNumber }}</small> }
           </div>
-          <button (click)="openWithdraw()" [disabled]="store.isTerminal() || !store.status().canAnswer" style="min-height:44px; min-width:44px;" aria-label="Retirarse">Withdrawal Action</button>
+          <button (click)="openWithdraw()" [disabled]="store.isTerminal()" style="min-height:44px; min-width:44px;" aria-label="Retirarse">Withdrawal Action</button>
         </footer>
 
         @if (showWithdrawConfirm) {
@@ -88,7 +102,9 @@ import { LeaderboardComponent } from './leaderboard.component';
           </div>
         }
       }
-      <small>Correlation: {{ store.ui().error?.correlationId }}</small>
+      @if (store.ui().error) {
+        <small>Correlation: {{ store.ui().error?.correlationId }} Trace: {{ store.ui().error?.traceId }}</small>
+      }
     </div>
   `
 
@@ -99,31 +115,36 @@ export class GameComponent implements OnInit, OnDestroy {
   answerStore = inject(AnswerInteractionStore);
   private route = inject(ActivatedRoute);
   private oidc = inject(OidcSecurityService);
+  private destroyRef = inject(DestroyRef);
   showWithdrawConfirm = false;
   gameId = '';
+  @ViewChild(LeaderboardComponent) leaderboardComp?: LeaderboardComponent;
 
   ngOnInit() {
     this.gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.store.hydrateFor(this.gameId);
     this.store.startTimerTick();
-    this.store.bindRealtime(this.gameId, () => {
-      let token = '';
-      this.oidc.getAccessToken().subscribe((t: string) => (token = t));
-      return token;
-    });
+    this.store.bindRealtime(this.gameId, () => firstValueFrom(this.oidc.getAccessToken()));
     this.roundsStore.hydrateLadder(this.gameId);
     this.roundsStore.bindRealtimeLadder(this.gameId);
     this.answerStore.hydrateAnswer(this.gameId);
-    // hydrate answer on realtime events
-    (this.store as any)._realtime.events$?.subscribe?.((evt: any) => {
-      if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'Reconnected'].includes(evt.type)) {
-        this.answerStore.hydrateAnswer(this.gameId);
-      }
-    });
+    (this.store as unknown as { _realtime: { events$: import('rxjs').Observable<{type:string}> } })._realtime.events$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((evt) => {
+        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'Reconnected', 'RoundStarted'].includes(evt.type)) {
+          this.answerStore.hydrateAnswer(this.gameId);
+        }
+        if (['ScoreUpdated', 'RoundCompleted', 'PlayerWithdrawn', 'GameFinished'].includes(evt.type)) {
+          this.leaderboardComp?.hydrate(this.gameId);
+        }
+      });
+    // initial leaderboard hydrate after view init delay
+    setTimeout(() => this.leaderboardComp?.hydrate(this.gameId), 0);
   }
 
   ngOnDestroy() {
     this.store.stopTimerTick();
+    (this.store as unknown as { disconnectRealtime: () => void }).disconnectRealtime();
   }
 
   hydrate() {
@@ -131,14 +152,15 @@ export class GameComponent implements OnInit, OnDestroy {
     this.store.hydrateFor(gameId);
     this.roundsStore.hydrateLadder(gameId);
     this.answerStore.hydrateAnswer(gameId);
+    this.leaderboardComp?.hydrate(gameId);
   }
 
   openWithdraw() { this.showWithdrawConfirm = true; }
 
   confirmWithdraw() {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
-    const key = sessionStorage.getItem(`idemp-withdraw-${gameId}`) ?? crypto.randomUUID();
-    sessionStorage.setItem(`idemp-withdraw-${gameId}`, key);
+    const key = safeGet(`idemp-withdraw-${gameId}`) ?? safeUUID();
+    safeSet(`idemp-withdraw-${gameId}`, key);
     this.showWithdrawConfirm = false;
     this.store.withdraw();
   }

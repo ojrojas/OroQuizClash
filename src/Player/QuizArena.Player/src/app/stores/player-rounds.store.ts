@@ -1,12 +1,16 @@
-// @ts-nocheck
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, withProps, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, debounceTime } from 'rxjs';
+import { pipe, switchMap, tap, debounceTime, Subscription } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { GamesApi } from '../features/shared/games.api';
 import { GameRealtimeService } from '../core/realtime/game-realtime.service';
 import { buildLadder, LadderState, LadderRow, RewardRule, SecuredPoints } from '../features/game/ladder.model';
+
+function safeUUID(): string {
+  try { if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r=(Math.random()*16)|0; const v=c==='x'?r:(r&0x3)|0x8; return v.toString(16); });
+}
 
 const initialState: LadderState = {
   gameId: null,
@@ -65,8 +69,7 @@ export const PlayerRoundsStore = signalStore(
   withMethods((store) => ({
     hydrateLadder: rxMethod<string>(pipe(
       tap((gameId: string) => {
-        // keep gameId for retry
-        patchState(store, { gameId, status: 'loading' as const, correlationId: crypto.randomUUID() });
+        patchState(store, { gameId, status: 'loading' as const, correlationId: safeUUID() });
       }),
       switchMap((gameId: string) => (store as any)._api.getMyState(gameId).pipe(
         // no explicit correlation header here; interceptor adds it
@@ -155,9 +158,10 @@ export const PlayerRoundsStore = signalStore(
               // already scheduled
             }
           },
-          error: (err: any) => {
-            const detail = err?.error?.detail ?? err?.error?.title ?? err?.message ?? 'Error al cargar progresión';
-            const corr = err?.error?.correlationId ?? err?.error?.traceId ?? store.correlationId();
+          error: (err: unknown) => {
+            const e = err as { detail?: string; title?: string; correlationId?: string; traceId?: string; message?: string; error?: { detail?: string; title?: string; correlationId?: string; traceId?: string } };
+            const detail = e?.detail ?? e?.title ?? (e as unknown as { error?: { detail?: string; title?: string } })?.error?.detail ?? (e as unknown as { error?: { detail?: string; title?: string } })?.error?.title ?? e?.message ?? 'Error al cargar progresión';
+            const corr = e?.correlationId ?? e?.traceId ?? (e as unknown as { error?: { correlationId?: string; traceId?: string } })?.error?.correlationId ?? ((store as unknown as { correlationId?: () => string }).correlationId?.() ?? '') as string;
             patchState(store, { status: 'error' as const, errorDetail: detail, correlationId: corr, _animatingRound: null });
           },
         })
@@ -169,16 +173,18 @@ export const PlayerRoundsStore = signalStore(
     },
 
     bindRealtimeLadder(gameId: string) {
-      // Reuse GameRealtimeService events$ ; hydrate on relevant events
-      // debounce rapid events to avoid duplicate hydrates
-      (store as any)._realtime.events$
+      const prev = (store as unknown as { _ladderSub?: Subscription })._ladderSub;
+      if (prev) try { prev.unsubscribe(); } catch {}
+      const sub = (store as unknown as { _realtime: GameRealtimeService })._realtime.events$
         .pipe(debounceTime(100))
-        .subscribe((evt: any) => {
-          if (['RoundCompleted', 'QuestionAvailable', 'ScoreUpdated', 'GameFinished', 'RoundStarted', 'Reconnected'].includes(evt?.type)) {
-            (store as any).hydrateLadder(gameId);
+        .subscribe((evt: unknown) => {
+          const t = (evt as { type?: string })?.type;
+          if (['RoundCompleted', 'QuestionAvailable', 'ScoreUpdated', 'GameFinished', 'RoundStarted', 'Reconnected'].includes(t as string)) {
+            (store as unknown as { hydrateLadder: (id: string)=>void }).hydrateLadder(gameId);
           }
         });
-      // Also trigger initial hydrate if needed
+      (store as unknown as { _ladderSub: Subscription })._ladderSub = sub;
+      return sub;
     },
 
     clearError() {

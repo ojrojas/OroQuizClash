@@ -67,12 +67,13 @@ export class RewardsCatalogComponent implements OnInit {
   ngOnInit() {
     const gameId = this.route.snapshot.queryParamMap.get('gameId') ?? undefined;
     if (gameId) this.store.hydrateFor(gameId);
-    this.store.hydrate(gameId as any);
+    else this.store.hydrate(undefined);
   }
 
   hydrate() {
     const gameId = this.route.snapshot.queryParamMap.get('gameId') ?? undefined;
-    this.store.hydrate(gameId as any);
+    if (gameId) this.store.hydrateFor(gameId);
+    else this.store.hydrate(undefined);
   }
 
   deriveStatus(r: any): string {
@@ -93,6 +94,6 @@ export class RewardsCatalogComponent implements OnInit {
 
   goDetail(rewardId: string) {
     const gameId = this.route.snapshot.queryParamMap.get('gameId');
-    this.router.navigate(['/rewards', rewardId], { queryParams: gameId ? { gameId } : {} });
+    this.router.navigate(['/player/rewards', rewardId], { queryParams: gameId ? { gameId } : {} });
   }
 }

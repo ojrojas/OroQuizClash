@@ -19,7 +19,7 @@ export class GameRealtimeService {
 
   events$ = new Subject<GameEvent>();
 
-  async connect(gameId: string, accessTokenFactory: () => string) {
+  async connect(gameId: string, accessTokenFactory: () => string | Promise<string>) {
     if (this.conn?.state === HubConnectionState.Connected && this.gameId() === gameId) return;
     await this.disconnect();
     this.gameId.set(gameId);

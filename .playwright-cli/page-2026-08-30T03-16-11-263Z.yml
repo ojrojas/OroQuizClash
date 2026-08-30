@@ -1,0 +1,7 @@
+- generic [ref=f3e3]:
+  - banner [ref=f3e4]:
+    - heading "QuizArena Player" [level=1] [ref=f3e5]
+    - navigation "Autenticación" [ref=f3e6]:
+      - button "Iniciar sesión" [ref=f3e7] [cursor=pointer]
+  - main [ref=f3e8]:
+    - status [ref=f3e9]: Verificando sesión...

@@ -39,13 +39,14 @@ import { AuthService } from './core/auth/auth.service';
     </div>
   `,
   styles: [`
-    .app-shell { min-height: 100vh; display:flex; flex-direction:column; }
-    .app-header { padding: var(--space-4, 1rem); background: var(--color-primary); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+    .app-shell { min-height: 100vh; display:flex; flex-direction:column; background: var(--color-background, #0F172A); color: var(--color-foreground, #F8FAFC); }
+    .app-header { padding: var(--space-4, 1rem); background: var(--color-primary, #2563EB); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; }
     .auth-nav { display:flex; align-items:center; gap:0.75rem; }
-    .user-info { font-size:0.9rem; opacity:0.9; }
+    .user-info { font-size:0.9rem; opacity:0.9; color: white; }
     .btn { padding:0.5rem 1rem; border-radius:var(--radius-md,8px); border:none; cursor:pointer; font-weight:600; }
-    .btn-primary { background:white; color:var(--color-primary); }
+    .btn-primary { background:white; color:var(--color-primary, #2563EB); }
     .btn-secondary { background:transparent; color:white; border:1px solid white; }
+    main { flex:1; padding: var(--space-4, 1rem); }
   `]
 })
 export class AppComponent implements OnInit {

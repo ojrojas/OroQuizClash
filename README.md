@@ -115,6 +115,23 @@ npm start # http://localhost:4200 proxy /api → 5000
 dotnet run --project src/Admin/QuizArena.Admin
 ```
 
+> **Manual completo de usuario**: [draft/manual-de-usuario.md](draft/manual-de-usuario.md) — Configuración de roles, aplicaciones OIDC, categorías, preguntas, juegos, flujo de juego y troubleshooting.
+
+### Configuración del Sistema
+
+| Paso | Acción | Documentación |
+|------|--------|---------------|
+| 1 | Registrar `quizarena-player` OIDC (una vez) | Admin UI → Applications → Create (`client_id=quizarena-player`, Public, PKCE, redirect=`http://localhost:4200/auth/callback`, scopes=`openid profile email offline_access`) |
+| 2 | Registrar `quizarena-admin` OIDC (una vez) | `./scripts/register-admin-oidc-client.sh` |
+| 3 | Crear usuarios jugadores | Admin UI → Users → Create → asignar rol `PLAYER` |
+| 4 | Crear categorías | Admin UI → Categories → Create → `activate` (requiere ≥5 preguntas) |
+| 5 | Crear preguntas | Admin UI → Question Bank → Create (4 opciones, 1 correcta) → `publish` |
+| 6 | Crear juegos | Admin UI → Games → Create (16 atributos) → `Open Lobby` → `Start` |
+
+> **Roles**: `ADMIN` (total), `GAME_MANAGER` (juegos), `REWARD_MANAGER` (recompensas), `PLAYER` (jugar). Creados vía Admin UI → Users → Roles.
+
+> **Datos iniciales**: El seeder crea 10 categorías + 200 preguntas + 10 juegos automáticamente al iniciar Aspire.
+
 **Validación 036** (quickstart.md V1-V7): `/rewards?gameId` Wallet 1200 vs Catalog 800 `Canjeable Quedan 400` / 1500 `Puntos insuficientes Te faltan 300` → Detail 4 métricas → Redeem 2 pasos `X-Idempotency-Key` → History `RequestedAt` desc → Consolation `var(--color-info)` badge.
 
 ## Tests & Calidad
@@ -155,6 +172,7 @@ OroQuizClash.slnx
 
 ## Docs & ADRs
 
+- [Manual de Usuario](draft/manual-de-usuario.md) — Configuración completa, roles, OIDC, categorías, preguntas, juegos, flujo de jugador
 - `docs/adr/ADR-010-game-configuration.md` … `ADR-013-admin-bff-communication.md`
 - `design-system/GOVERNANCE.md`, `QUALITY-GATE.md`
 - `specs/016-ui-ux-design-system/` + `specs/027-036/` Player flow

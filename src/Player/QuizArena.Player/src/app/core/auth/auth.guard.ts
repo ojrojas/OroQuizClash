@@ -35,10 +35,15 @@ export const authGuard: CanActivateFn = () => {
 
 export const mustChangePasswordGuard: CanActivateFn = () => {
   const oidc = inject(OidcSecurityService);
-  return oidc.isAuthenticated$.pipe(
+  return oidc.getPayloadFromIdToken().pipe(
     take(1),
-    map(({ isAuthenticated }) => {
-      if (!isAuthenticated) return true; // No evaluar si no está autenticado
+    map((payload: unknown) => {
+      const p = payload as Record<string, unknown> | null;
+      if (p?.['must_change_password']) {
+        const iss = (p?.['iss'] as string) ?? 'https://localhost:5086';
+        window.location.href = `${iss}/auth/change-password`;
+        return false;
+      }
       return true;
     })
   );

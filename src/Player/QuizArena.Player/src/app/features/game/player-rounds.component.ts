@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Component, input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlayerRoundsStore } from '../../stores/player-rounds.store';
@@ -31,8 +30,8 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
             }
           </ol>
         }
-      } @else if ($any(store).status() === 'error') {
-        <app-error-state [message]="$any(store).errorDetail() ?? 'Error al cargar progresión'" [correlationId]="$any(store).correlationId()" [traceId]="$any(store).correlationId()" (retry)="retry()"></app-error-state>
+      } @else if (store.status() === 'error') {
+        <app-error-state [message]="$any(store).errorDetail() ?? 'Error al cargar progresión'" [correlationId]="$any(store).correlationId() ?? ''" [traceId]="$any(store).correlationId() ?? ''" (retry)="retry()"></app-error-state>
       } @else {
         <ol class="ladder" role="list" aria-label="Progresión de rondas">
           @for (row of store.ladder(); track row.roundNumber) {

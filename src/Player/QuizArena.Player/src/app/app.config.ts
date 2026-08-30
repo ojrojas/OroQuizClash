@@ -1,4 +1,4 @@
-import { ApplicationConfig } from '@angular/core';
+import { ApplicationConfig, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAuth } from 'angular-auth-oidc-client';
@@ -25,12 +25,10 @@ export const appConfig: ApplicationConfig = {
         renewTimeBeforeTokenExpiresInSeconds: 30,
         secureRoutes: [environment.apiUrl],
         maxIdTokenIatOffsetAllowedInSeconds: 600,
-        // Dev: permite http y evita validación estricta de issuer vs authority (cert dev https://localhost:5086 vs http)
-        // En prod cambiar a requireHttps:true y authority https
         triggerAuthorizationResultEvent: true,
         // @ts-ignore - opciones no tipadas en v17 pero soportadas por la lib
-        requireHttps: false,
-        strictDiscoveryDocumentValidation: false,
+        requireHttps: !isDevMode(),
+        strictDiscoveryDocumentValidation: !isDevMode(),
         // @ts-ignore
         historyCleanupOff: false,
       }

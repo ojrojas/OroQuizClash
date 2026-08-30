@@ -6,6 +6,13 @@ import { tapResponse } from '@ngrx/operators';
 import { RewardsApi, RewardView, RedemptionItem } from '../features/shared/rewards.api';
 import { ProblemDetails } from '../core/interceptors/error.interceptor';
 
+function safeUUID(): string {
+  try { if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r=(Math.random()*16)|0; const v=c==='x'?r:(r&0x3)|0x8; return v.toString(16); });
+}
+function safeGet(k: string): string | null { try { return sessionStorage.getItem(k); } catch { return null; } }
+function safeSet(k: string, v: string): void { try { sessionStorage.setItem(k, v); } catch {} }
+
 export type WalletState = {
   availablePoints: number | null;
   lastUpdated: string | null;
@@ -102,19 +109,26 @@ export const PlayerRewardsStore = signalStore(
       patchState(store, { _pendingGameId: gameId } as any);
       (store as any).hydrate(gameId);
     },
-    hydrateHistory: rxMethod<void>(pipe(
-      switchMap(() => (store as any)._api.getMyRedemptions()),
+    hydrateHistory: rxMethod<{ page?: number; pageSize?: number } | void>(pipe(
+      switchMap((arg) => {
+        const p = (arg as { page?: number })?.page ?? 1;
+        const ps = (arg as { pageSize?: number })?.pageSize ?? 20;
+        return (store as unknown as { _api: RewardsApi })._api.getMyRedemptions(p, ps);
+      }),
       tapResponse({
-        next: (res: any) => patchState(store, { history: res.redemptions ?? [] } as any),
-        error: (err: ProblemDetails) => patchState(store, { error: err } as any),
+        next: (res: unknown) => {
+          const r = res as { redemptions?: RedemptionItem[] };
+          patchState(store, { history: r.redemptions ?? [] } as unknown as Partial<PlayerRewardsState>);
+        },
+        error: (err: ProblemDetails) => patchState(store, { error: err } as unknown as Partial<PlayerRewardsState>),
       })
     )),
     redeem: rxMethod<string>(pipe(
       switchMap((rewardId: string) => {
         const gameId = store.wallet().gameId ?? store._pendingGameId ?? '';
         const storageKey = `idemp-redeem-${rewardId}`;
-        const key = sessionStorage.getItem(storageKey) ?? crypto.randomUUID();
-        sessionStorage.setItem(storageKey, key);
+        const key = safeGet(storageKey) ?? safeUUID();
+        safeSet(storageKey, key);
         patchState(store, { redeemStatus: 'LOADING' } as any);
         return (store as any)._api.redeem(rewardId, key, gameId);
       }),

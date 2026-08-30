@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { computed, inject } from '@angular/core';
 import { tapResponse } from '@ngrx/operators';
 import { patchState, signalStore, withComputed, withMethods, withProps, withState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { interval, map, pipe, switchMap, tap } from 'rxjs';
+import { EMPTY, interval, map, pipe, Subject, Subscription, switchMap, tap } from 'rxjs';
 import { ProblemDetails } from '../core/interceptors/error.interceptor';
 import { GameRealtimeService } from '../core/realtime/game-realtime.service';
 import { GamesApi } from '../features/shared/games.api';
@@ -22,7 +21,6 @@ type PlayerGameState = {
   status: PlayerGameStatus;
   ui: { isLoading: boolean; error: ProblemDetails | null; isHydrating: boolean };
   _now: number;
-  _tickSub: any;
   _isPulse: boolean;
 };
 
@@ -39,9 +37,16 @@ const initialState: PlayerGameState = {
   status: { gameStatus: 'WAITING_FOR_PLAYERS', playerStatus: 'ACTIVE', isTerminal: false, canAnswer: false },
   ui: { isLoading: false, error: null, isHydrating: false },
   _now: Date.now(),
-  _tickSub: null,
   _isPulse: false,
 };
+
+function safeUUID(): string {
+  try { if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16); });
+}
+
+function safeSessionGet(key: string): string | null { try { return sessionStorage.getItem(key); } catch { return null; } }
+function safeSessionSet(key: string, value: string): void { try { sessionStorage.setItem(key, value); } catch {} }
 
 export const PlayerGameStore = signalStore(
   withState(initialState),
@@ -49,6 +54,10 @@ export const PlayerGameStore = signalStore(
   withProps(() => ({
     _api: inject(GamesApi),
     _realtime: inject(GameRealtimeService),
+    _tickSub: null as Subscription | null,
+    _realtimeSub: null as Subscription | null,
+    _pendingGameId: null as string | null,
+    _hydrateTrigger: new Subject<string | void>(),
   })),
 
   withComputed(({ timer, _now, status, round, answer, score, securedPoints, game, _isPulse }) => ({
@@ -58,120 +67,120 @@ export const PlayerGameStore = signalStore(
     canAnswer: computed(() => status().canAnswer && round()?.status === 'IN_PROGRESS' && answer()?.state === 'PENDING'),
     displayScore: computed(() => `${status().isTerminal ? 'Final' : ''} ${status().gameStatus}`),
     potentialReward: computed(() => {
-      const g: any = game();
-      const rewardName = g?.configuration?.rewardRules?.rewardId ? 'Pack Oro' : null;
-      if (!rewardName) return '—';
-      const nextThreshold = 500;
-      const current = score().totalPoints;
-      return current >= nextThreshold ? '¡Recompensa alcanzada!' : `Próximo: ${rewardName} ${nextThreshold} pts`;
+      const g = game() as any;
+      const cfg = g?.configuration as Record<string, any> | undefined;
+      const rulesRaw = (cfg?.['rewardRules'] ?? cfg?.['RewardRules']) as Array<any> | undefined;
+      if (Array.isArray(rulesRaw) && rulesRaw.length > 0) {
+        const curPoints = score().totalPoints;
+        const next = [...rulesRaw].sort((a: any, b: any) => (a.pointsRequired ?? a.PointsRequired ?? 0) - (b.pointsRequired ?? b.PointsRequired ?? 0)).find((r: any) => (r.pointsRequired ?? r.PointsRequired ?? 0) > curPoints);
+        if (next) return `Próximo: ${next.name ?? next.Name ?? 'Pack'} ${next.pointsRequired ?? next.PointsRequired ?? 0} pts`;
+        return '¡Recompensa alcanzada!';
+      }
+      const ppr = (cfg?.['pointsPerRound'] ?? cfg?.['PointsPerRound']) as number | undefined;
+      if (ppr) { const roundNum = g?.currentRoundNumber ?? round()?.roundNumber ?? 1; return `Próximo: ${ppr * (roundNum + 1)} pts`; }
+      return '—';
     }),
     currentRoundDisplay: computed(() => {
-      const gs: any = status();
-      const g: any = game();
-      const max = g?.configuration?.maxRounds ?? 10;
-      const cur = (g as any)?.currentRoundNumber ?? round()?.roundNumber ?? 0;
+      const g = game() as any;
+      const max = g?.configuration?.maxRounds ?? g?.configuration?.MaxRounds ?? 10;
+      const cur = g?.currentRoundNumber ?? round()?.roundNumber ?? 0;
       return `Ronda ${cur}/${max}`;
     }),
     isScorePulse: computed(() => _isPulse()),
-    isSecured: computed(() => {
-      const sp = securedPoints();
-      return sp.securedPoints > 0 && sp.checkpointRoundNumber != null;
-    }),
+    isSecured: computed(() => securedPoints().securedPoints > 0 && securedPoints().checkpointRoundNumber != null),
   })),
 
-  withMethods((store) => ({
-    hydrate: rxMethod<void>(pipe(
+  withMethods((store) => {
+    const hydrateSub = store._hydrateTrigger.pipe(
       tap(() => patchState(store, { ui: { isLoading: true, error: null, isHydrating: true } })),
-      switchMap(() => {
-        const gameId = store.game()?.gameId ?? (store as any)._pendingGameId ?? '';
-        return (store as any)._api.getMyState(gameId);
+      switchMap((input) => {
+        const gameId = (typeof input === 'string' && input) ? input : store._pendingGameId ?? store.game()?.gameId ?? '';
+        if (!gameId) return EMPTY;
+        return store._api.getMyState(gameId);
       }),
       tapResponse({
         next: (state: any) => {
-          // correct _now on each hydrate to fix drift (R5)
-          const serverNow = state.timer?.serverNow ? new Date(state.timer.serverNow).getTime() : Date.now();
+          const s = state as Record<string, any>;
+          const timerRaw = s['timer'];
+          const cfg = s['game']?.['configuration'] as Record<string, any> | undefined;
+          let timer: Timer = timerRaw ?? store.timer();
+          if (cfg) {
+            const tlp = cfg['timeLimitPerQuestion'] ?? cfg['TimeLimitPerQuestion'] ?? cfg['timeLimitPerQuestionSeconds'] ?? cfg['TimeLimitPerQuestionSeconds'];
+            if (typeof tlp === 'number') timer = { ...timer, timeLimitSeconds: tlp };
+          }
+          const serverNow = timerRaw?.serverNow ? new Date(timerRaw.serverNow).getTime() : Date.now();
           patchState(store, {
-            player: state.player,
-            game: state.game,
-            gameSession: state.gameSession,
-            round: state.round,
-            question: state.question,
-            answer: state.answer,
-            score: state.score,
-            securedPoints: state.securedPoints,
-            timer: state.timer,
-            status: state.status,
-            _now: serverNow,
+            player: s['player'] as Player, game: s['game'] as Game, gameSession: s['gameSession'] as GameSession,
+            round: s['round'] as Round, question: s['question'] as Question, answer: s['answer'] as Answer,
+            score: s['score'] as Score, securedPoints: s['securedPoints'] as SecuredPoints,
+            timer, status: s['status'] as PlayerGameStatus, _now: serverNow,
             ui: { isLoading: false, error: null, isHydrating: false }
           } as any);
         },
-        error: (err: ProblemDetails) => patchState(store, { ui: { isLoading: false, error: err, isHydrating: false } }),
+        error: (err: any) => patchState(store, { ui: { isLoading: false, error: err, isHydrating: false } }),
       })
-    )),
+    ).subscribe();
 
-    hydrateFor(gameId: string) {
-      (store as any)._pendingGameId = gameId;
-      (store as any).hydrate();
-    },
+    return {
+      hydrate(gameId?: string) { store._hydrateTrigger.next(gameId); },
+      hydrateFor(gameId: string) { store._pendingGameId = gameId; store._hydrateTrigger.next(gameId); },
 
-    submitAnswer: rxMethod<string>(pipe(
-      switchMap((selectedOptionId: string) => {
-        const roundId = store.round()?.roundId ?? '';
-        const key = sessionStorage.getItem(`idemp-${roundId}`) ?? crypto.randomUUID();
-        sessionStorage.setItem(`idemp-${roundId}`, key);
-        return (store as any)._api.submitAnswer(store.game()!.gameId, {
-          roundId: store.round()!.roundId,
-          questionId: store.question()!.questionId,
-          selectedOptionId,
-          idempotencyKey: key
-        });
-      }),
-      tapResponse({
-        next: (answer: Answer) => patchState(store, { answer, timer: { ...store.timer(), state: 'STOPPED' as const } }),
-        error: (err: ProblemDetails) => patchState(store, { ui: { ...store.ui(), error: err } }),
-      })
-    )),
+      submitAnswer: rxMethod<string>(pipe(
+        switchMap((selectedOptionId: string) => {
+          const game = store.game(), round = store.round(), question = store.question();
+          if (!game?.gameId || !round?.roundId || !question?.questionId || !store.canAnswer()) return EMPTY;
+          const key = safeSessionGet(`idemp-${round.roundId}`) ?? safeUUID();
+          safeSessionSet(`idemp-${round.roundId}`, key);
+          return store._api.submitAnswer(game.gameId, { roundId: round.roundId, questionId: question.questionId, selectedOptionId, idempotencyKey: key });
+        }),
+        tapResponse({
+          next: (answer: Answer) => patchState(store, { answer, timer: { ...store.timer(), state: 'STOPPED' as const } }),
+          error: (err: any) => patchState(store, { ui: { ...store.ui(), error: err } }),
+        })
+      )),
 
-    withdraw: rxMethod<void>(pipe(
-      switchMap(() => {
-        const gameId = store.game()?.gameId ?? (store as any)._pendingGameId ?? '';
-        const storageKey = `idemp-withdraw-${gameId}`;
-        const key = sessionStorage.getItem(storageKey) ?? crypto.randomUUID();
-        sessionStorage.setItem(storageKey, key);
-        return (store as any)._api.withdraw(gameId, key);
-      }),
-      tapResponse({
-        next: (gs: GameSession) => patchState(store, { gameSession: gs, status: { ...store.status(), playerStatus: 'WITHDRAWN', isTerminal: true, canAnswer: false } }),
-        error: (err: ProblemDetails) => patchState(store, { ui: { ...store.ui(), error: err } }),
-      })
-    )),
+      withdraw: rxMethod<void>(pipe(
+        switchMap(() => {
+          const gameId = store.game()?.gameId ?? store._pendingGameId ?? '';
+          if (!gameId) return EMPTY;
+          const key = safeSessionGet(`idemp-withdraw-${gameId}`) ?? safeUUID();
+          safeSessionSet(`idemp-withdraw-${gameId}`, key);
+          return store._api.withdraw(gameId, key);
+        }),
+        tapResponse({
+          next: (gs: GameSession) => patchState(store, {
+            gameSession: gs, status: { ...store.status(), playerStatus: 'WITHDRAWN', isTerminal: true, canAnswer: false },
+            score: { ...store.score(), totalPoints: store.securedPoints().securedPoints || store.score().totalPoints }
+          }),
+          error: (err: any) => patchState(store, { ui: { ...store.ui(), error: err } }),
+        })
+      )),
 
-    startTimerTick() {
-      if ((store as any)._tickSub) return;
-      const sub = interval(1000).pipe(map(() => Date.now())).subscribe(now => patchState(store, { _now: now }));
-      patchState(store, { _tickSub: sub } as any);
-      return sub;
-    },
+      startTimerTick() { if (store._tickSub) return; store._tickSub = interval(1000).pipe(map(() => Date.now())).subscribe(now => patchState(store, { _now: now })); },
+      stopTimerTick() { if (store._tickSub) { store._tickSub.unsubscribe(); store._tickSub = null; } },
+      clearError() { patchState(store, { ui: { ...store.ui(), error: null } }); },
+    };
+  }),
 
-    stopTimerTick() {
-      const sub = (store as any)._tickSub;
-      if (sub) { sub.unsubscribe(); patchState(store, { _tickSub: null } as any); }
-    },
-
-    bindRealtime(gameId: string, accessTokenFactory: () => string) {
-      (store as any)._realtime.connect(gameId, accessTokenFactory);
-      (store as any)._realtime.events$.subscribe((evt: any) => {
-        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn'].includes(evt.type)) {
-          if (evt.type === 'ScoreUpdated') {
-            patchState(store, { _isPulse: true } as any);
-            setTimeout(() => patchState(store, { _isPulse: false } as any), 600);
-          }
-          (store as any).hydrateFor(gameId);
+  withMethods((store) => ({
+    bindRealtime(gameId: string, accessTokenFactory: () => string | Promise<string>) {
+      if (store._realtimeSub) { store._realtimeSub.unsubscribe(); }
+      store._realtime.connect(gameId, accessTokenFactory);
+      store._realtimeSub = store._realtime.events$.subscribe((evt) => {
+        const type = (evt as { type: string }).type;
+        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn', 'RoundStarted'].includes(type)) {
+          if (type === 'ScoreUpdated') { patchState(store, { _isPulse: true } as any); setTimeout(() => patchState(store, { _isPulse: false } as any), 600); }
+          const payload = (evt as any).payload;
+          if (payload?.serverNow) patchState(store, { _now: new Date(payload.serverNow).getTime() } as any);
+          store.hydrateFor(gameId);
         }
-        if (evt.type === 'Reconnected') (store as any).hydrateFor(gameId);
+        if (type === 'Reconnected') {
+          const payload = (evt as any).payload;
+          patchState(store, { _now: payload?.serverNow ? new Date(payload.serverNow).getTime() : Date.now() } as any);
+          store.hydrateFor(gameId);
+        }
       });
     },
-
-    clearError() { patchState(store, { ui: { ...store.ui(), error: null } }); },
+    disconnectRealtime() { if (store._realtimeSub) { store._realtimeSub.unsubscribe(); store._realtimeSub = null; } try { store._realtime.disconnect(); } catch {} }
   }))
 );

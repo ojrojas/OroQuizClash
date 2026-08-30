@@ -56,24 +56,27 @@ import { ConsolationBadgeComponent } from './consolation-badge.component';
 export class RedemptionHistoryComponent implements OnInit {
   store = inject(PlayerRewardsStore);
   private router = inject(Router);
-  page = 0;
+  page = 1;
   pageSize = 20;
 
   sortedHistory = computed(() => {
     return [...this.store.history()].sort((a, b) => new Date(b.requestedAt).getTime() - new Date(a.requestedAt).getTime());
   });
 
-  hasNext = computed(() => this.sortedHistory().length > (this.page + 1) * this.pageSize);
+  hasNext = computed(() => this.sortedHistory().length >= this.page * this.pageSize);
 
   ngOnInit() { this.hydrate(); }
 
-  hydrate() { this.store.hydrateHistory(); }
+  hydrate() { (this.store as unknown as { hydrateHistory: (arg: { page:number; pageSize:number })=>void }).hydrateHistory({ page: this.page, pageSize: this.pageSize }); }
 
-  isConsolation(item: any): boolean {
+  isConsolation(item: { points: number; status: string }): boolean {
     return item.points === 0 && item.status === 'APPROVED';
   }
 
-  loadMore() { this.page++; }
+  loadMore() {
+    this.page++;
+    (this.store as unknown as { hydrateHistory: (arg: { page:number; pageSize:number })=>void }).hydrateHistory({ page: this.page, pageSize: this.pageSize });
+  }
 
-  goCatalog() { this.router.navigate(['/rewards']); }
+  goCatalog() { this.router.navigate(['/player/rewards']); }
 }

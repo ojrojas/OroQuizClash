@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { Component, computed, inject, Input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { AnswerInteractionStore } from '../../stores/answer-interaction.store';
-import { Question, Answer } from '../shared/models/player.models';
+import { Question } from '../shared/models/player.models';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
 import { AnswerOptionState } from './answer-interaction.model';
 
@@ -11,7 +10,6 @@ import { AnswerOptionState } from './answer-interaction.model';
   selector: 'app-question',
   standalone: true,
   imports: [CommonModule, ErrorStateComponent],
-  providers: [AnswerInteractionStore],
   template: `
     <div class="question-answering" data-theme="player">
       @if (validationError()) {
@@ -152,8 +150,8 @@ export class QuestionComponent {
     if (!q) return null;
     const len = q.answerOptions?.length ?? 0;
     if (len !== 4) return 'Pregunta inválida (se requieren 4 opciones)';
-    // also check answerStore validation error for 3/5
-    if (this.answerStore.errorDetail() === 'Pregunta inválida (se requieren 4 opciones)') return this.answerStore.errorDetail();
+    const ed = ((this.answerStore as unknown) as { errorDetail?: () => string | null }).errorDetail?.() ?? null;
+    if (ed === 'Pregunta inválida (se requieren 4 opciones)') return ed;
     return null;
   });
 
@@ -165,7 +163,7 @@ export class QuestionComponent {
   });
 
   correctOptionText = computed(() => {
-    const correctId = this.answerStore.correctOptionId();
+    const correctId = ((this.answerStore as unknown) as { correctOptionId?: () => string | null }).correctOptionId?.() ?? null;
     if (!correctId) {
       // try to find from question if we have isCorrect leaked post-evaluated (should only happen after EVALUATED)
       const q: any = this.questionView();
@@ -185,7 +183,7 @@ export class QuestionComponent {
     const selected = this.answerStore.selectedOptionId();
     const locked = this.answerStore.lockedOptionId();
     const isEvaluating = this.answerStore.isEvaluating();
-    const correctId = this.answerStore.correctOptionId();
+    const correctId = ((this.answerStore as unknown) as { correctOptionId?: () => string | null }).correctOptionId?.() ?? null;
 
     if (phase === 'timeout') return 'Timeout';
     if (phase === 'evaluating' && locked === optionId) return 'Evaluating';
@@ -254,8 +252,7 @@ export class QuestionComponent {
       const roundId = this.playerStore?.round()?.roundId ?? this.answerStore.roundId();
       const questionId = (this.question as any)?.questionId ?? this.playerStore?.question()?.questionId ?? this.answerStore.questionId();
       if (roundId && questionId) {
-        // patch if missing
-        if (!this.answerStore.gameId()) this.answerStore._setState({ gameId, roundId, questionId } as any);
+        if (!this.answerStore.gameId()) (this.answerStore as unknown as { _setState: (p: unknown)=>void })._setState({ gameId, roundId, questionId });
       }
       this.answerStore.submitAnswer();
     } else {

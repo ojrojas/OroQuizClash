@@ -48,9 +48,9 @@ export const LobbyStore = signalStore(
     _api: inject(GamesApi),
   })),
 
-  withComputed(({ games }) => ({
+  withComputed(({ games, totalCount, pageSize }) => ({
     isEmpty: computed(() => games().length === 0),
-    totalPages: computed(() => Math.ceil(initialState.totalCount / initialState.pageSize)),
+    totalPages: computed(() => Math.ceil(totalCount() / pageSize()) || 1),
   })),
 
   withMethods((store) => ({
@@ -86,5 +86,6 @@ export const LobbyStore = signalStore(
     )),
 
     clearError() { patchState(store, { error: null }); },
+    setError(err: ProblemDetails) { patchState(store, { error: err, isLoading: false }); },
   }))
 );

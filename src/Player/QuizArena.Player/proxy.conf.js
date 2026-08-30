@@ -6,7 +6,6 @@ module.exports = {
     secure: false,
     changeOrigin: true,
     logLevel: "debug",
-    // Strip /api prefix? Keep as is, API expects /api prefix
   },
   "/hubs": {
     target: target,

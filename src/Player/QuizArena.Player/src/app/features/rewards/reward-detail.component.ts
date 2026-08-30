@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PlayerRewardsStore } from '../../stores/player-rewards.store';
@@ -94,6 +94,17 @@ export class RewardDetailComponent implements OnInit {
   showSuccess = signal(false);
   lastRedemptionId = signal<string>('');
 
+  constructor() {
+    effect(() => {
+      const status = this.store.redeemStatus();
+      if (status === 'SUCCESS' && !this.showSuccess()) {
+        const last = this.store.history()[0];
+        if (last) this.lastRedemptionId.set(last.id);
+        this.showSuccess.set(true);
+      }
+    });
+  }
+
   selected = computed(() => {
     const id = this.route.snapshot.paramMap.get('rewardId');
     return this.store.catalog().find(r => r.id === id) ?? null;
@@ -143,12 +154,13 @@ export class RewardDetailComponent implements OnInit {
   ngOnInit() {
     const gameId = this.route.snapshot.queryParamMap.get('gameId') ?? undefined;
     if (gameId) this.store.hydrateFor(gameId);
-    this.store.hydrate(gameId as any);
+    else this.store.hydrate(undefined);
   }
 
   hydrate() {
     const gameId = this.route.snapshot.queryParamMap.get('gameId') ?? undefined;
-    this.store.hydrate(gameId as any);
+    if (gameId) this.store.hydrateFor(gameId);
+    else this.store.hydrate(undefined);
   }
 
   openConfirm() {
@@ -160,17 +172,10 @@ export class RewardDetailComponent implements OnInit {
     const sel = this.selected();
     if (!sel) return;
     this.showConfirm.set(false);
+    this.showSuccess.set(false);
     this.store.redeem(sel.id);
-    // watch for success to show confirmation
-    setTimeout(() => {
-      if (this.store.redeemStatus() === 'SUCCESS') {
-        const last = this.store.history()[0];
-        if (last) this.lastRedemptionId.set(last.id);
-        this.showSuccess.set(true);
-      }
-    }, 500);
   }
 
-  goHistory() { this.router.navigate(['/rewards/history']); }
-  goCatalog() { this.router.navigate(['/rewards']); }
+  goHistory() { this.router.navigate(['/player/rewards/history']); }
+  goCatalog() { this.router.navigate(['/player/rewards']); }
 }

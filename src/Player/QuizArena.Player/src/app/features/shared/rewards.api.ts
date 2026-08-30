@@ -59,8 +59,9 @@ export class RewardsApi {
     return this.getRewards(gameId);
   }
 
-  getMyRedemptions(): Observable<GetRedemptionsResponse> {
-    return this.http.get<GetRedemptionsResponse>(`${this.base}/redemptions`);
+  getMyRedemptions(page = 1, pageSize = 20): Observable<GetRedemptionsResponse> {
+    const params = new HttpParams().set('page', String(page)).set('pageSize', String(pageSize));
+    return this.http.get<GetRedemptionsResponse>(`${this.base}/redemptions`, { params });
   }
 
   redeem(rewardId: string, idempotencyKey: string, gameId: string): Observable<RedeemResponse> {

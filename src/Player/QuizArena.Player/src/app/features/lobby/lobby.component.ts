@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { LobbyStore } from './lobby.store';
 import { GamesApi } from '../shared/games.api';
+import { ProblemDetails } from '../../core/interceptors/error.interceptor';
 import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
 import { EmptyStateComponent } from '../../shared/ui/empty-state.component';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
@@ -81,7 +82,7 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
                 <dt>Status</dt><dd>{{ g.status }}</dd>
               </dl>
               <button (click)="view(g.gameId)" style="min-height:44px;">View Game Information</button>
-              <button (click)="join(g.gameId)" [disabled]="g.players.current >= g.players.max" style="min-height:44px;">Join Game</button>
+              <button (click)="join(g.gameId)" [disabled]="g.players.current >= g.players.max || g.status !== 'WAITING_FOR_PLAYERS'" style="min-height:44px;">Join Game</button>
             </article>
           }
         </div>
@@ -102,10 +103,12 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
     @media (min-width: 769px) {
       .cards { display: none !important; }
     }
-    th, td { padding:8px; text-align:left; border-bottom:1px solid #eee; }
-    th { background: var(--color-primary); color: white; }
-    button:focus-visible { outline: 2px solid var(--color-primary); outline-offset:2px; }
-    .badge { background: var(--color-primary); color:white; padding:2px 8px; border-radius:12px; }
+    th, td { padding:8px; text-align:left; border-bottom:1px solid var(--color-border, #334155); color: var(--color-foreground, #F8FAFC); }
+    th { background: var(--color-primary, #2563EB); color: white; }
+    tr:hover { background: var(--color-muted, #334155); }
+    button { color: var(--color-foreground, #F8FAFC); }
+    button:focus-visible { outline: 2px solid var(--color-primary, #2563EB); outline-offset:2px; }
+    .badge { background: var(--color-primary, #2563EB); color:white; padding:2px 8px; border-radius:12px; }
   `]
 })
 export class LobbyComponent implements OnInit {
@@ -134,22 +137,35 @@ export class LobbyComponent implements OnInit {
   }
 
   join(gameId: string) {
-    const key = sessionStorage.getItem(`idemp-join-${gameId}`) ?? crypto.randomUUID();
-    sessionStorage.setItem(`idemp-join-${gameId}`, key);
+    const storageKey = `idemp-join-${gameId}`;
+    let key: string;
+    try {
+      key = sessionStorage.getItem(storageKey) ?? '';
+      if (!key) {
+        try { key = crypto.randomUUID(); } catch { key = `join-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+        sessionStorage.setItem(storageKey, key);
+      }
+    } catch {
+      try { key = crypto.randomUUID(); } catch { key = `join-${Date.now()}-${Math.random().toString(36).slice(2)}`; }
+    }
     this.api.joinGame(gameId, key).subscribe({
-      next: () => this.router.navigate(['/game', gameId]),
-      error: (err: any) => {
-        // Error handled via LobbyStore error not here, but show via store error
-        console.error(err);
+      next: () => this.router.navigate(['/player/game', gameId]),
+      error: (err: unknown) => {
+        const problem = err as ProblemDetails;
+        if (problem?.status === 409 || problem?.code === 'AlreadyJoined' || problem?.title?.includes('AlreadyJoined')) {
+          this.router.navigate(['/player/game', gameId]);
+          return;
+        }
+        (this.store as unknown as { setError: (e: ProblemDetails)=>void }).setError(problem ?? { title: 'Error al unirse', detail: 'No se pudo unir a la partida', status: 400 } as ProblemDetails);
       }
     });
   }
 
   view(gameId: string) {
-    this.router.navigate(['/lobby', gameId]);
+    this.router.navigate(['/player/lobby', gameId]);
   }
 
   leave() {
-    this.router.navigate(['/']);
+    this.router.navigate(['/player/lobby']);
   }
 }
