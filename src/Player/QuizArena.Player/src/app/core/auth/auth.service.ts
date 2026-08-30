@@ -10,6 +10,6 @@ export class AuthService {
 
   login() { this.oidc.authorize(); }
   logout() { this.oidc.logoff(); }
-  getAccessToken(): string { return this.oidc.getAccessToken(); }
-  getPayload(): any { return this.oidc.getPayloadFromIdToken(); }
+  getAccessToken(): import('rxjs').Observable<string> { return this.oidc.getAccessToken(); }
+  getPayload(): import('rxjs').Observable<any> { return this.oidc.getPayloadFromIdToken(); }
 }

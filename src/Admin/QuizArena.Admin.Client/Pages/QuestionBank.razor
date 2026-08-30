@@ -3,6 +3,7 @@
 @inject IQuestionsService QuestionsService
 @inject ICategoriesService CategoriesService
 @inject ToastService Toasts
+@inject NavigationManager Navigation
 
 <PageTitle>Question bank — QuizArena Admin</PageTitle>
 
@@ -53,7 +54,7 @@
     private static readonly QuizSelect.OptionDef[] qStatusOptions=[new("Draft","Draft"), new("Active","Active"), new("Inactive","Inactive"), new("Archived","Archived")];
     private static readonly QuizSelect.OptionDef[] diffOptions=[new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5")];
     private List<QuizSelect.OptionDef> catOptions => cats.Select(c=>new QuizSelect.OptionDef(c.Id.ToString(), c.Name)).ToList();
-    protected override async Task OnInitializedAsync() { try { var r=await CategoriesService.GetCategoriesAsync(new CategoryFilter(Page:1,PageSize:200)); cats=r.Items; } catch {} await LoadAsync(); }
+    protected override async Task OnInitializedAsync() { try { var r=await CategoriesService.GetCategoriesAsync(new CategoryFilter(Page:1,PageSize:100)); cats=r.Items; } catch {} await LoadAsync(); }
     private async Task LoadAsync() {
         state=PageState.Loading;
         try {
@@ -65,11 +66,8 @@
     private async Task OnStatus(string? v){ status=v; page=1; await LoadAsync(); }
     private async Task OnCat(string? v){ catFilter=v; page=1; await LoadAsync(); }
     private async Task OnPage(int p){ page=p; await LoadAsync(); }
-    private void OpenCreate(){ editing=null; form=new(string.Empty, Guid.Empty,1,string.Empty,0,0,[new("",false),new("",false),new("",false),new("",false)]); options=[new("",false),new("",false),new("",false),new("",false)]; fieldErrors=new Dictionary<string,string[]>(); formError=null; drawerOpen=true; }
-    private void OpenEdit(QuestionSummary q){ editing=q; // we load full text via assumption q.Text; in real need fetch detail
-        // For stub, reuse summary; Editing will fetch if needed
-        options=[new("A",false),new("B",true),new("C",false),new("D",false)]; // placeholder; real options come from detail endpoint not in summary
-        form=new(q.Text, q.CategoryId, q.Difficulty, string.Empty,0,0, options); drawerOpen=true; }
+    private void OpenCreate() => Navigation.NavigateTo("/admin/questions/new");
+    private void OpenEdit(QuestionSummary q) => Navigation.NavigateTo($"/admin/questions/{q.Id}/edit");
     private void Close()=>drawerOpen=false;
     private void SetCorrect(int idx){ for(int i=0;i<4;i++) options[i]=options[i] with { IsCorrect = i==idx }; }
     private string? Err(string f)=>fieldErrors.TryGetValue(f, out var m)?string.Join("; ",m):null;

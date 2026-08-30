@@ -1,0 +1,76 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - heading "QuizArena Player" [level=1] [ref=f2e5]
+    - navigation "Autenticación" [ref=f2e6]:
+      - generic [ref=f2e13]: ()
+      - button "Cerrar sesión" [ref=f2e14] [cursor=pointer]
+  - main [ref=f2e8]:
+    - generic [ref=f2e16]:
+      - generic [ref=f2e97]:
+        - generic [ref=f2e98]:
+          - generic [ref=f2e99]: "Current Round: Ronda 1/5"
+          - generic [ref=f2e100]: "Current Level: 0 (3)"
+          - generic [ref=f2e101]: "Player Status: ACTIVE"
+        - generic [ref=f2e103]:
+          - list "Jugadores"
+          - status "Players Remaining 0" [ref=f2e104]: "Players Remaining: 0"
+          - list "Leaderboard"
+          - status "Current Round 1 de 10" [ref=f2e105]: Ronda 1/10
+        - timer [ref=f2e107]: 0sRUNNINGExpirado
+      - complementary [ref=f2e108]:
+        - region "Progresión de rondas" [ref=f2e110]:
+          - list "Progresión de rondas" [ref=f2e111]:
+            - listitem "Ronda 1 de 5, nivel Basic, recompensa 10 pts" [ref=f2e112]:
+              - generic [ref=f2e113]: Round 1
+              - generic [ref=f2e114]: Basic
+              - generic [ref=f2e115]: · 1
+              - generic "Próxima recompensa" [ref=f2e116]: 10 pts · próximo
+            - listitem "Ronda 2 de 5, nivel Elementary, recompensa 20 pts" [ref=f2e117]:
+              - generic [ref=f2e118]: Round 2
+              - generic [ref=f2e119]: Elementary
+              - generic [ref=f2e120]: · 2
+            - listitem "Ronda 3 de 5, nivel Intermediate, recompensa 30 pts" [ref=f2e121]:
+              - generic [ref=f2e122]: Round 3
+              - generic [ref=f2e123]: Intermediate
+              - generic [ref=f2e124]: · 3
+            - listitem "Ronda 4 de 5, nivel Advanced, recompensa 40 pts" [ref=f2e125]:
+              - generic [ref=f2e126]: Round 4
+              - generic [ref=f2e127]: Advanced
+              - generic [ref=f2e128]: · 4
+            - listitem "Ronda 5 de 5, nivel Expert, recompensa 50 pts, recompensa final" [ref=f2e129]:
+              - generic [ref=f2e130]: Round 5
+              - generic [ref=f2e131]: Expert
+              - generic [ref=f2e132]: · 5
+              - generic "Recompensa final" [ref=f2e133]: Final 50 pts
+          - generic [ref=f2e137]: Sin monto asegurado
+      - main [ref=f2e138]:
+        - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f2e139]
+        - generic [ref=f2e141]:
+          - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f2e142]
+          - radiogroup "Opciones de respuesta" [ref=f2e143]:
+            - radio "Fotosíntesis" [checked] [active] [ref=f2e144] [cursor=pointer]:
+              - generic [ref=f2e175]: ●
+            - radio "Digestión celular" [ref=f2e146] [cursor=pointer]
+            - radio "Respiración" [ref=f2e148] [cursor=pointer]
+            - radio "Transporte" [ref=f2e150] [cursor=pointer]
+          - button "Confirmar respuesta" [ref=f2e152] [cursor=pointer]: Confirmar
+        - generic [ref=f2e153]: "Potential Reward: Próximo: 20 pts"
+      - generic [ref=f2e154]:
+        - group "Puntuaciones" [ref=f2e157]:
+          - status "Current Points 0 puntos" [ref=f2e158]:
+            - generic [ref=f2e159]: Current Points
+            - generic [ref=f2e160]: 0 pts
+          - status "Secured Points 0" [ref=f2e161]:
+            - generic [ref=f2e162]: Secured Points
+            - generic [ref=f2e163]: 0 pts
+          - 'status "Potential Points Próximo: 20 pts" [ref=f2e164]':
+            - generic [ref=f2e165]: Potential Points
+            - generic [ref=f2e166]: "Próximo: 20 pts"
+          - status "Round Points 0 en juego" [ref=f2e167]:
+            - generic [ref=f2e168]: Round Points
+            - generic [ref=f2e169]: 0 pts en juego
+          - status "Total Points 0 puntos" [ref=f2e170]:
+            - generic [ref=f2e171]: Total Points
+            - generic [ref=f2e172]: 0 pts
+        - generic [ref=f2e173]: "Secured Points: 0"
+        - button "Retirarse" [ref=f2e174]: Withdrawal Action

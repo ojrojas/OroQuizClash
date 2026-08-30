@@ -1,0 +1,18 @@
+- generic [ref=f6e3]:
+  - banner [ref=f6e4]:
+    - heading "QuizArena Player" [level=1] [ref=f6e5]
+    - navigation "Autenticación" [ref=f6e6]:
+      - generic [ref=f6e7]: ()
+      - button "Cerrar sesión" [ref=f6e8] [cursor=pointer]
+  - main [ref=f6e9]:
+    - generic [ref=f6e11]:
+      - generic [ref=f6e12]:
+        - heading "Available Games" [level=2] [ref=f6e13]
+        - generic [ref=f6e14]:
+          - button "Refrescar" [ref=f6e15]
+          - button "Salir del lobby" [ref=f6e16]: Leave Lobby
+      - alert [ref=f6e161]:
+        - heading "Error" [level=3] [ref=f6e162]
+        - paragraph [ref=f6e163]: Player already joined this game.
+        - generic [ref=f6e164]: "TraceId: 00-e5af6710e652f926dd214db6d3c52367-c1a0addf51561de4-01"
+        - button "Reintentar" [ref=f6e165]

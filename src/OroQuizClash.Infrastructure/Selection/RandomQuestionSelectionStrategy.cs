@@ -15,6 +15,23 @@ public sealed class RandomQuestionSelectionStrategy(IRepository<Question, Questi
         var spec = new QuestionSelectionSpecification(criteria);
         var all = await repository.ListAsync(spec, cancellationToken);
 
+        // Fallback: if no question for exact difficulty, try without difficulty filter (any difficulty for category)
+        if (all.Count == 0 && criteria.Difficulty != null)
+        {
+            var fallbackCriteria = new QuestionSelectionCriteria(
+                criteria.CategoryId,
+                null,
+                criteria.AcademicLevel,
+                criteria.AgeRange,
+                criteria.PreviousQuestionIds,
+                criteria.GameId,
+                criteria.RoundNumber,
+                criteria.RoundId,
+                criteria.Take);
+            var fallbackSpec = new QuestionSelectionSpecification(fallbackCriteria);
+            all = await repository.ListAsync(fallbackSpec, cancellationToken);
+        }
+
         if (all.Count == 0)
             return Result.Failure<IReadOnlyList<Question>>(QuestionErrors.NoAvailableQuestion);
 

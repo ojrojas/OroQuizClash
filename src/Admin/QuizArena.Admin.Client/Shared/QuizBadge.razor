@@ -9,12 +9,13 @@
     {
         <LucideIcon Name="@Icon" />
     }
-    <span class="quiz-badge-label">@ChildContent</span>
+    <span class="quiz-badge-label">@if (Label is not null) { @Label } else { @ChildContent }</span>
 </span>
 
 @code {
     [Parameter] public string Variant { get; set; } = "neutral";
     [Parameter] public string? Icon { get; set; }
     [Parameter] public bool Pulse { get; set; }
+    [Parameter] public string? Label { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

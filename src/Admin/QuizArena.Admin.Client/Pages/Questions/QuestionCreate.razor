@@ -12,17 +12,10 @@
 
 <h1>Crear pregunta</h1>
 
-@if (isSubmitting)
+<QuestionForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+@if (!string.IsNullOrEmpty(generalError))
 {
-    <LoadingSkeleton Rows="4" />
-}
-else
-{
-    <QuestionForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
-    @if (!string.IsNullOrEmpty(generalError))
-    {
-        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
-    }
+    <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
 }
 
 @code {

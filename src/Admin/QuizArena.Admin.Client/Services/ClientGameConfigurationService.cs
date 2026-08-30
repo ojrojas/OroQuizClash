@@ -10,10 +10,31 @@ public sealed class ClientGameConfigurationService(HttpClient http) : IGameConfi
 
     public async Task<GC.GameDetail> CreateAsync(GC.CreateGameRequest request, CancellationToken ct = default)
     {
-        var response = await http.PostAsJsonAsync($"{Prefix}/games", request, ct);
-        var result = await response.ReadAsAsync<GC.GameDetail>(ct);
-        return result;
+        var apiPayload = new
+        {
+            name = request.Name,
+            categoryId = request.CategoryId,
+            minRounds = request.NumberOfRounds,
+            maxRounds = request.NumberOfRounds,
+            initialDifficulty = request.InitialDifficulty,
+            difficultyStrategy = GC.PolicyCatalogs.ToApi(request.DifficultyProgression),
+            timeLimitPerQuestionSeconds = request.TimePerQuestion,
+            scoringSystem = GC.PolicyCatalogs.ToApi(request.Scoring),
+            lossPolicy = GC.PolicyCatalogs.ToApi(request.FinishPolicy),
+            withdrawalPolicy = GC.PolicyCatalogs.ToApi(request.WithdrawalPolicy),
+            consolationPolicy = "None",
+            rewardType = "Points",
+            rewardThreshold = request.PointsPerRound,
+            minPlayers = 2,
+            maxPlayers = request.MaxPlayers
+        };
+        var postResponse = await http.PostAsJsonAsync($"{Prefix}/games", apiPayload, ct);
+        await postResponse.ThrowIfApiErrorAsync(ct);
+        var created = await postResponse.ReadAsAsync<CreateGameResponse>(ct);
+        return await GetAsync(created.GameId, ct);
     }
+
+    private sealed record CreateGameResponse(Guid GameId, string Status);
 
     public async Task<GC.GameDetail> UpdateAsync(Guid id, GC.UpdateGameRequest request, CancellationToken ct = default)
     {
@@ -44,10 +65,20 @@ public sealed class ClientGameConfigurationService(HttpClient http) : IGameConfi
 
     public async Task<GC.GameDetail> GetAsync(Guid id, CancellationToken ct = default)
     {
-        var result = await http.GetFromJsonAsync<GC.GameDetail>($"{Prefix}/games/{id}", ct)
+        var api = await http.GetFromJsonAsync<ApiGameResponse>($"{Prefix}/games/{id}", ct)
             ?? throw new ApiErrorException(ApiErrorView.Unknown);
-        return result;
+        return new GC.GameDetail(
+            api.Id, api.Name, null, api.CategoryId, "Unknown",
+            GC.GameStateViewMap.FromApi(api.Status),
+            api.MaxRounds, 10, 30, 3,
+            GC.DifficultyStrategy.Linear, GC.ScoringSystem.Standard, 100,
+            GC.SecuredPointsPolicy.None, GC.WithdrawalPolicy.LoseAll, GC.LossPolicy.LoseAll,
+            null, null, null,
+            api.RowVersion, api.CreatedAt, new List<GC.GameStateTransition>()
+        );
     }
+
+    private sealed record ApiGameResponse(Guid Id, string Name, string Status, Guid CategoryId, int MinRounds, int MaxRounds, int PlayerCount, int RoundCount, string RowVersion, DateTimeOffset CreatedAt, DateTimeOffset? ReadyAt, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt);
 
     public Task<GC.GameDetail> ScheduleAsync(Guid id, DateTimeOffset scheduledAt, string rowVersion, CancellationToken ct = default) =>
         TransitionAsync(id, "schedule", new { scheduledAt, rowVersion }, ct);
@@ -83,8 +114,17 @@ public sealed class ClientGameConfigurationService(HttpClient http) : IGameConfi
                 req.Headers.TryAddWithoutValidation("If-Match", $"W/\"{rv}\"");
         }
         var response = await http.SendAsync(req, ct);
-        var result = await response.ReadAsAsync<GC.GameDetail>(ct);
-        return result;
+        await response.ThrowIfApiErrorAsync(ct);
+        var api = await response.ReadAsAsync<ApiGameResponse>(ct);
+        return new GC.GameDetail(
+            api.Id, api.Name, null, api.CategoryId, "Unknown",
+            GC.GameStateViewMap.FromApi(api.Status),
+            api.MaxRounds, 10, 30, 3,
+            GC.DifficultyStrategy.Linear, GC.ScoringSystem.Standard, 100,
+            GC.SecuredPointsPolicy.None, GC.WithdrawalPolicy.LoseAll, GC.LossPolicy.LoseAll,
+            null, null, null,
+            api.RowVersion, api.CreatedAt, new List<GC.GameStateTransition>()
+        );
     }
 
     private static string BuildQuery(Dictionary<string, string?> p)

@@ -23,6 +23,17 @@ public sealed class StartGameHandler(IRepository<Game, GameId> games, IUnitOfWor
     {
         var game = await games.FirstOrDefaultAsync(new GameByIdSpecification(new GameId(command.GameId)), ct);
         if (game is null) return Result.Failure<GameResponse>(GameErrors.GameNotFound);
+        // Auto-advance from Draft/Ready to Waiting if manager clicks Start early (UX fix for newly created games)
+        if (game.Status == OroQuizClash.Domain.Games.Enumerations.GameStatus.Draft)
+        {
+            var ready = game.MarkReady(_ => true, _ => 10);
+            if (ready.IsFailure) return Result.Failure<GameResponse>(ready.Error);
+        }
+        if (game.Status == OroQuizClash.Domain.Games.Enumerations.GameStatus.Ready)
+        {
+            var lobby = game.OpenLobby();
+            if (lobby.IsFailure) return Result.Failure<GameResponse>(lobby.Error);
+        }
         var result = game.Start();
         if (result.IsFailure) return Result.Failure<GameResponse>(result.Error);
         games.Update(game);

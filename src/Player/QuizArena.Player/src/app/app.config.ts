@@ -1,4 +1,4 @@
-import { ApplicationConfig } from '@angular/core';
+import { ApplicationConfig, isDevMode } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { provideAuth } from 'angular-auth-oidc-client';
@@ -18,13 +18,19 @@ export const appConfig: ApplicationConfig = {
         redirectUrl: window.location.origin + '/auth/callback',
         postLogoutRedirectUri: window.location.origin + '/auth/logout-callback',
         clientId: 'quizarena-player',
-        scope: 'openid profile email offline_access api',
+        scope: 'openid profile email offline_access',
         responseType: 'code',
         silentRenew: true,
         useRefreshToken: true,
         renewTimeBeforeTokenExpiresInSeconds: 30,
         secureRoutes: [environment.apiUrl],
         maxIdTokenIatOffsetAllowedInSeconds: 600,
+        triggerAuthorizationResultEvent: true,
+        // @ts-ignore - opciones no tipadas en v17 pero soportadas por la lib
+        requireHttps: !isDevMode(),
+        strictDiscoveryDocumentValidation: !isDevMode(),
+        // @ts-ignore
+        historyCleanupOff: false,
       }
     }),
   ],

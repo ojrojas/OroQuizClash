@@ -31,6 +31,10 @@ public sealed class GameFilterSpecification : Specification<Game>
         int pageSize = 20,
         bool paginate = true)
     {
+        // Include Players and Rounds for counts (fix: previously missing, causing PlayerCount 0 in list APIs)
+        AddInclude(g => g.Players);
+        AddInclude(g => g.Rounds);
+
         if (!string.IsNullOrWhiteSpace(status))
         {
             try

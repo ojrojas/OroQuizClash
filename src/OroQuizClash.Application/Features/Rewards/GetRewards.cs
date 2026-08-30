@@ -14,7 +14,7 @@ using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Rewards;
 
-public sealed record GetRewardsQuery(Guid? GameId, bool IncludeUnavailable) : IQuery<Result<GetRewardsResponse>>;
+public sealed record GetRewardsQuery(Guid? GameId, bool IncludeUnavailable, Guid? PlayerId) : IQuery<Result<GetRewardsResponse>>;
 
 public sealed record RewardItemResponse(
     Guid Id,
@@ -62,13 +62,13 @@ public sealed class GetRewardsHandler(
             r.IsAvailable(now))).ToList();
 
         int? availablePoints = null;
-        if (query.GameId is not null)
+        if (query.GameId is not null && query.PlayerId is not null)
         {
             var gameSpec = new GameByIdWithAnswersSpecification(new GameId(query.GameId.Value));
             var game = await gameRepo.FirstOrDefaultAsync(gameSpec, ct);
             if (game is not null)
             {
-                var player = game.Players.FirstOrDefault(p => p.UserId == /* current user sub */ Guid.Empty);
+                var player = game.Players.FirstOrDefault(p => p.UserId == query.PlayerId.Value);
                 if (player is not null)
                     availablePoints = player.Score.CurrentPoints;
             }
@@ -85,10 +85,12 @@ public sealed class GetRewardsEndpoint : IEndpoint
         app.MapGet("/api/rewards", async (
             Guid? gameId,
             bool includeUnavailable,
+            HttpContext httpContext,
             ISender sender,
             CancellationToken ct) =>
         {
-            var result = await sender.SendAsync(new GetRewardsQuery(gameId, includeUnavailable), ct);
+            var playerId = Guid.TryParse(httpContext.User.FindFirst("sub")?.Value, out var sub) ? sub : (Guid?)null;
+            var result = await sender.SendAsync(new GetRewardsQuery(gameId, includeUnavailable, playerId), ct);
             return result.ToHttpResult();
         }).RequireAuthorization();
     }

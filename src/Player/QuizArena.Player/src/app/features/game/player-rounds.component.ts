@@ -31,7 +31,7 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
           </ol>
         }
       } @else if (store.status() === 'error') {
-        <app-error-state [message]="store.errorDetail() ?? 'Error al cargar progresión'" [correlationId]="store.correlationId()" [traceId]="store.correlationId()" (retry)="retry()"></app-error-state>
+        <app-error-state [message]="$any(store).errorDetail() ?? 'Error al cargar progresión'" [correlationId]="$any(store).correlationId() ?? ''" [traceId]="$any(store).correlationId() ?? ''" (retry)="retry()"></app-error-state>
       } @else {
         <ol class="ladder" role="list" aria-label="Progresión de rondas">
           @for (row of store.ladder(); track row.roundNumber) {
@@ -42,7 +42,7 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
                 [class.upcoming]="row.state==='upcoming'"
                 [class.secured]="row.isSecured"
                 [class.final]="row.isFinal"
-                [class.animating]="store._animatingRound()===row.roundNumber"
+                [class.animating]="$any(store)._animatingRound()===row.roundNumber"
                 [attr.aria-current]="row.state==='current' ? 'step' : null"
                 [attr.aria-label]="row.ariaLabel">
               <span class="round-label">Round {{ row.roundNumber }}</span>

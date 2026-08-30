@@ -2,7 +2,7 @@
 
 Multiplayer trivia game platform — **Modular Monolith** `net10.0` (BuildingBlocks) + **OroIdentityServer** (Podman OIDC) + **QuizArena.Admin** (`Blazor .NET 10` BFF) + **QuizArena.Player** (`Angular 22` SignalStore). Constitución v1.1.0 (I-VI, A-J) + SDD `Constitution → Spec → Plan → Tasks → Implementation`.
 
-**Estado actual**: `036-player-rewards` `Ready for Review` — 36 specs implementadas (001-036). `dotnet build` 0 errors, `dotnet test` 864+ passed 0 failed, `QuizArena.Player` 028-036 completos (Lobby → Game → Rounds → Withdrawal → Rewards).
+**Estado actual**: `036-player-rewards` `Ready for Review` — 36 specs implementadas (001-036). `dotnet build` 0 errors, `dotnet test` 864+ passed 0 failed, `QuizArena.Player` 028-036 completos (Lobby → Game → Rounds → Withdrawal → Rewards). Live Game Dashboard funcional con Start Round / Complete Round.
 
 ## Arquitectura
 
@@ -34,7 +34,7 @@ Multiplayer trivia game platform — **Modular Monolith** `net10.0` (BuildingBlo
 
 **Infra** (`OroQuizClash.Infrastructure`): `AppDbContextBase` + `EfRepository` + `SpecificationEvaluator` + Outbox + `*TypeConfiguration` (`Reward`, `RewardRedemption` `RowVersion`, `UNIQUE (PlayerId,IdempotencyKey)`), `Game` `RowVersion` per `GamePlayerId`.
 
-**API** (`OroQuizClash.Api`): REST `GET /api/rewards?gameId` (Available/Required/Status), `POST /api/rewards/{id}/redeem` `X-Idempotency-Key` `X-Correlation-Id` `Bearer`, `GET /api/redemptions`, `POST /api/games/{id}/withdraw`, `GET /api/games`, `POST /api/games/{id}/players`, `GET /api/games/{id}/players/me`, `POST /api/games/{id}/answers`, `/hubs/game`. JWT `jwks_uri` OroIdentityServer, `RequireAuthorization`, RFC7807 `ProblemDetails` `{type,title,status,detail,code,traceId,correlationId}` + `X-Correlation-Id` echo, `GlobalExceptionHandler`.
+**API** (`OroQuizClash.Api`): REST `GET /api/rewards?gameId` (Available/Required/Status), `POST /api/rewards/{id}/redeem` `X-Idempotency-Key` `X-Correlation-Id` `Bearer`, `GET /api/redemptions`, `POST /api/games/{id}/withdraw`, `GET /api/games`, `POST /api/games/{id}/players`, `GET /api/games/{id}/players/me`, `GET /api/games/{id}/live` (Live Game Dashboard), `POST /api/games/{id}/rounds/start`, `POST /api/games/{id}/rounds/{roundId}/complete`, `POST /api/games/{id}/answers`, `/hubs/game`. JWT `jwks_uri` OroIdentityServer, `RequireAuthorization`, RFC7807 `ProblemDetails` `{type,title,status,detail,code,traceId,correlationId}` + `X-Correlation-Id` echo, `GlobalExceptionHandler`.
 
 ## QuizArena.Admin — Administration (SPEC-017, ADR-013)
 
@@ -43,7 +43,7 @@ Multiplayer trivia game platform — **Modular Monolith** `net10.0` (BuildingBlo
 - **Arquitectura**: YARP catch-all `/bff/{**}→/api/{**}` + `/hubs/game` forward. Contratos compartidos `QuizArena.Admin.Client/Services`, dual `Client*Service → /bff` (cookie + 401→login) vs `Server*Service → http://oroclash-api` (Aspire discovery + `BearerTokenHandler` `GetTokenAsync("access_token")`). Tokens server-side (HttpOnly OIDC cookie + refresh); WASM solo claims.
 - **OIDC**: Confidencial `quizarena-admin` (`authorization_code` + `refresh_token` + PKCE) contra `OroIdentityServer`. Scopes `openid profile offline_access roles admin`; `must_change_password` → `Account/ChangePassword`. Registro: `./scripts/register-admin-oidc-client.sh` (`specs/017-admin-application/contracts/oidc-config.md`); `aspire start` inyecta `Identity__Authority`/`ClientSecret`/`ApiScope=admin` vía `quizarena-admin-oidc-secret`.
 - **Run (Aspire)**: `aspire start` (postgres+pgAdmin, sqlserver, redis, rabbitmq, `identity-api 5080/5086`, `oroclash-api 5000`, `quizarena-admin https://localhost:7172`). Health `/health`, `/alive`.
-- **AppHost**: `builder.AddProject<Projects.QuizArena_Admin>("quizarena-admin").WithReference(api).WaitFor(api).WithEnvironment("Identity__Authority", identity.GetEndpoint("http"))`
+- **Live Game Dashboard** (`/admin/live/{gameId}`): Panel en tiempo real con SignalR. Botones: **Start Round** (inicia ronda, selecciona pregunta), **Complete Round** (finaliza ronda, securosa puntos), Pause, Resume, Cancel, Force Finish. After "Start Game" se redirige automáticamente al dashboard.
 - **ADRs**: `ADR-013-admin-bff-communication.md` | Specs `specs/017-026/` (Admin Dashboard, Game Config, Categories, Questions, Game Ops, Rewards, Players, Reporting, Audit)
 
 ## QuizArena.Player — Player SPA (Angular 22) — SPEC-027..036
@@ -115,6 +115,23 @@ npm start # http://localhost:4200 proxy /api → 5000
 dotnet run --project src/Admin/QuizArena.Admin
 ```
 
+> **Manual completo de usuario**: [draft/manual-de-usuario.md](draft/manual-de-usuario.md) — Configuración de roles, aplicaciones OIDC, categorías, preguntas, juegos, flujo de juego y troubleshooting.
+
+### Configuración del Sistema
+
+| Paso | Acción | Documentación |
+|------|--------|---------------|
+| 1 | Registrar `quizarena-player` OIDC (una vez) | Admin UI → Applications → Create (`client_id=quizarena-player`, Public, PKCE, redirect=`http://localhost:4200/auth/callback`, scopes=`openid profile email offline_access`) |
+| 2 | Registrar `quizarena-admin` OIDC (una vez) | `./scripts/register-admin-oidc-client.sh` |
+| 3 | Crear usuarios jugadores | Admin UI → Users → Create → asignar rol `PLAYER` |
+| 4 | Crear categorías | Admin UI → Categories → Create → `activate` (requiere ≥5 preguntas) |
+| 5 | Crear preguntas | Admin UI → Question Bank → Create (4 opciones, 1 correcta) → `publish` |
+| 6 | Crear juegos | Admin UI → Games → Create (16 atributos) → `Open Lobby` → `Start` |
+
+> **Roles**: `ADMIN` (total), `GAME_MANAGER` (juegos), `REWARD_MANAGER` (recompensas), `PLAYER` (jugar). Creados vía Admin UI → Users → Roles.
+
+> **Datos iniciales**: El seeder crea 10 categorías + 200 preguntas + 10 juegos automáticamente al iniciar Aspire.
+
 **Validación 036** (quickstart.md V1-V7): `/rewards?gameId` Wallet 1200 vs Catalog 800 `Canjeable Quedan 400` / 1500 `Puntos insuficientes Te faltan 300` → Detail 4 métricas → Redeem 2 pasos `X-Idempotency-Key` → History `RequestedAt` desc → Consolation `var(--color-info)` badge.
 
 ## Tests & Calidad
@@ -155,6 +172,7 @@ OroQuizClash.slnx
 
 ## Docs & ADRs
 
+- [Manual de Usuario](draft/manual-de-usuario.md) — Configuración completa, roles, OIDC, categorías, preguntas, juegos, flujo de jugador
 - `docs/adr/ADR-010-game-configuration.md` … `ADR-013-admin-bff-communication.md`
 - `design-system/GOVERNANCE.md`, `QUALITY-GATE.md`
 - `specs/016-ui-ux-design-system/` + `specs/027-036/` Player flow

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting;
+using System.IO;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -78,6 +79,14 @@ IResourceBuilder<ContainerResource> identityServer = builder.AddContainer("ident
     .WithEnvironment("EventBus__RabbitMQ__HostName", rabbitMq.Resource.Name)
     .WithVolume("identity-dp-keys", "/app/data-protection-keys");
 
+// Persist the OpenIddict dev encryption/signing certificate store so the
+// generated cert is STABLE across restarts. The API reads the same cert from
+// this host directory to DECRYPT the (JWE) access tokens the identity server
+// issues (the API's JwtBearer handler cannot validate encrypted tokens).
+var oidcCertDir = Path.Combine(builder.AppHostDirectory, ".oidc-certs");
+Directory.CreateDirectory(oidcCertDir);
+identityServer.WithBindMount(oidcCertDir, "/home/app/.dotnet/corefx/cryptography/x509stores");
+
 // ---------------------------------------------------------------------------
 // OroQuizClash.Api — host principal (modular monolith)
 // - EF Core: oroclash (SQL Server si Aspire lo provee, fallback Sqlite en Program.cs)
@@ -93,6 +102,7 @@ var api = builder.AddProject<Projects.OroQuizClash_Api>("oroclash-api")
     .WithReference(redis).WaitFor(redis)
     .WaitFor(identityServer)
     .WithEnvironment("Identity__Authority", identityServer.GetEndpoint("http"))
+    .WithEnvironment("Identity__TokenDecryptionCertificateDirectory", oidcCertDir)
     .WithHttpHealthCheck("/health");
 
 // ---------------------------------------------------------------------------
@@ -107,24 +117,77 @@ var adminOidcSecret = builder.AddParameter("quizarena-admin-oidc-secret", secret
 
 var admin = builder.AddProject<Projects.QuizArena_Admin>("quizarena-admin")
     .WithReference(api).WaitFor(api)
-    .WithEnvironment("Identity__Authority", identityServer.GetEndpoint("http"))
+    .WithReference(redis).WaitFor(redis)
+    .WithHttpEndpoint(port: 5008, targetPort: 5008, name: "http", isProxied: false)
+    .WithHttpsEndpoint(port: 7172, targetPort: 7172, name: "https", isProxied: false)
+    .WithExternalHttpEndpoints()
+    .WithEnvironment("Oidc__Authority", identityServer.GetEndpoint("https"))
+    .WithEnvironment("Oidc__ClientId", "quizarena-admin")
+    .WithEnvironment("Api__BaseUrl", api.GetEndpoint("http"))
+    .WithEnvironment("Identity__Authority", identityServer.GetEndpoint("https"))
     .WithEnvironment("Identity__ClientSecret", adminOidcSecret)
     .WithEnvironment("Identity__ApiScope", "admin")
     .WithHttpHealthCheck("/health");
 
 // ---------------------------------------------------------------------------
+// OroQuizClash.Seeder — Datos de prueba secundaria (10 categorías ×20 preguntas + 10 juegos WAITING_FOR_PLAYERS)
+// Idempotente: valida si ya existen datos antes de sembrar; se ejecuta al inicio y termina (one-shot).
+// Requiere borrar volumen mssql para resiembra limpia: podman volume rm oroclash-sqlserver-data
+// ---------------------------------------------------------------------------
+
+builder.AddProject<Projects.OroQuizClash_Seeder>("oroclash-seeder")
+    .WithReference(oroclashDb).WaitFor(oroclashDb)
+    .WaitFor(api)
+    .WaitFor(identityServer);
+
+// ---------------------------------------------------------------------------
 // QuizArena.Player — Angular 22 SPA (SPEC-027)
 // - PKCE public SPA (angular-auth-oidc-client) contra identity-api
 // - Proxy /api → oroclash-api, /hubs → oroclash-api SignalR
-// - En dev se sirve con `npm start` (ng serve) orquestado por Aspire AddNpmApp
+// - En dev: Podman container node:22-alpine con bind-mount + ng serve (hot reload)
+//   idéntico a identity-api (localhost/oroidentityserver) pero en modo dev.
+// - En publish: Dockerfile multi-stage (node build → nginx) en src/Player/QuizArena.Player/Dockerfile
+//   con context en raíz del repo (podman build -f src/Player/QuizArena.Player/Dockerfile -t localhost/quizarena-player:latest .)
 // ---------------------------------------------------------------------------
 
-var player = builder.AddContainer("quizarena-player", "node", "22-alpine")
-    .WithBindMount("../src/Player/QuizArena.Player", "/app")
-    .WithHttpEndpoint(port: 4200, targetPort: 4200, name: "http")
-    .WithEnvironment("API_URL", api.GetEndpoint("http"))
-    .WithEnvironment("IDENTITY_AUTHORITY", identityServer.GetEndpoint("http"))
-    .WithArgs("sh", "-c", "cd /app && npm install && npm start");
+if (builder.ExecutionContext.IsPublishMode)
+{
+    // Producción / `aspire publish`: build via Dockerfile (nginx sirve dist/quizarena-player/browser)
+    // Equivalente Podman a identity-server: podman build -f src/Player/QuizArena.Player/Dockerfile -t localhost/quizarena-player:latest .
+    builder.AddDockerfile("quizarena-player", ".", "src/Player/QuizArena.Player/Dockerfile")
+        .WithHttpEndpoint(targetPort: 80, name: "http")
+        .WithExternalHttpEndpoints()
+        .WithEnvironment("API_URL", api.GetEndpoint("http"))
+        .WithEnvironment("IDENTITY_AUTHORITY", identityServer.GetEndpoint("https"))
+        .WithEnvironment("PORT", "80");
+}
+else
+{
+    // Dev / `aspire run`: host directo con pnpm + ng serve (más rápido, HMR).
+    // Fix del bug original: path debe ser "../src/Player/QuizArena.Player" (relativo a AppHost), no "src/...".
+    // Si tu entorno no tiene node/pnpm local, usa la alternativa Podman de abajo.
+    builder.AddJavaScriptApp("quizarena-player", "../src/Player/QuizArena.Player", "start")
+        .WithPnpm(installArgs: ["--frozen-lockfile"])
+        .WithHttpEndpoint(port: 4200, targetPort: 4200, name: "http", env: "PORT", isProxied: false)
+        .WithExternalHttpEndpoints()
+        .WithEnvironment("CI", "true")
+        .WithEnvironment("API_URL", api.GetEndpoint("http"))
+        .WithEnvironment("IDENTITY_AUTHORITY", identityServer.GetEndpoint("https"));
+
+    // Alternativa Podman dev (como identity-server, si no tienes pnpm local):
+    // Descomenta para levantar Angular dentro de contenedor node:22-alpine con hot-reload.
+    // Requiere montar design-system y CI=true para evitar ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+    // builder.AddContainer("quizarena-player", "node", "22-alpine")
+    //     .WithBindMount("../src/Player/QuizArena.Player", "/app")
+    //     .WithBindMount("../design-system", "/design-system")
+    //     .WithHttpEndpoint(targetPort: 4200, name: "http")
+    //     .WithExternalHttpEndpoints()
+    //     .WithEnvironment("CI", "true")
+    //     .WithEnvironment("API_URL", api.GetEndpoint("http"))
+    //     .WithEnvironment("IDENTITY_AUTHORITY", identityServer.GetEndpoint("http"))
+    //     .WithEnvironment("PORT", "4200")
+    //     .WithArgs("sh", "-c", "cd /app && corepack enable && pnpm install --frozen-lockfile && pnpm exec ng serve --host 0.0.0.0 --port 4200");
+}
 
 // ---------------------------------------------------------------------------
 // Notas para `aspire start` / `aspire deploy`:

@@ -1,5 +1,7 @@
 @using GC = QuizArena.Admin.Client.Models.GameConfiguration
 @using QuizArena.Admin.Client.Services
+@inject ICategoriesService CategoriesService
+@inject IRewardsService RewardsService
 
 <div class="game-config-form" role="form" aria-label="Configuración de juego">
     @if (IsReadOnly)
@@ -68,6 +70,31 @@
     private IReadOnlyList<QuizSelect.OptionDef> lossOptions = GameCatalogs.LossPolicies.Select(v => new QuizSelect.OptionDef(v.Value, v.Label)).ToList();
     private IReadOnlyList<QuizSelect.OptionDef> securedOptions = Enum.GetNames<GC.SecuredPointsPolicy>().Select(n => new QuizSelect.OptionDef(n, n)).ToList();
     private IReadOnlyList<QuizSelect.OptionDef> rewardOptions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var cats = await CategoriesService.GetCategoriesAsync(new CategoryFilter(Page: 1, PageSize: 100));
+            categoryOptions = cats.Items
+                .Where(c => c.Status == CategoryStatusView.Active)
+                .Select(c => new QuizSelect.OptionDef(c.Id.ToString(), c.Name))
+                .ToList();
+            if (categoryOptions.Count == 0)
+            {
+                // Fallback to all if no Active (seeded categories may be Active)
+                categoryOptions = cats.Items.Select(c => new QuizSelect.OptionDef(c.Id.ToString(), c.Name)).ToList();
+            }
+        }
+        catch { categoryOptions = []; }
+
+        try
+        {
+            var rewards = await RewardsService.GetRewardsAsync(page: 1, pageSize: 100);
+            rewardOptions = rewards.Items.Select(r => new QuizSelect.OptionDef(r.Id.ToString(), r.Name)).ToList();
+        }
+        catch { rewardOptions = []; }
+    }
 
     private Task Update(string field, string value) => OnFieldChanged.InvokeAsync((field, value));
     private Task HandleScheduledAtChanged(DateTimeOffset? v) => OnFieldChanged.InvokeAsync((nameof(GC.GameConfigurationForm.ScheduledAt), v?.ToString("o") ?? string.Empty));

@@ -6,14 +6,14 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
-                <AuthorizeView>
-                    <Authorized Context="innerAuth">
-                        <RedirectToAccessDenied />
-                    </Authorized>
-                    <NotAuthorized Context="innerAuth">
-                        <RedirectToLogin />
-                    </NotAuthorized>
-                </AuthorizeView>
+                @if (context.User.Identity?.IsAuthenticated == true)
+                {
+                    <RedirectToAccessDenied />
+                }
+                else
+                {
+                    <RedirectToLogin />
+                }
             </NotAuthorized>
             <Authorizing>
                 <div class="auth-checking" role="status" aria-busy="true">

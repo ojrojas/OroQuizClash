@@ -1,0 +1,76 @@
+- generic [ref=f3e3]:
+  - banner [ref=f3e4]:
+    - heading "QuizArena Player" [level=1] [ref=f3e5]
+    - navigation "Autenticación" [ref=f3e6]:
+      - generic [ref=f3e7]: ()
+      - button "Cerrar sesión" [ref=f3e8] [cursor=pointer]
+  - main [ref=f3e9]:
+    - generic [ref=f3e173]:
+      - generic [ref=f3e176]:
+        - generic [ref=f3e177]:
+          - generic [ref=f3e178]: "Current Round: Ronda 1/5"
+          - generic [ref=f3e179]: "Current Level: 0 (3)"
+          - generic [ref=f3e180]: "Player Status: ACTIVE"
+        - generic [ref=f3e182]:
+          - list "Jugadores"
+          - status "Players Remaining 0" [ref=f3e183]: "Players Remaining: 0"
+          - list "Leaderboard"
+          - status "Current Round 1 de 10" [ref=f3e184]: Ronda 1/10
+        - timer [ref=f3e186]: 8sRUNNING
+      - complementary [ref=f3e187]:
+        - region "Progresión de rondas" [ref=f3e189]:
+          - list "Progresión de rondas" [ref=f3e190]:
+            - listitem "Ronda 1 de 5, nivel Basic, recompensa 10 pts" [ref=f3e191]:
+              - generic [ref=f3e192]: Round 1
+              - generic [ref=f3e193]: Basic
+              - generic [ref=f3e194]: · 1
+              - generic "Próxima recompensa" [ref=f3e195]: 10 pts · próximo
+            - listitem "Ronda 2 de 5, nivel Elementary, recompensa 20 pts" [ref=f3e196]:
+              - generic [ref=f3e197]: Round 2
+              - generic [ref=f3e198]: Elementary
+              - generic [ref=f3e199]: · 2
+            - listitem "Ronda 3 de 5, nivel Intermediate, recompensa 30 pts" [ref=f3e200]:
+              - generic [ref=f3e201]: Round 3
+              - generic [ref=f3e202]: Intermediate
+              - generic [ref=f3e203]: · 3
+            - listitem "Ronda 4 de 5, nivel Advanced, recompensa 40 pts" [ref=f3e204]:
+              - generic [ref=f3e205]: Round 4
+              - generic [ref=f3e206]: Advanced
+              - generic [ref=f3e207]: · 4
+            - listitem "Ronda 5 de 5, nivel Expert, recompensa 50 pts, recompensa final" [ref=f3e208]:
+              - generic [ref=f3e209]: Round 5
+              - generic [ref=f3e210]: Expert
+              - generic [ref=f3e211]: · 5
+              - generic "Recompensa final" [ref=f3e212]: Final 50 pts
+          - generic [ref=f3e216]: Sin monto asegurado
+      - main [ref=f3e217]:
+        - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f3e218]
+        - generic [ref=f3e220]:
+          - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f3e221]
+          - radiogroup "Opciones de respuesta" [ref=f3e222]:
+            - radio "Fotosíntesis" [ref=f3e223] [cursor=pointer]
+            - radio "Digestión celular" [checked] [active] [ref=f3e225] [cursor=pointer]:
+              - generic [ref=f3e254]: ●
+            - radio "Respiración" [ref=f3e227] [cursor=pointer]
+            - radio "Transporte" [ref=f3e229] [cursor=pointer]
+          - button "Confirmar respuesta" [ref=f3e231] [cursor=pointer]: Confirmar
+        - generic [ref=f3e232]: "Potential Reward: Próximo: 20 pts"
+      - generic [ref=f3e233]:
+        - group "Puntuaciones" [ref=f3e236]:
+          - status "Current Points 0 puntos" [ref=f3e237]:
+            - generic [ref=f3e238]: Current Points
+            - generic [ref=f3e239]: 0 pts
+          - status "Secured Points 0" [ref=f3e240]:
+            - generic [ref=f3e241]: Secured Points
+            - generic [ref=f3e242]: 0 pts
+          - 'status "Potential Points Próximo: 20 pts" [ref=f3e243]':
+            - generic [ref=f3e244]: Potential Points
+            - generic [ref=f3e245]: "Próximo: 20 pts"
+          - status "Round Points 0 en juego" [ref=f3e246]:
+            - generic [ref=f3e247]: Round Points
+            - generic [ref=f3e248]: 0 pts en juego
+          - status "Total Points 0 puntos" [ref=f3e249]:
+            - generic [ref=f3e250]: Total Points
+            - generic [ref=f3e251]: 0 pts
+        - generic [ref=f3e252]: "Secured Points: 0"
+        - button "Retirarse" [ref=f3e253]: Withdrawal Action

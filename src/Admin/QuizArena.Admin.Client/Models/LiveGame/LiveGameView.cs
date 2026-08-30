@@ -49,6 +49,7 @@ public sealed record LiveGameView(
     Guid GameId,
     GameStateView Status,
     int CurrentRound,
+    Guid? CurrentRoundId,
     QuestionView? CurrentQuestion,
     int TotalRounds,
     int Players,

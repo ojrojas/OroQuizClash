@@ -1,0 +1,102 @@
+- generic [ref=f2e132]:
+  - link "Skip to main content" [ref=f2e133] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f2e134]:
+    - generic [ref=f2e135]:
+      - generic [ref=f2e136]: QA
+      - generic [ref=f2e137]: QuizArena
+    - list [ref=f2e138]:
+      - listitem [ref=f2e139]:
+        - link "Dashboard" [ref=f2e140] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f2e146]:
+        - link "Games" [ref=f2e147] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f2e152]:
+        - link "Game Configuration" [ref=f2e153] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f2e155]:
+        - link "Categories" [ref=f2e156] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f2e159]:
+        - link "Question Bank" [ref=f2e160] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f2e164]:
+        - link "Players" [ref=f2e165] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f2e171]:
+        - link "Live Games" [ref=f2e172] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f2e179]:
+        - link "Reports" [ref=f2e180] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f2e183]:
+      - generic [ref=f2e184]: GAME MANAGER
+      - generic [ref=f2e185]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f2e186]:
+    - banner [ref=f2e187]:
+      - button "Toggle navigation" [ref=f2e188] [cursor=pointer]
+      - generic [ref=f2e190]: QuizArena Admin
+      - generic [ref=f2e191]:
+        - generic [ref=f2e192]: Manager1 Manager1
+        - button "Logout" [ref=f2e194] [cursor=pointer]
+    - main [ref=f2e199]:
+      - button "Back to games" [ref=f2e263] [cursor=pointer]
+      - generic [ref=f2e267]:
+        - generic [ref=f2e268]:
+          - heading "FinalFixed 1788111192" [level=2] [ref=f2e269]
+          - generic [ref=f2e270]: Active
+        - generic [ref=f2e272]:
+          - generic [ref=f2e273]:
+            - generic [ref=f2e274]:
+              - strong [ref=f2e275]: "Status:"
+              - text: Active
+            - generic [ref=f2e276]:
+              - strong [ref=f2e277]: "Rounds:"
+              - text: 5 – 5
+            - generic [ref=f2e278]:
+              - strong [ref=f2e279]: "Players:"
+              - text: 2 / 5
+            - generic [ref=f2e280]:
+              - strong [ref=f2e281]: "Created:"
+              - text: 2026-08-30 17:33
+            - generic [ref=f2e282]:
+              - strong [ref=f2e283]: "Ready at:"
+              - text: 2026-08-30 17:33
+            - generic [ref=f2e314]:
+              - strong [ref=f2e315]: "Started at:"
+              - text: 2026-08-30 17:34
+            - generic [ref=f2e284]:
+              - strong [ref=f2e285]: "Round count:"
+              - text: "0"
+          - generic [ref=f2e286]: Editing is disabled — the game is Active. Configuration can only be changed while Configuring.
+          - generic [ref=f2e290]:
+            - button "Finish" [ref=f2e316] [cursor=pointer]
+            - button "Force finish" [ref=f2e318] [cursor=pointer]
+          - heading "Leaderboard" [level=3] [ref=f2e295]
+          - table [ref=f2e321]:
+            - caption [ref=f2e322]: Leaderboard
+            - rowgroup [ref=f2e323]:
+              - row [ref=f2e324]:
+                - columnheader "Rank" [ref=f2e325]
+                - columnheader "Player" [ref=f2e326]
+                - columnheader "Score" [ref=f2e327]
+                - columnheader "Status" [ref=f2e328]
+            - rowgroup [ref=f2e329]:
+              - row [ref=f2e330]:
+                - cell "1" [ref=f2e331]
+                - cell "Player 01a05067" [ref=f2e332]
+                - cell "0" [ref=f2e333]
+                - cell "ACTIVE" [ref=f2e334]
+              - row [ref=f2e335]:
+                - cell "2" [ref=f2e336]
+                - cell "Player 01a05068" [ref=f2e337]
+                - cell "0" [ref=f2e338]
+                - cell "ACTIVE" [ref=f2e339]
+  - region "Notifications" [ref=f2e304]:
+    - status [ref=f2e305]:
+      - strong [ref=f2e309]: "Juego creado: FinalFixed 1788111192 (Scheduled)"
+      - button "Dismiss notification" [ref=f2e310] [cursor=pointer]
+    - status [ref=f2e340]:
+      - strong [ref=f2e344]: Started
+      - button "Dismiss notification" [ref=f2e345] [cursor=pointer]

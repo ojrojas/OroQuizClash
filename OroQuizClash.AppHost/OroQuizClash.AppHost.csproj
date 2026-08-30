@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\src\OroQuizClash.Api\OroQuizClash.Api.csproj" />
     <ProjectReference Include="..\src\Admin\QuizArena.Admin\QuizArena.Admin.csproj" />
+    <ProjectReference Include="..\src\Seeder\OroQuizClash.Seeder\OroQuizClash.Seeder.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -11,6 +12,7 @@
     <PackageReference Include="Aspire.Hosting.RabbitMQ" />
     <PackageReference Include="Aspire.Hosting.Redis" />
     <PackageReference Include="Aspire.Hosting.SqlServer" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 
   <PropertyGroup>

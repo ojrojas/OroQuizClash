@@ -1,0 +1,96 @@
+- generic [ref=f3e287]:
+  - link "Skip to main content" [ref=f3e288] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f3e289]:
+    - generic [ref=f3e290]:
+      - generic [ref=f3e291]: QA
+      - generic [ref=f3e292]: QuizArena
+    - list [ref=f3e293]:
+      - listitem [ref=f3e294]:
+        - link "Dashboard" [ref=f3e295] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f3e301]:
+        - link "Games" [ref=f3e302] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f3e307]:
+        - link "Game Configuration" [ref=f3e308] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f3e310]:
+        - link "Categories" [ref=f3e311] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f3e314]:
+        - link "Question Bank" [ref=f3e315] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f3e319]:
+        - link "Players" [ref=f3e320] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f3e326]:
+        - link "Live Games" [ref=f3e327] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f3e334]:
+        - link "Reports" [ref=f3e335] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f3e338]:
+      - generic [ref=f3e339]: GAME MANAGER
+      - generic [ref=f3e340]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f3e341]:
+    - banner [ref=f3e342]:
+      - button "Toggle navigation" [ref=f3e343] [cursor=pointer]
+      - generic [ref=f3e345]: QuizArena Admin
+      - generic [ref=f3e346]:
+        - generic [ref=f3e347]: Manager1 Manager1
+        - button "Logout" [ref=f3e349] [cursor=pointer]
+    - main [ref=f3e354]:
+      - button "Back to games" [ref=f3e562] [cursor=pointer]
+      - generic [ref=f3e566]:
+        - generic [ref=f3e567]:
+          - heading "Torneo Ciencias de la Tierra - Secundaria 09" [level=2] [ref=f3e568]
+          - generic [ref=f3e569]: Active
+        - generic [ref=f3e571]:
+          - generic [ref=f3e572]:
+            - generic [ref=f3e573]:
+              - strong [ref=f3e574]: "Status:"
+              - text: Active
+            - generic [ref=f3e575]:
+              - strong [ref=f3e576]: "Rounds:"
+              - text: 5 – 8
+            - generic [ref=f3e577]:
+              - strong [ref=f3e578]: "Players:"
+              - text: 2 / 8
+            - generic [ref=f3e579]:
+              - strong [ref=f3e580]: "Created:"
+              - text: 2026-08-30 01:49
+            - generic [ref=f3e581]:
+              - strong [ref=f3e582]: "Ready at:"
+              - text: 2026-08-30 01:49
+            - generic [ref=f3e583]:
+              - strong [ref=f3e584]: "Started at:"
+              - text: 2026-08-30 14:41
+            - generic [ref=f3e585]:
+              - strong [ref=f3e586]: "Round count:"
+              - text: "0"
+          - generic [ref=f3e587]: Editing is disabled — the game is Active. Configuration can only be changed while Configuring.
+          - generic [ref=f3e591]:
+            - button "Finish" [ref=f3e592] [cursor=pointer]
+            - button "Force finish" [ref=f3e594] [cursor=pointer]
+          - heading "Leaderboard" [level=3] [ref=f3e596]
+          - table [ref=f3e598]:
+            - caption [ref=f3e599]: Leaderboard
+            - rowgroup [ref=f3e600]:
+              - row [ref=f3e601]:
+                - columnheader "Rank" [ref=f3e602]
+                - columnheader "Player" [ref=f3e603]
+                - columnheader "Score" [ref=f3e604]
+                - columnheader "Status" [ref=f3e605]
+            - rowgroup [ref=f3e606]:
+              - row [ref=f3e607]:
+                - cell "1" [ref=f3e608]
+                - cell "Player 01a05067" [ref=f3e609]
+                - cell "0" [ref=f3e610]
+                - cell "ACTIVE" [ref=f3e611]
+              - row [ref=f3e612]:
+                - cell "2" [ref=f3e613]
+                - cell "Player 01a05068" [ref=f3e614]
+                - cell "0" [ref=f3e615]
+                - cell "ACTIVE" [ref=f3e616]
+  - region "Notifications"

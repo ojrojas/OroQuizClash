@@ -11,6 +11,7 @@ public sealed class LiveGameViewTests
             GameId: Guid.NewGuid(),
             Status: GameStateView.Running,
             CurrentRound: 1,
+            CurrentRoundId: null,
             CurrentQuestion: new QuestionView(Guid.NewGuid(), "Q?", new List<AnswerView> { new(Guid.NewGuid(), "A", 'A'), new(Guid.NewGuid(), "B", 'B'), new(Guid.NewGuid(), "C", 'C'), new(Guid.NewGuid(), "D", 'D') }, null),
             TotalRounds: 5,
             Players: 5,
@@ -40,7 +41,7 @@ public sealed class LiveGameViewTests
             new(Guid.NewGuid(), "Bob", 150, 50, 2, true),
             new(Guid.NewGuid(), "Alice", 100, 0, 1, false)
         };
-        var view = new LiveGameView(Guid.NewGuid(), GameStateView.Running, 1, null, 5, 2, 2, 1, 1, scores, 1, 30, "v1", DateTimeOffset.UtcNow);
+        var view = new LiveGameView(Guid.NewGuid(), GameStateView.Running, 1, null, null, 5, 2, 2, 1, 1, scores, 1, 30, "v1", DateTimeOffset.UtcNow);
         Assert.Equal(2, view.Scores.Count);
         Assert.Equal(150, view.Scores.First().Score);
     }

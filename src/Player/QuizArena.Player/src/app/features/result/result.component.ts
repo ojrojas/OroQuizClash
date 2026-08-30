@@ -1,11 +1,10 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { ErrorStateComponent } from '../../shared/ui/error-state.component';
+import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { GamesApi } from '../shared/games.api';
-import { LoadingSkeletonComponent } from '../../shared/ui/loading-skeleton.component';
-import { ErrorStateComponent } from '../../shared/ui/error-state.component';
-import { mapResultState } from './result-state.model';
 
 @Component({
   selector: 'app-result',
@@ -19,7 +18,7 @@ import { mapResultState } from './result-state.model';
       } @else if (store.ui().error) {
         <app-error-state [message]="store.ui().error!.detail" [correlationId]="store.ui().error!.correlationId" [traceId]="store.ui().error!.traceId" (retry)="hydrate()" />
       } @else if (resultState() === 'playing') {
-        <app-error-state [message]="'Partida aún en curso'" [correlationId]="correlationId() ?? ''" (retry)="navigateToGame()" />
+        <app-error-state [message]="'Partida aún en curso'" [correlationId]="correlationId()" (retry)="navigateToGame()" />
         <button (click)="navigateToGame()" style="min-height:44px; min-width:44px;" aria-label="Volver al juego">Volver al juego</button>
       } @else if (resultState() === 'won') {
         <div class="you-won" role="status" aria-live="assertive" aria-label="Felicidades, YOU WON, puesto 1">
@@ -55,7 +54,7 @@ import { mapResultState } from './result-state.model';
         </div>
       }
       <button (click)="goLobby()" aria-label="Volver al lobby" style="min-height:44px; min-width:44px; margin-top:var(--space-4,16px);">Volver al lobby</button>
-      <small>CorrelationId: {{ correlationId() }}</small>
+      @if (correlationId()) { <small>CorrelationId: {{ correlationId() }}</small> }
     </div>
   `,
   styles: [`
@@ -79,14 +78,14 @@ export class ResultComponent implements OnInit {
   private router = inject(Router);
   private api = inject(GamesApi);
 
-  leaderboard = signal<any[]>([]);
-  rewards = signal<any[]>([]);
+  leaderboard = signal<Array<Record<string, unknown>>>([]);
+  rewards = signal<Array<{ rewardId: string; name: string; pointsRequired: number }>>([]);
 
   resultState = computed(() => {
     const ps = this.store.status().playerStatus;
     const gs = this.store.status().gameStatus;
     const rank = this.finalPosition();
-    const isTerminal = this.store.status().isTerminal || this.store.game()?.status === 'FINISHED' || gs === 'FINISHED';
+    const isTerminal = this.store.status().isTerminal || (this.store.game() as unknown as { status?: string })?.status === 'FINISHED' || gs === 'FINISHED';
     if (ps === 'WINNER' && isTerminal && rank === 1) return 'won' as const;
     if (ps === 'WITHDRAWN') return 'walked' as const;
     if (ps === 'ELIMINATED') return 'over' as const;
@@ -104,38 +103,50 @@ export class ResultComponent implements OnInit {
   finalScore = computed(() => this.store.score().totalPoints ?? 0);
   finalPosition = computed(() => {
     const sub = this.store.player()?.playerId ?? this.store.score().playerId;
-    const entry = this.leaderboard().find((e: any) => (e.playerId ?? e.PlayerId) === sub);
-    if (entry) return entry.position ?? entry.Rank ?? entry.rank ?? null;
-    // fallback from store's gameSession? use 1 if WINNER else null
+    const entry = this.leaderboard().find((e) => (e['playerId'] as string ?? e['PlayerId'] as string) === sub);
+    if (entry) return (entry['position'] as number ?? entry['Rank'] as number ?? entry['rank'] as number ?? null);
     if (this.store.status().playerStatus === 'WINNER') return 1;
     return null;
   });
-  totalPlayers = computed(() => this.leaderboard().length || (this.store.game() as any)?.maxPlayers || 4);
+  totalPlayers = computed(() => this.leaderboard().length || (this.store.game() as unknown as { maxPlayers?: number })?.maxPlayers || 4);
 
   prize = computed(() => {
     const total = this.finalScore();
-    // Simple: if total >=500 return Pack Oro, else null
+    const game = this.store.game() as unknown as { configuration?: { rewardRules?: Array<{ pointsRequired?: number; PointsRequired?: number; name?: string; Name?: string }>; RewardRules?: unknown } } | null;
+    const rules = (game?.configuration?.rewardRules ?? (game?.configuration as unknown as { RewardRules?: Array<{ pointsRequired?: number }> })?.RewardRules) as Array<{ pointsRequired?: number; PointsRequired?: number; name?: string; Name?: string }> | undefined;
+    if (Array.isArray(rules) && rules.length > 0) {
+      const sorted = [...rules].sort((a,b)=> (a.pointsRequired??a.PointsRequired??0)-(b.pointsRequired??b.PointsRequired??0));
+      const hit = sorted.filter(r=> (r.pointsRequired??r.PointsRequired??0) <= total).pop();
+      if (hit) return { name: hit.name ?? hit.Name ?? 'Pack', pointsRequired: hit.pointsRequired ?? hit.PointsRequired ?? 0 };
+    }
     if (total >= 500) return { name: 'Pack Oro', pointsRequired: 500 };
     return null;
   });
 
   reward = computed(() => {
     const total = this.finalScore();
+    const game = this.store.game() as unknown as { configuration?: { rewardRules?: Array<{ pointsRequired?: number; PointsRequired?: number }> } } | null;
+    const rules = game?.configuration?.rewardRules as Array<{ pointsRequired?: number; PointsRequired?: number; name?: string; Name?: string }> | undefined;
+    if (Array.isArray(rules) && rules.length > 0) {
+      const sorted = [...rules].sort((a,b)=> (a.pointsRequired??a.PointsRequired??0)-(b.pointsRequired??b.PointsRequired??0));
+      const hit = sorted.filter(r=> (r.pointsRequired??r.PointsRequired??0) <= total).pop();
+      if (hit) return { name: (hit as { name?: string; Name?: string }).name ?? (hit as { Name?: string }).Name ?? 'Pack', pointsRequired: hit.pointsRequired ?? hit.PointsRequired ?? 0 };
+    }
     if (total >= 300) return { name: 'Pack Bronce', pointsRequired: 300 };
     return null;
   });
 
   consolation = computed(() => {
     if (this.store.status().playerStatus !== 'ELIMINATED') return null;
-    const game: any = this.store.game();
-    const policy = game?.configuration?.consolationPolicy ?? game?.Configuration?.ConsolationPolicy;
-    if (policy) return { name: 'Pack Consuelo' };
+    const game = this.store.game() as unknown as { configuration?: { consolationPolicy?: unknown; ConsolationPolicy?: unknown } } | null;
+    const policy = (game?.configuration as unknown as Record<string, unknown>)?.['consolationPolicy'] ?? (game?.configuration as unknown as Record<string, unknown>)?.['ConsolationPolicy'];
+    if (policy && policy !== 'None' && policy !== 0) return { name: 'Pack Consuelo' };
     return null;
   });
 
   availableRewards = computed(() => {
     const secured = this.store.securedPoints().securedPoints ?? 0;
-    return this.rewards().filter((r: any) => (r.pointsRequired ?? r.PointsRequired ?? 0) <= secured);
+    return this.rewards().filter((r) => (r.pointsRequired ?? 0) <= secured);
   });
 
   correlationId = computed(() => this.store.ui().error?.correlationId ?? '');
@@ -144,14 +155,22 @@ export class ResultComponent implements OnInit {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.store.hydrateFor(gameId);
     this.api.getLeaderboard(gameId).subscribe({
-      next: (res: any) => this.leaderboard.set(res.entries ?? res.Players ?? []),
+      next: (res: unknown) => {
+        const r = res as { entries?: unknown[]; Players?: unknown[] };
+        this.leaderboard.set((r.entries ?? r.Players ?? []) as Array<Record<string, unknown>>);
+      },
       error: () => {}
     });
-    // mock rewards for available
-    this.rewards.set([
-      { rewardId: 'pack-plata', name: 'Pack Plata', pointsRequired: 300 },
-      { rewardId: 'pack-oro', name: 'Pack Oro', pointsRequired: 500 }
-    ]);
+    this.api.getGame(gameId).subscribe({
+      next: (g: unknown) => {
+        const game = g as { configuration?: { rewardRules?: unknown[] } };
+        const rules = (game?.configuration as unknown as { rewardRules?: Array<{ rewardId?: string; name?: string; pointsRequired?: number }> })?.rewardRules;
+        if (Array.isArray(rules) && rules.length > 0) {
+          this.rewards.set(rules.map(rr => ({ rewardId: rr.rewardId ?? '', name: rr.name ?? 'Pack', pointsRequired: rr.pointsRequired ?? 0 })).filter(r=> r.rewardId));
+        }
+      },
+      error: () => {}
+    });
   }
 
   hydrate() {

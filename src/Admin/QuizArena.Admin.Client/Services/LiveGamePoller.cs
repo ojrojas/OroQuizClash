@@ -4,7 +4,7 @@ public sealed class LiveGamePoller : IAsyncDisposable
 {
     private PeriodicTimer? _timer;
     private CancellationTokenSource? _cts;
-    private readonly TimeSpan _interval = TimeSpan.FromSeconds(4);
+    private readonly TimeSpan _interval = TimeSpan.FromSeconds(15);
 
     public bool IsRunning => _timer is not null;
 

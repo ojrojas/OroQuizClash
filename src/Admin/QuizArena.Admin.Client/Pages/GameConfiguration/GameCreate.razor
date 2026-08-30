@@ -15,17 +15,10 @@
 
 <GameStateBadge State="@GC.GameStateView.Draft" />
 
-@if (isSubmitting)
+<GameConfigurationForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+@if (!string.IsNullOrEmpty(generalError))
 {
-    <LoadingSkeleton Rows="4" />
-}
-else
-{
-    <GameConfigurationForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
-    @if (!string.IsNullOrEmpty(generalError))
-    {
-        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
-    }
+    <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
 }
 
 @code {

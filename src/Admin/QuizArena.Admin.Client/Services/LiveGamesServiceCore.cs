@@ -31,13 +31,20 @@ public abstract class LiveGamesServiceCore(HttpClient http, string prefix) : ILi
 
     public async Task<PagedResult<LiveGameSummary>> GetLiveGamesAsync(CancellationToken ct = default)
     {
-        var result = await http.GetFromJsonAsync<ApiPaginatedGames>(
-            $"{prefix}/games?status=IN_PROGRESS&page=1&pageSize=50", ct)
-            ?? throw new ApiErrorException(ApiErrorView.Unknown);
-        var items = result.Items.Select(g => new LiveGameSummary(
+        // Fetch both IN_PROGRESS and ROUND_IN_PROGRESS (started games) and merge.
+        // GameFilterSpecification supports single status, so we query both and deduplicate.
+        var inProgressTask = http.GetFromJsonAsync<ApiPaginatedGames>($"{prefix}/games?status=IN_PROGRESS&page=1&pageSize=50", ct);
+        var roundInProgressTask = http.GetFromJsonAsync<ApiPaginatedGames>($"{prefix}/games?status=ROUND_IN_PROGRESS&page=1&pageSize=50", ct);
+        await Task.WhenAll(inProgressTask, roundInProgressTask);
+        var inProgress = await inProgressTask ?? new ApiPaginatedGames([], 0, 1, 50);
+        var roundInProgress = await roundInProgressTask ?? new ApiPaginatedGames([], 0, 1, 50);
+        var merged = inProgress.Items.Concat(roundInProgress.Items)
+            .GroupBy(g => g.Id).Select(g => g.First()).ToList();
+        var items = merged.Select(g => new LiveGameSummary(
             g.Id, g.Name, g.CategoryId, g.PlayerCount, g.RoundCount,
             GameStatusMap.FromApi(g.Status), g.StartedAt)).ToList();
-        return new PagedResult<LiveGameSummary>(items, result.Total, result.Page, result.PageSize);
+        var total = inProgress.Total + roundInProgress.Total; // approximate
+        return new PagedResult<LiveGameSummary>(items, Math.Max(merged.Count, total), 1, 50);
     }
 
     public abstract Task<LiveGameSubscription> SubscribeAsync(Guid gameId, CancellationToken ct = default);

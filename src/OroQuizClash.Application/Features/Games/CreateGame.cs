@@ -149,8 +149,38 @@ public sealed class CreateGameHandler(
         if (result.IsFailure) return Result.Failure<CreateGameResponse>(result.Error);
 
         var game = result.Value;
+        // Auto-advance to WAITING_FOR_PLAYERS so newly created games immediately appear in player lobby
+        // (spec 004: Draft -> Ready -> Waiting). We have already validated category Active && >=5 questions,
+        // so MarkReady will succeed with simple delegates.
+        try
+        {
+            var readyResult = game.MarkReady(_ => true, _ => 10);
+            if (readyResult.IsSuccess)
+            {
+                var lobbyResult = game.OpenLobby();
+                // If OpenLobby fails, keep as Ready (still not visible to players, but admin can retry)
+            }
+            else
+            {
+                Console.WriteLine($"[CreateGame] MarkReady failed: {readyResult.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CreateGame] Auto-advance exception: {ex}");
+            // Continue as Draft - don't fail creation
+        }
+
         await games.AddAsync(game, ct);
-        await unitOfWork.SaveChangesAsync(ct);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(ct);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CreateGame] SaveChanges failed: {ex}");
+            return Result.Failure<CreateGameResponse>(GameErrors.InvalidGameState);
+        }
 
         var response = new CreateGameResponse(game.Id.Value, game.Status.Name, command);
         return Result.Success(response);

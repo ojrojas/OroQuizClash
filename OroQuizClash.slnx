@@ -18,6 +18,9 @@
     <Project Path="src/BuildingBlocks/BuildingBlocks.Logger/BuildingBlocks.Logger.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/src/Seeder/">
+    <Project Path="src/Seeder/OroQuizClash.Seeder/OroQuizClash.Seeder.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OroQuizClash.Api.Tests/OroQuizClash.Api.Tests.csproj" />
     <Project Path="tests/OroQuizClash.Application.Tests/OroQuizClash.Application.Tests.csproj" />

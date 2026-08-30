@@ -11,7 +11,14 @@ namespace QuizArena.Admin.Client.Services;
 /// </summary>
 public static class ApiResponseExtensions
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = CreateJsonOptions();
+
+    private static JsonSerializerOptions CreateJsonOptions()
+    {
+        var opts = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        opts.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        return opts;
+    }
 
     public static async Task<T> ReadAsAsync<T>(this HttpResponseMessage response, CancellationToken ct = default)
     {

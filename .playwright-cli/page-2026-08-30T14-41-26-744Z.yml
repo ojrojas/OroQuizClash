@@ -1,0 +1,191 @@
+- generic [ref=f1e2]:
+  - link "Skip to main content" [ref=f1e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: QA
+      - generic [ref=f1e7]: QuizArena
+    - list [ref=f1e8]:
+      - listitem [ref=f1e9]:
+        - link "Dashboard" [ref=f1e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f1e16]:
+        - link "Games" [ref=f1e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f1e22]:
+        - link "Game Configuration" [ref=f1e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f1e25]:
+        - link "Categories" [ref=f1e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f1e29]:
+        - link "Question Bank" [ref=f1e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f1e34]:
+        - link "Players" [ref=f1e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f1e41]:
+        - link "Live Games" [ref=f1e42] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f1e49]:
+        - link "Reports" [ref=f1e50] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f1e53]:
+      - generic [ref=f1e54]: GAME MANAGER
+      - generic [ref=f1e55]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f1e56]:
+    - banner [ref=f1e57]:
+      - button "Toggle navigation" [ref=f1e58] [cursor=pointer]
+      - generic [ref=f1e60]: QuizArena Admin
+      - generic [ref=f1e61]:
+        - generic [ref=f1e62]: Manager1 Manager1
+        - button "Logout" [ref=f1e64] [cursor=pointer]
+    - main [ref=f1e69]:
+      - generic [ref=f1e214]:
+        - heading "Games" [level=1] [ref=f1e215]
+        - button "New game" [ref=f1e216] [cursor=pointer]
+      - generic [ref=f1e220]:
+        - generic [ref=f1e221]:
+          - generic [ref=f1e222]:
+            - generic [ref=f1e223]: Search
+            - textbox "Search" [ref=f1e224]:
+              - /placeholder: Search by name…
+              - text: search
+          - generic [ref=f1e225]:
+            - generic [ref=f1e226]: Status
+            - combobox "Status" [ref=f1e227]:
+              - option "All statuses" [disabled]
+              - option "Configuring" [selected]
+              - option "Lobby"
+              - option "Active"
+              - option "Finished"
+              - option "Cancelled"
+          - generic [ref=f1e228]:
+            - generic [ref=f1e229]: Category
+            - combobox "Category" [ref=f1e230]:
+              - option "All categories" [disabled]
+              - option "Anatomía Humana" [selected]
+              - option "Astronomía"
+              - option "Biología Celular"
+              - option "Ciencias de la Tierra"
+              - option "Ecología y Medio Ambiente"
+              - option "Física Electricidad y Magnetismo"
+              - option "Física Mecánica"
+              - option "Genética y Herencia"
+              - option "Química Inorgánica"
+              - option "Química Orgánica"
+        - table [ref=f1e232]:
+          - caption [ref=f1e233]: Games
+          - rowgroup [ref=f1e234]:
+            - row [ref=f1e235]:
+              - columnheader "Name" [ref=f1e236]
+              - columnheader "Status" [ref=f1e237]
+              - columnheader "Rounds" [ref=f1e238]
+              - columnheader "Players" [ref=f1e239]
+              - columnheader "Created" [ref=f1e240]
+              - columnheader "Actions" [ref=f1e241]
+          - rowgroup [ref=f1e243]:
+            - row [ref=f1e244]:
+              - cell "Torneo Astronomía - Secundaria 10" [ref=f1e245]
+              - cell "Finished" [ref=f1e246]
+              - cell "5–8" [ref=f1e249]
+              - cell "0" [ref=f1e250]
+              - cell "2026-08-30 01:49" [ref=f1e251]
+              - cell [ref=f1e252]:
+                - button "Details" [ref=f1e253] [cursor=pointer]
+            - row [ref=f1e420]:
+              - cell "Torneo Ciencias de la Tierra - Secundaria 09" [ref=f1e259]
+              - cell "Active" [ref=f1e421]
+              - cell "5–8" [ref=f1e263]
+              - cell "0" [ref=f1e264]
+              - cell "2026-08-30 01:49" [ref=f1e265]
+              - cell [ref=f1e422]:
+                - button "Details" [ref=f1e267] [cursor=pointer]
+                - button "Cancel" [ref=f1e274] [cursor=pointer]
+                - button "Force finish" [ref=f1e423] [cursor=pointer]
+            - row [ref=f1e276]:
+              - cell "Torneo Física Electricidad y Magnetismo - Secundaria 08" [ref=f1e277]
+              - cell "Lobby" [ref=f1e278]
+              - cell "5–8" [ref=f1e281]
+              - cell "0" [ref=f1e282]
+              - cell "2026-08-30 01:49" [ref=f1e283]
+              - cell [ref=f1e284]:
+                - button "Details" [ref=f1e285] [cursor=pointer]
+                - button "Start" [ref=f1e290] [cursor=pointer]
+                - button "Cancel" [ref=f1e292] [cursor=pointer]
+            - row [ref=f1e294]:
+              - cell "Torneo Física Mecánica - Secundaria 07" [ref=f1e295]
+              - cell "Lobby" [ref=f1e296]
+              - cell "5–8" [ref=f1e299]
+              - cell "0" [ref=f1e300]
+              - cell "2026-08-30 01:49" [ref=f1e301]
+              - cell [ref=f1e302]:
+                - button "Details" [ref=f1e303] [cursor=pointer]
+                - button "Start" [ref=f1e308] [cursor=pointer]
+                - button "Cancel" [ref=f1e310] [cursor=pointer]
+            - row [ref=f1e312]:
+              - cell "Torneo Química Orgánica - Secundaria 06" [ref=f1e313]
+              - cell "Lobby" [ref=f1e314]
+              - cell "5–8" [ref=f1e317]
+              - cell "0" [ref=f1e318]
+              - cell "2026-08-30 01:49" [ref=f1e319]
+              - cell [ref=f1e320]:
+                - button "Details" [ref=f1e321] [cursor=pointer]
+                - button "Start" [ref=f1e326] [cursor=pointer]
+                - button "Cancel" [ref=f1e328] [cursor=pointer]
+            - row [ref=f1e330]:
+              - cell "Torneo Química Inorgánica - Secundaria 05" [ref=f1e331]
+              - cell "Lobby" [ref=f1e332]
+              - cell "5–8" [ref=f1e335]
+              - cell "0" [ref=f1e336]
+              - cell "2026-08-30 01:49" [ref=f1e337]
+              - cell [ref=f1e338]:
+                - button "Details" [ref=f1e339] [cursor=pointer]
+                - button "Start" [ref=f1e344] [cursor=pointer]
+                - button "Cancel" [ref=f1e346] [cursor=pointer]
+            - row [ref=f1e348]:
+              - cell "Torneo Anatomía Humana - Secundaria 04" [ref=f1e349]
+              - cell "Lobby" [ref=f1e350]
+              - cell "5–8" [ref=f1e353]
+              - cell "0" [ref=f1e354]
+              - cell "2026-08-30 01:49" [ref=f1e355]
+              - cell [ref=f1e356]:
+                - button "Details" [ref=f1e357] [cursor=pointer]
+                - button "Start" [ref=f1e362] [cursor=pointer]
+                - button "Cancel" [ref=f1e364] [cursor=pointer]
+            - row [ref=f1e366]:
+              - cell "Torneo Ecología y Medio Ambiente - Secundaria 03" [ref=f1e367]
+              - cell "Lobby" [ref=f1e368]
+              - cell "5–8" [ref=f1e371]
+              - cell "0" [ref=f1e372]
+              - cell "2026-08-30 01:49" [ref=f1e373]
+              - cell [ref=f1e374]:
+                - button "Details" [ref=f1e375] [cursor=pointer]
+                - button "Start" [ref=f1e380] [cursor=pointer]
+                - button "Cancel" [ref=f1e382] [cursor=pointer]
+            - row [ref=f1e384]:
+              - cell "Torneo Genética y Herencia - Secundaria 02" [ref=f1e385]
+              - cell "Lobby" [ref=f1e386]
+              - cell "5–8" [ref=f1e389]
+              - cell "0" [ref=f1e390]
+              - cell "2026-08-30 01:49" [ref=f1e391]
+              - cell [ref=f1e392]:
+                - button "Details" [ref=f1e393] [cursor=pointer]
+                - button "Start" [ref=f1e398] [cursor=pointer]
+                - button "Cancel" [ref=f1e400] [cursor=pointer]
+            - row [ref=f1e402]:
+              - cell "Torneo Biología Celular - Secundaria 01" [ref=f1e403]
+              - cell "Lobby" [ref=f1e404]
+              - cell "5–8" [ref=f1e407]
+              - cell "0" [ref=f1e408]
+              - cell "2026-08-30 01:49" [ref=f1e409]
+              - cell [ref=f1e410]:
+                - button "Details" [ref=f1e411] [cursor=pointer]
+                - button "Start" [ref=f1e416] [cursor=pointer]
+                - button "Cancel" [ref=f1e418] [cursor=pointer]
+  - region "Notifications" [ref=f1e425]:
+    - status [ref=f1e426]:
+      - generic [ref=f1e429]:
+        - strong [ref=f1e430]: Game started
+        - paragraph [ref=f1e431]: Torneo Ciencias de la Tierra - Secundaria 09
+      - button "Dismiss notification" [ref=f1e432] [cursor=pointer]

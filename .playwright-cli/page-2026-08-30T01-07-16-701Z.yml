@@ -1,0 +1,74 @@
+- generic [ref=f7e2]:
+  - link "Skip to main content" [ref=f7e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f7e4]:
+    - generic [ref=f7e5]:
+      - generic [ref=f7e6]: QA
+      - generic [ref=f7e7]: QuizArena
+    - list [ref=f7e8]:
+      - listitem [ref=f7e9]:
+        - link "Dashboard" [ref=f7e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f7e16]:
+        - link "Games" [ref=f7e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f7e22]:
+        - link "Game Configuration" [ref=f7e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f7e25]:
+        - link "Categories" [ref=f7e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f7e29]:
+        - link "Question Bank" [ref=f7e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f7e34]:
+        - link "Players" [ref=f7e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f7e41]:
+        - link "Rewards" [ref=f7e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f7e48]:
+        - link "Live Games" [ref=f7e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f7e56]:
+        - link "Reports" [ref=f7e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f7e60]:
+        - link "Audit" [ref=f7e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f7e65]:
+      - generic [ref=f7e66]: Administrator
+      - generic [ref=f7e67]: ADMIN
+      - generic [ref=f7e68]: GAME MANAGER
+      - generic [ref=f7e69]: REWARD MANAGER
+      - generic [ref=f7e70]: PLAYER
+      - generic [ref=f7e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f7e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f7e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f7e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f7e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f7e76]:
+    - banner [ref=f7e77]:
+      - button "Toggle navigation" [ref=f7e78] [cursor=pointer]
+      - generic [ref=f7e80]: QuizArena Admin
+      - generic [ref=f7e81]:
+        - generic [ref=f7e82]: Admin Administrator
+        - button "Logout" [ref=f7e84] [cursor=pointer]
+    - main [ref=f7e89]:
+      - heading "Live games" [level=1] [ref=f7e90]
+      - table [ref=f7e94]:
+        - caption [ref=f7e95]: Live games
+        - rowgroup [ref=f7e96]:
+          - row [ref=f7e97]:
+            - columnheader "Game" [ref=f7e98]
+            - columnheader "Players" [ref=f7e99]
+            - columnheader "Rounds" [ref=f7e100]
+            - columnheader "Status" [ref=f7e101]
+            - columnheader [ref=f7e102]
+        - rowgroup [ref=f7e103]:
+          - row [ref=f7e104]:
+            - cell [ref=f7e105]:
+              - status [ref=f7e106]:
+                - heading "No live games" [level=3] [ref=f7e110]
+                - paragraph [ref=f7e111]: Active games will appear here.
+  - region "Notifications"

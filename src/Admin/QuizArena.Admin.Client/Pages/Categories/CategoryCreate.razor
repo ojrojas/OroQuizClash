@@ -11,17 +11,14 @@
 
 <h1>Crear categoría</h1>
 
+<CategoryForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
+@if (!string.IsNullOrEmpty(generalError))
+{
+    <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
+}
 @if (isSubmitting)
 {
-    <LoadingSkeleton Rows="4" />
-}
-else
-{
-    <CategoryForm Form="@form" FieldErrors="@fieldErrors" OnFieldChanged="HandleFieldChanged" OnSubmit="HandleSubmit" IsReadOnly="false" IsSubmitting="@isSubmitting" />
-    @if (!string.IsNullOrEmpty(generalError))
-    {
-        <div class="validation-errors" role="alert" aria-live="polite">@generalError</div>
-    }
+    <div class="form-submitting-overlay" aria-live="polite" style="margin-top:var(--space-3);">Guardando…</div>
 }
 
 @code {

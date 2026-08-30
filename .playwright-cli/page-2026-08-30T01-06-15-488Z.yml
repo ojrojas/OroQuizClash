@@ -1,0 +1,123 @@
+- generic [ref=f2e2]:
+  - link "Skip to main content" [ref=f2e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: QA
+      - generic [ref=f2e7]: QuizArena
+    - list [ref=f2e8]:
+      - listitem [ref=f2e9]:
+        - link "Dashboard" [ref=f2e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f2e16]:
+        - link "Games" [ref=f2e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f2e22]:
+        - link "Game Configuration" [ref=f2e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f2e25]:
+        - link "Categories" [ref=f2e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f2e29]:
+        - link "Question Bank" [ref=f2e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f2e34]:
+        - link "Players" [ref=f2e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f2e41]:
+        - link "Rewards" [ref=f2e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f2e48]:
+        - link "Live Games" [ref=f2e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f2e56]:
+        - link "Reports" [ref=f2e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f2e60]:
+        - link "Audit" [ref=f2e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f2e65]:
+      - generic [ref=f2e66]: Administrator
+      - generic [ref=f2e67]: ADMIN
+      - generic [ref=f2e68]: GAME MANAGER
+      - generic [ref=f2e69]: REWARD MANAGER
+      - generic [ref=f2e70]: PLAYER
+      - generic [ref=f2e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f2e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f2e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f2e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f2e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f2e76]:
+    - banner [ref=f2e77]:
+      - button "Toggle navigation" [ref=f2e78] [cursor=pointer]
+      - generic [ref=f2e80]: QuizArena Admin
+      - generic [ref=f2e81]:
+        - generic [ref=f2e82]: Admin Administrator
+        - button "Logout" [ref=f2e84] [cursor=pointer]
+    - main [ref=f2e89]:
+      - heading "Crear pregunta" [level=1] [ref=f2e90]
+      - form "Formulario de pregunta" [ref=f2e91]:
+        - generic [ref=f2e92]:
+          - generic [ref=f2e93]: Pregunta **
+          - textbox "Pregunta *" [ref=f2e94]
+        - generic [ref=f2e95]:
+          - generic [ref=f2e96]: Categoría **
+          - combobox "Categoría *" [ref=f2e97]:
+            - option "Seleccione categoría" [disabled]
+        - generic [ref=f2e98]:
+          - generic [ref=f2e99]:
+            - generic [ref=f2e100]: Dificultad
+            - combobox "Dificultad" [ref=f2e101]:
+              - option "1"
+              - option "2"
+              - option "3" [selected]
+              - option "4"
+              - option "5"
+          - generic [ref=f2e102]:
+            - generic [ref=f2e103]: Nivel académico **
+            - textbox "Nivel académico *" [ref=f2e104]: Secundaria
+          - generic [ref=f2e105]:
+            - generic [ref=f2e106]: Edad mínima
+            - spinbutton "Edad mínima" [ref=f2e107]: "12"
+          - generic [ref=f2e108]:
+            - generic [ref=f2e109]: Edad máxima
+            - spinbutton "Edad máxima" [ref=f2e110]: "18"
+          - generic [ref=f2e111]:
+            - generic [ref=f2e112]: Tiempo (s)
+            - spinbutton "Tiempo (s)" [ref=f2e113]: "30"
+        - generic [ref=f2e114]:
+          - generic [ref=f2e115]: Explicación
+          - textbox "Explicación" [ref=f2e116]
+          - paragraph [ref=f2e117]: 0–1000 caracteres
+        - generic [ref=f2e118]:
+          - heading "Respuestas (4 requeridas, 1 correcta)" [level=3] [ref=f2e119]
+          - generic [ref=f2e120]:
+            - generic [ref=f2e121]:
+              - generic [ref=f2e122]: Respuesta A
+              - textbox "Respuesta A" [ref=f2e123]
+            - generic [ref=f2e124]:
+              - radio "Correcta" [ref=f2e125]
+              - text: Correcta
+          - generic [ref=f2e126]:
+            - generic [ref=f2e127]:
+              - generic [ref=f2e128]: Respuesta B
+              - textbox "Respuesta B" [ref=f2e129]
+            - generic [ref=f2e130]:
+              - radio "Correcta" [ref=f2e131]
+              - text: Correcta
+          - generic [ref=f2e132]:
+            - generic [ref=f2e133]:
+              - generic [ref=f2e134]: Respuesta C
+              - textbox "Respuesta C" [ref=f2e135]
+            - generic [ref=f2e136]:
+              - radio "Correcta" [ref=f2e137]
+              - text: Correcta
+          - generic [ref=f2e138]:
+            - generic [ref=f2e139]:
+              - generic [ref=f2e140]: Respuesta D
+              - textbox "Respuesta D" [ref=f2e141]
+            - generic [ref=f2e142]:
+              - radio "Correcta" [ref=f2e143]
+              - text: Correcta
+        - button "Guardar pregunta" [ref=f2e145] [cursor=pointer]
+  - region "Notifications"

@@ -2,7 +2,7 @@ import { Component, computed, inject, Input, output, signal } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { PlayerGameStore } from '../../stores/player-game.store';
 import { AnswerInteractionStore } from '../../stores/answer-interaction.store';
-import { Question, Answer } from '../shared/models/player.models';
+import { Question } from '../shared/models/player.models';
 import { ErrorStateComponent } from '../../shared/ui/error-state.component';
 import { AnswerOptionState } from './answer-interaction.model';
 
@@ -10,11 +10,10 @@ import { AnswerOptionState } from './answer-interaction.model';
   selector: 'app-question',
   standalone: true,
   imports: [CommonModule, ErrorStateComponent],
-  providers: [AnswerInteractionStore],
   template: `
     <div class="question-answering" data-theme="player">
       @if (validationError()) {
-        <app-error-state [message]="validationError()!" [correlationId]="answerStore.correlationId() ?? ''" (retry)="onRetry()"></app-error-state>
+        <app-error-state [message]="validationError()!" [correlationId]="$any(answerStore).correlationId() ?? ''" (retry)="onRetry()"></app-error-state>
       }
       @if (!questionView()) {
         @if (!validationError()) {
@@ -61,30 +60,30 @@ import { AnswerOptionState } from './answer-interaction.model';
           }
         </div>
 
-        @if (answerStore.isEvaluating()) {
+        @if ($any(answerStore).isEvaluating()) {
           <div class="evaluating" role="status" aria-live="polite" aria-busy="true">Evaluando…</div>
         }
-        @if (answerStore.phase()==='correct') {
-          <div class="result correct" role="status" aria-live="assertive" aria-atomic="true">¡Correcto! +{{ answerStore.scoreDelta() ?? '' }} pts</div>
+        @if ($any(answerStore).phase()==='correct') {
+          <div class="result correct" role="status" aria-live="assertive" aria-atomic="true">¡Correcto! +{{ $any(answerStore).scoreDelta() ?? '' }} pts</div>
         }
-        @if (answerStore.phase()==='incorrect') {
+        @if ($any(answerStore).phase()==='incorrect') {
           <div class="result incorrect" role="status" aria-live="assertive">Incorrecto — la correcta era {{ correctOptionText() }}</div>
         }
-        @if (answerStore.phase()==='timeout') {
+        @if ($any(answerStore).phase()==='timeout') {
           <div class="result timeout" role="status" aria-live="assertive">Tiempo agotado</div>
         }
-        @if (answerStore.errorDetail() && !validationError()) {
-          <app-error-state [message]="answerStore.errorDetail()!" [correlationId]="answerStore.correlationId() ?? ''" (retry)="onRetry()"></app-error-state>
+        @if ($any(answerStore).errorDetail() && !validationError()) {
+          <app-error-state [message]="$any(answerStore).errorDetail()!" [correlationId]="$any(answerStore).correlationId() ?? ''" (retry)="onRetry()"></app-error-state>
         }
 
         <button type="button"
                 class="confirm-btn"
-                [disabled]="!answerStore.selectedOptionId() || answerStore.isLocked() || answerStore.isEvaluating() || !canAnswerComputed()"
+                [disabled]="!$any(answerStore).selectedOptionId() || $any(answerStore).isLocked() || $any(answerStore).isEvaluating() || !canAnswerComputed()"
                 (click)="onConfirm()"
                 aria-label="Confirmar respuesta">
           Confirmar
         </button>
-        @if (showValidation() && !answerStore.selectedOptionId()) {
+        @if (showValidation() && !$any(answerStore).selectedOptionId()) {
           <span role="alert" aria-live="assertive">Selecciona una opción</span>
         }
       }
@@ -151,8 +150,8 @@ export class QuestionComponent {
     if (!q) return null;
     const len = q.answerOptions?.length ?? 0;
     if (len !== 4) return 'Pregunta inválida (se requieren 4 opciones)';
-    // also check answerStore validation error for 3/5
-    if (this.answerStore.errorDetail() === 'Pregunta inválida (se requieren 4 opciones)') return this.answerStore.errorDetail();
+    const ed = ((this.answerStore as unknown) as { errorDetail?: () => string | null }).errorDetail?.() ?? null;
+    if (ed === 'Pregunta inválida (se requieren 4 opciones)') return ed;
     return null;
   });
 
@@ -164,7 +163,7 @@ export class QuestionComponent {
   });
 
   correctOptionText = computed(() => {
-    const correctId = this.answerStore.correctOptionId();
+    const correctId = ((this.answerStore as unknown) as { correctOptionId?: () => string | null }).correctOptionId?.() ?? null;
     if (!correctId) {
       // try to find from question if we have isCorrect leaked post-evaluated (should only happen after EVALUATED)
       const q: any = this.questionView();
@@ -184,7 +183,7 @@ export class QuestionComponent {
     const selected = this.answerStore.selectedOptionId();
     const locked = this.answerStore.lockedOptionId();
     const isEvaluating = this.answerStore.isEvaluating();
-    const correctId = this.answerStore.correctOptionId();
+    const correctId = ((this.answerStore as unknown) as { correctOptionId?: () => string | null }).correctOptionId?.() ?? null;
 
     if (phase === 'timeout') return 'Timeout';
     if (phase === 'evaluating' && locked === optionId) return 'Evaluating';
@@ -253,8 +252,7 @@ export class QuestionComponent {
       const roundId = this.playerStore?.round()?.roundId ?? this.answerStore.roundId();
       const questionId = (this.question as any)?.questionId ?? this.playerStore?.question()?.questionId ?? this.answerStore.questionId();
       if (roundId && questionId) {
-        // patch if missing
-        if (!this.answerStore.gameId()) this.answerStore._setState({ gameId, roundId, questionId } as any);
+        if (!this.answerStore.gameId()) (this.answerStore as unknown as { _setState: (p: unknown)=>void })._setState({ gameId, roundId, questionId });
       }
       this.answerStore.submitAnswer();
     } else {

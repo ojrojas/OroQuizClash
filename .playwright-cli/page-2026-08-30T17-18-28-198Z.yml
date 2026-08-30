@@ -1,0 +1,135 @@
+- generic [ref=f2e2]:
+  - link "Skip to main content" [ref=f2e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: QA
+      - generic [ref=f2e7]: QuizArena
+    - list [ref=f2e8]:
+      - listitem [ref=f2e9]:
+        - link "Dashboard" [ref=f2e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f2e16]:
+        - link "Games" [ref=f2e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f2e22]:
+        - link "Game Configuration" [ref=f2e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f2e25]:
+        - link "Categories" [ref=f2e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f2e29]:
+        - link "Question Bank" [ref=f2e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f2e34]:
+        - link "Players" [ref=f2e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f2e41]:
+        - link "Live Games" [ref=f2e42] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f2e49]:
+        - link "Reports" [ref=f2e50] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f2e53]:
+      - generic [ref=f2e54]: GAME MANAGER
+      - generic [ref=f2e55]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f2e56]:
+    - banner [ref=f2e57]:
+      - button "Toggle navigation" [ref=f2e58] [cursor=pointer]
+      - generic [ref=f2e60]: QuizArena Admin
+      - generic [ref=f2e61]:
+        - generic [ref=f2e62]: Manager1 Manager1
+        - button "Logout" [ref=f2e64] [cursor=pointer]
+    - main [ref=f2e69]:
+      - heading "Crear juego" [level=1] [ref=f2e70]
+      - generic "Draft" [ref=f2e71]
+      - form "Configuración de juego" [ref=f2e74]:
+        - generic [ref=f2e75]:
+          - generic [ref=f2e76]: Nombre del juego
+          - textbox "Nombre del juego" [ref=f2e77]
+        - generic [ref=f2e79]:
+          - generic [ref=f2e80]: Descripción
+          - textbox "Descripción" [ref=f2e81]
+        - generic [ref=f2e82]:
+          - generic [ref=f2e83]: Categoría
+          - combobox "Categoría" [ref=f2e84]:
+            - option "Seleccione categoría" [disabled]
+            - option "Anatomía Humana" [selected]
+            - option "Astronomía"
+            - option "Biología Celular"
+            - option "Ciencias de la Tierra"
+            - option "Ecología y Medio Ambiente"
+            - option "Física Electricidad y Magnetismo"
+            - option "Física Mecánica"
+            - option "Genética y Herencia"
+            - option "Química Inorgánica"
+            - option "Química Orgánica"
+        - generic [ref=f2e85]:
+          - generic [ref=f2e86]:
+            - generic [ref=f2e87]: Número de rondas
+            - textbox "Número de rondas" [ref=f2e88]: "5"
+          - generic [ref=f2e89]:
+            - generic [ref=f2e90]: Máximo jugadores
+            - textbox "Máximo jugadores" [ref=f2e91]: "10"
+          - generic [ref=f2e92]:
+            - generic [ref=f2e93]: Tiempo por pregunta (s)
+            - textbox "Tiempo por pregunta (s)" [ref=f2e94]: "30"
+          - generic [ref=f2e95]:
+            - generic [ref=f2e96]: Dificultad inicial
+            - combobox "Dificultad inicial" [ref=f2e97]:
+              - option "1"
+              - option "2"
+              - option "3" [selected]
+              - option "4"
+              - option "5"
+        - generic [ref=f2e98]:
+          - generic [ref=f2e99]:
+            - generic [ref=f2e100]: Progresión dificultad
+            - combobox "Progresión dificultad" [ref=f2e101]:
+              - option "Linear" [selected]
+              - option "Progressive"
+              - option "Adaptive"
+              - option "CategorySpecific"
+          - generic [ref=f2e102]:
+            - generic [ref=f2e103]: Puntuación
+            - combobox "Puntuación" [ref=f2e104]:
+              - option "Standard" [selected]
+              - option "Progressive Bonus"
+          - generic [ref=f2e105]:
+            - generic [ref=f2e106]: Puntos por ronda
+            - textbox "Puntos por ronda" [ref=f2e107]: "100"
+          - generic [ref=f2e108]:
+            - generic [ref=f2e109]: Puntos asegurados
+            - combobox "Puntos asegurados" [ref=f2e110]:
+              - option "None" [selected]
+              - option "KeepCheckpoint"
+              - option "KeepSecured"
+        - generic [ref=f2e111]:
+          - generic [ref=f2e112]:
+            - generic [ref=f2e113]: Reglas de retiro
+            - combobox "Reglas de retiro" [ref=f2e114]:
+              - option "Lose All" [selected]
+              - option "Keep Current Score"
+              - option "Keep Secured Score"
+              - option "Keep Checkpoint Score"
+          - generic [ref=f2e115]:
+            - generic [ref=f2e116]: Reglas de finalización
+            - combobox "Reglas de finalización" [ref=f2e117]:
+              - option "Lose All" [selected]
+              - option "Lose Current Round"
+              - option "Lose Unsecured Points"
+              - option "Fallback to Checkpoint"
+          - generic [ref=f2e118]:
+            - generic [ref=f2e119]: Premio final
+            - combobox "Premio final" [ref=f2e120]:
+              - option "Ninguno" [disabled] [selected]
+          - generic [ref=f2e121]:
+            - generic [ref=f2e122]: Premio consolación
+            - combobox "Premio consolación" [ref=f2e123]:
+              - option "Ninguno" [disabled] [selected]
+        - generic [ref=f2e125]:
+          - generic [ref=f2e126]: Fecha/hora de inicio (UTC)
+          - textbox "Fecha/hora de inicio (UTC)" [ref=f2e127]
+          - paragraph [ref=f2e128]: Debe ser al menos 5 minutos en el futuro
+        - button "Guardar configuración" [ref=f2e130] [cursor=pointer]
+  - region "Notifications"

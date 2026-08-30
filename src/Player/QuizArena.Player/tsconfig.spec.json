@@ -2,8 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": ["vitest/globals", "jsdom"]
+    "types": ["vitest/globals", "jsdom", "node"]
   },
-  "files": ["src/test.ts"],
-  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+  "files": [],
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "src/test-setup.ts", "vitest.config.ts"]
 }

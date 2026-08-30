@@ -124,7 +124,7 @@ else
     {
         try
         {
-            var result = await Categories.GetCategoriesAsync(new CategoryFilter(Page: 1, PageSize: 200));
+            var result = await Categories.GetCategoriesAsync(new CategoryFilter(Page: 1, PageSize: 100));
             categories = result.Items;
         }
         catch (Exception)

@@ -1,0 +1,10 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - heading "QuizArena Player" [level=1] [ref=f2e5]
+    - navigation "Autenticación" [ref=f2e6]:
+      - button "Iniciar sesión" [ref=f2e7] [cursor=pointer]
+  - main [ref=f2e8]:
+    - status [ref=f2e9]: Verificando sesión...
+    - generic [ref=f2e10]:
+      - paragraph [ref=f2e11]: Autenticando...
+      - paragraph [ref=f2e12]: Si quedas aquí más de 3s, abre F12 → Console → [callback]

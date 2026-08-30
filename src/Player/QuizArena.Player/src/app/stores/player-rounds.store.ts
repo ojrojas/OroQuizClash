@@ -1,11 +1,16 @@
 import { computed, inject } from '@angular/core';
 import { signalStore, withState, withComputed, withMethods, withProps, patchState } from '@ngrx/signals';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, switchMap, tap, debounceTime } from 'rxjs';
+import { pipe, switchMap, tap, debounceTime, Subscription } from 'rxjs';
 import { tapResponse } from '@ngrx/operators';
 import { GamesApi } from '../features/shared/games.api';
 import { GameRealtimeService } from '../core/realtime/game-realtime.service';
 import { buildLadder, LadderState, LadderRow, RewardRule, SecuredPoints } from '../features/game/ladder.model';
+
+function safeUUID(): string {
+  try { if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r=(Math.random()*16)|0; const v=c==='x'?r:(r&0x3)|0x8; return v.toString(16); });
+}
 
 const initialState: LadderState = {
   gameId: null,
@@ -64,29 +69,26 @@ export const PlayerRoundsStore = signalStore(
   withMethods((store) => ({
     hydrateLadder: rxMethod<string>(pipe(
       tap((gameId: string) => {
-        // keep gameId for retry
-        patchState(store, { gameId, status: 'loading' as const, correlationId: crypto.randomUUID() });
+        patchState(store, { gameId, status: 'loading' as const, correlationId: safeUUID() });
       }),
       switchMap((gameId: string) => (store as any)._api.getMyState(gameId).pipe(
-        // no explicit correlation header here; interceptor adds it
         tapResponse({
           next: (state: any) => {
             const game: any = state.game;
             const gs: any = state.gameSession;
             const secured: any = state.securedPoints;
             const rounds: any[] = state.rounds ?? (state.round ? [state.round] : []);
-            // maxRounds from Configuration (object) or maxPlayers fallback
             const cfg: any = game?.configuration ?? game?.Configuration ?? {};
             const maxRounds: number = cfg.maxRounds ?? cfg.MaxRounds ?? game?.maxRounds ?? 10;
             const current: number | null = gs?.currentRoundNumber ?? gs?.CurrentRoundNumber ?? null;
             const pointsPerRound: number | undefined = cfg.pointsPerRound ?? cfg.PointsPerRound;
-            // rewardRules from cfg.rewardRules if exists
-            const rawRules: any[] = cfg.rewardRules ?? cfg.RewardRules ?? [];
-            const rewardRules: RewardRule[] = rawRules.map((r: any) => ({
-              rewardId: r.rewardId ?? r.RewardId,
-              roundThreshold: r.roundThreshold ?? r.RoundThreshold ?? 0,
-              name: r.name ?? r.Name ?? '',
-              pointsRequired: r.pointsRequired ?? r.PointsRequired ?? r.points ?? 0,
+            const rawRulesInput: any = cfg.rewardRules ?? cfg.RewardRules ?? cfg.reward ?? cfg.Reward ?? [];
+            const rawArray: any[] = Array.isArray(rawRulesInput) ? rawRulesInput : (rawRulesInput && typeof rawRulesInput === 'object' && rawRulesInput.type ? [rawRulesInput] : []);
+            const rewardRules: RewardRule[] = rawArray.map((r: any) => ({
+              rewardId: r.rewardId ?? r.RewardId ?? r.id ?? '',
+              roundThreshold: r.roundThreshold ?? r.RoundThreshold ?? r.threshold ?? r.Threshold ?? 0,
+              name: r.name ?? r.Name ?? r.type ?? r.Type ?? '',
+              pointsRequired: r.pointsRequired ?? r.PointsRequired ?? r.points ?? r.threshold ?? r.Threshold ?? 0,
             })).filter((r: RewardRule) => r.roundThreshold > 0);
 
             const securedPoints: SecuredPoints | null = secured ? {
@@ -97,9 +99,8 @@ export const PlayerRoundsStore = signalStore(
               policy: secured.policy ?? secured.Policy ?? 'KEEP_SECURED_SCORE',
             } : null;
 
-            // isTerminal from status
             const statusDto: any = state.status;
-            const isTerminal = statusDto?.isTerminal ?? statusDto?.IsTerminal ?? gs?.status === 'WITHDRAWN' || gs?.status === 'ELIMINATED';
+            const isTerminal = (statusDto?.isTerminal ?? statusDto?.IsTerminal ?? (gs?.status === 'WITHDRAWN' || gs?.status === 'ELIMINATED')) as boolean;
 
             const roundLites = (rounds as any[]).map((r: any) => ({
               roundId: r.roundId ?? r.RoundId ?? null,
@@ -112,30 +113,21 @@ export const PlayerRoundsStore = signalStore(
             const previous = store.currentRoundNumber();
             const ladder = buildLadder(maxRounds, roundLites, rewardRules, securedPoints, current, pointsPerRound);
 
-            // determine status
             let ladderStatus: LadderState['status'] = 'ready';
             if (current == null) ladderStatus = 'empty';
             else if (isTerminal) ladderStatus = 'terminal';
             else ladderStatus = 'ready';
 
-            // handle animating round with jump detection
             let animating: number | null = null;
             if (previous != null && current != null && previous !== current) {
               if (Math.abs(current - previous) > 1) {
-                // reconnect jump: direct, no intermediate anim but still show current as animating briefly
                 animating = current;
               } else if (current > previous) {
                 animating = current;
               } else {
-                // rollback correction
                 animating = current;
               }
-              // auto clear after 350ms
               setTimeout(() => patchState(store, { _animatingRound: null }), 350);
-              if (animating != null) {
-                // set immediately, will be cleared
-                // patch will be done below with animating
-              }
             }
 
             patchState(store, {
@@ -149,14 +141,11 @@ export const PlayerRoundsStore = signalStore(
               _animatingRound: animating,
               errorDetail: undefined,
             });
-            // if animating was set, ensure timeout clears
-            if (animating != null) {
-              // already scheduled
-            }
           },
-          error: (err: any) => {
-            const detail = err?.error?.detail ?? err?.error?.title ?? err?.message ?? 'Error al cargar progresión';
-            const corr = err?.error?.correlationId ?? err?.error?.traceId ?? store.correlationId();
+          error: (err: unknown) => {
+            const e = err as { detail?: string; title?: string; correlationId?: string; traceId?: string; message?: string; error?: { detail?: string; title?: string; correlationId?: string; traceId?: string } };
+            const detail = e?.detail ?? e?.title ?? (e as unknown as { error?: { detail?: string; title?: string } })?.error?.detail ?? (e as unknown as { error?: { detail?: string; title?: string } })?.error?.title ?? e?.message ?? 'Error al cargar progresión';
+            const corr = e?.correlationId ?? e?.traceId ?? (e as unknown as { error?: { correlationId?: string; traceId?: string } })?.error?.correlationId ?? ((store as unknown as { correlationId?: () => string }).correlationId?.() ?? '') as string;
             patchState(store, { status: 'error' as const, errorDetail: detail, correlationId: corr, _animatingRound: null });
           },
         })
@@ -167,26 +156,30 @@ export const PlayerRoundsStore = signalStore(
       (store as any).hydrateLadder(gameId);
     },
 
-    bindRealtimeLadder(gameId: string) {
-      // Reuse GameRealtimeService events$ ; hydrate on relevant events
-      // debounce rapid events to avoid duplicate hydrates
-      (store as any)._realtime.events$
-        .pipe(debounceTime(100))
-        .subscribe((evt: any) => {
-          if (['RoundCompleted', 'QuestionAvailable', 'ScoreUpdated', 'GameFinished', 'RoundStarted', 'Reconnected'].includes(evt?.type)) {
-            (store as any).hydrateLadder(gameId);
-          }
-        });
-      // Also trigger initial hydrate if needed
-    },
-
     clearError() {
       patchState(store, { status: store.currentRoundNumber() == null ? 'empty' as const : 'ready' as const, errorDetail: undefined });
     },
 
-    // for tests to set state directly
     _setState(patch: Partial<LadderState>) {
       patchState(store, patch as any);
     }
+  })),
+
+  withMethods((store) => ({
+    bindRealtimeLadder(gameId: string) {
+      const prev = (store as unknown as { _ladderSub?: Subscription })._ladderSub;
+      if (prev) try { prev.unsubscribe(); } catch {}
+      const sub = (store as unknown as { _realtime: GameRealtimeService })._realtime.events$
+        .pipe(debounceTime(100))
+        .subscribe((evt: unknown) => {
+          const t = (evt as { type?: string })?.type;
+          if (['GameStarted', 'PlayerJoined', 'RoundStarted', 'QuestionAvailable', 'QuestionPresented', 'PlayerAnswered', 'ScoreUpdated', 'LeaderboardUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn', 'PlayerStatusChanged', 'Reconnected'].includes(t as string)) {
+            // Use hydrateFor which delegates to hydrateLadder safely after store is fully built
+            try { (store as unknown as { hydrateFor: (id: string)=>void }).hydrateFor(gameId); } catch {}
+          }
+        });
+      (store as unknown as { _ladderSub: Subscription })._ladderSub = sub;
+      return sub;
+    },
   }))
 );

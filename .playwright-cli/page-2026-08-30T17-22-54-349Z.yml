@@ -1,0 +1,25 @@
+- generic [ref=e2]:
+  - combobox [ref=e5] [cursor=pointer]:
+    - option "English" [selected]
+    - option "Español"
+    - option "Français"
+    - option "Italiano"
+    - option "Deutsch"
+    - option "Português (Brasil)"
+    - option "日本語"
+    - option "中文（简体）"
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - heading "Sign In" [level=1] [ref=e13]
+      - paragraph [ref=e14]: Enter your credentials to access the admin panel
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]: Username
+        - textbox "Username" [active] [ref=e18]:
+          - /placeholder: you@example.com
+      - generic [ref=e19]:
+        - generic [ref=e20]: Password
+        - textbox "Password" [ref=e21]:
+          - /placeholder: ••••••••
+      - button "Sign In" [ref=e22] [cursor=pointer]
+    - generic [ref=e23]: Identity Admin Panel

@@ -17,7 +17,7 @@
                 <AuthorizeView>
                     <Authorized>
                         <span class="topbar-username">@context.User.Identity?.Name</span>
-                        <form action="authentication/logout" method="post" class="logout-form">
+                        <form action="Account/Logout" method="post" class="logout-form">
                             <AntiforgeryToken />
                             <input type="hidden" name="ReturnUrl" value="@currentUrl" />
                             <button type="submit" class="logout-button">

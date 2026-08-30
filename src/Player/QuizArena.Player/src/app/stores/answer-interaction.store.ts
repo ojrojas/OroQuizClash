@@ -7,6 +7,13 @@ import { GamesApi } from '../features/shared/games.api';
 import { AnswerInteractionState } from '../features/game/answer-interaction.model';
 import { ProblemDetails } from '../core/interceptors/error.interceptor';
 
+function safeUUID(): string {
+  try { if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (Math.random()*16)|0; const v=c==='x'?r:(r&0x3)|0x8; return v.toString(16); });
+}
+function safeGet(k: string): string | null { try { return sessionStorage.getItem(k); } catch { return null; } }
+function safeSet(k: string, v: string): void { try { sessionStorage.setItem(k, v); } catch {} }
+
 const initialState: AnswerInteractionState = {
   gameId: null,
   roundId: null,
@@ -64,8 +71,8 @@ export const AnswerInteractionStore = signalStore(
           patchState(store, { errorDetail: 'Selecciona una opción' });
           return [] as any;
         }
-        const key = sessionStorage.getItem(`idemp-${roundId}`) ?? crypto.randomUUID();
-        sessionStorage.setItem(`idemp-${roundId}`, key);
+        const key = safeGet(`idemp-${roundId}`) ?? safeUUID();
+        safeSet(`idemp-${roundId}`, key);
         patchState(store, { isEvaluating: true, phase: 'evaluating' as const, errorDetail: null, correlationId: null });
         return api.submitAnswer(gameId, { roundId, questionId, selectedOptionId: locked, idempotencyKey: key }).pipe(
           tapResponse({
@@ -89,7 +96,7 @@ export const AnswerInteractionStore = signalStore(
             error: (err: any) => {
               const problem: ProblemDetails = err;
               const code = (problem as any)?.code ?? problem?.title;
-              if (code === 'AnswerWindowExpired' || problem?.status === 400 && code === 'AnswerWindowExpired') {
+              if (code === 'AnswerWindowExpired' || code === 'AnswerTimeout' || (problem?.status === 400 && (code === 'AnswerWindowExpired' || code === 'AnswerTimeout'))) {
                 patchState(store, { phase: 'timeout' as const, isEvaluating: false, canSelect: false, errorDetail: null, correlationId: problem?.correlationId ?? null });
               } else if (problem?.status === 409 || code === 'QuestionAlreadyAnswered') {
                 // saturate to locked/evaluating based on state; keep locked
@@ -129,7 +136,7 @@ export const AnswerInteractionStore = signalStore(
                   roundId, questionId,
                   canSelect: false,
                   errorDetail: 'Pregunta inválida (se requieren 4 opciones)',
-                  correlationId: crypto.randomUUID(),
+                  correlationId: safeUUID(),
                   phase: 'idle' as const,
                   selectedOptionId: null,
                   lockedOptionId: null,

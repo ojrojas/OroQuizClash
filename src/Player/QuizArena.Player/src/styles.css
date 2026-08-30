@@ -1,10 +1,23 @@
-@import "../../../design-system/tokens/design-tokens.css";
+@import "../../../../design-system/tokens/design-tokens.css";
 
 /* Player theme overrides per design-system/overrides/player.md */
 :root[data-theme="player"] {
   --color-primary: var(--player-primary, #6c4ef6);
-  --color-bg: var(--player-bg, #0f0f1e);
+  --color-bg: var(--color-background, #0f0f1e);
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; font-family: var(--font-sans, system-ui); background: var(--color-bg); color: var(--color-text); }
+html, body { margin: 0; font-family: var(--font-sans, system-ui); background: var(--color-bg); color: var(--color-foreground); }
+
+/* Global button reset for player theme — ensures all buttons are readable */
+button, [role="button"] {
+  color: var(--color-foreground);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

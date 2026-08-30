@@ -1,0 +1,95 @@
+- generic [ref=f6e2]:
+  - link "Skip to main content" [ref=f6e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f6e4]:
+    - generic [ref=f6e5]:
+      - generic [ref=f6e6]: QA
+      - generic [ref=f6e7]: QuizArena
+    - list [ref=f6e8]:
+      - listitem [ref=f6e9]:
+        - link "Dashboard" [ref=f6e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f6e16]:
+        - link "Games" [ref=f6e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f6e22]:
+        - link "Game Configuration" [ref=f6e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f6e25]:
+        - link "Categories" [ref=f6e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f6e29]:
+        - link "Question Bank" [ref=f6e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f6e34]:
+        - link "Players" [ref=f6e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f6e41]:
+        - link "Rewards" [ref=f6e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f6e48]:
+        - link "Live Games" [ref=f6e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f6e56]:
+        - link "Reports" [ref=f6e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f6e60]:
+        - link "Audit" [ref=f6e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f6e65]:
+      - generic [ref=f6e66]: Administrator
+      - generic [ref=f6e67]: ADMIN
+      - generic [ref=f6e68]: GAME MANAGER
+      - generic [ref=f6e69]: REWARD MANAGER
+      - generic [ref=f6e70]: PLAYER
+      - generic [ref=f6e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f6e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f6e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f6e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f6e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f6e76]:
+    - banner [ref=f6e77]:
+      - button "Toggle navigation" [ref=f6e78] [cursor=pointer]
+      - generic [ref=f6e80]: QuizArena Admin
+      - generic [ref=f6e81]:
+        - generic [ref=f6e82]: Admin Administrator
+        - button "Logout" [ref=f6e84] [cursor=pointer]
+    - main [ref=f6e89]:
+      - generic [ref=f6e90]:
+        - heading "Question bank" [level=1] [ref=f6e91]
+        - button "New question" [ref=f6e92] [cursor=pointer]
+      - generic [ref=f6e96]:
+        - generic [ref=f6e97]:
+          - generic [ref=f6e98]:
+            - generic [ref=f6e99]: Search
+            - textbox "Search" [ref=f6e100]:
+              - /placeholder: Text…
+              - text: search
+          - generic [ref=f6e101]:
+            - generic [ref=f6e102]: Status
+            - combobox "Status" [ref=f6e103]:
+              - option "All" [disabled]
+              - option "Draft" [selected]
+              - option "Active"
+              - option "Inactive"
+              - option "Archived"
+          - generic [ref=f6e104]:
+            - generic [ref=f6e105]: Category
+            - combobox "Category" [ref=f6e106]:
+              - option "All categories" [disabled]
+        - table [ref=f6e108]:
+          - caption [ref=f6e109]: Questions
+          - rowgroup [ref=f6e110]:
+            - row [ref=f6e111]:
+              - columnheader "Text" [ref=f6e112]
+              - columnheader "Difficulty" [ref=f6e113]
+              - columnheader "Status" [ref=f6e114]
+              - columnheader [ref=f6e115]
+          - rowgroup [ref=f6e116]:
+            - row [ref=f6e117]:
+              - cell [ref=f6e118]:
+                - status [ref=f6e119]:
+                  - heading "No questions" [level=3] [ref=f6e123]
+                  - paragraph [ref=f6e124]: Create questions for your categories.
+                  - button "New question" [ref=f6e125] [cursor=pointer]
+  - region "Notifications"

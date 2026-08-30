@@ -16,7 +16,7 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
-            "tsConfig": "tsconfig.json",
+            "tsConfig": "tsconfig.app.json",
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": [
               "../../../design-system/tokens/design-tokens.css",
@@ -47,7 +47,7 @@
             "development": { "buildTarget": "quizarena-player:build:development" }
           },
           "defaultConfiguration": "development",
-          "options": { "proxyConfig": "proxy.conf.json" }
+          "options": { "proxyConfig": "proxy.conf.js" }
         },
         "test": {
           "builder": "@angular/build:unit-test",

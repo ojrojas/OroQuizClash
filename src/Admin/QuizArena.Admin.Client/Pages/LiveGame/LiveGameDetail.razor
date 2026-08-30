@@ -30,7 +30,7 @@ else if (view is not null)
         <LiveScoresTable Scores="@view.Scores" IsLoading="@scoresLoading" IsError="@scoresError" ErrorMessage="@scoresErrorMessage" OnRetry="ReloadAsync" />
     </div>
 
-    <LiveOperationsBar State="@view.Status" RowVersion="@view.RowVersion" IsBusy="@isBusy" OnOperation="HandleOperation" />
+    <LiveOperationsBar State="@view.Status" RowVersion="@view.RowVersion" IsBusy="@isBusy" CurrentRoundId="@view.CurrentRoundId" HasActiveRound="@(view.CurrentRoundId.HasValue)" OnOperation="HandleOperation" />
 
     @if (sessionExpired)
     {
@@ -59,11 +59,21 @@ else
     private LiveGamePoller? poller;
     private HubConnection? hubConnection;
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         await ReloadAsync();
-        StartPolling();
+        // Auto-polling desactivado por defecto para no ocultar formularios/modales
+        // Solo SignalR + refresh manual. Si se requiere polling, usar intervalo 60s y respetar foco.
         await StartHubAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only reload if GameId changed (avoid re-triggering polling on every parent re-render that hides forms)
+        if (view is not null && view.GameId != GameId)
+        {
+            await ReloadAsync();
+        }
     }
 
     private async Task ReloadAsync()
@@ -100,19 +110,28 @@ else
         poller = new LiveGamePoller();
         poller.Start(async ct =>
         {
-            if (sessionExpired) return;
+            if (sessionExpired || isBusy) return;
+            // Pause polling when a modal/drawer is open or page is hidden (evita ocultar formularios)
             try
             {
-                // Respect visibilityState if available
-                try
-                {
-                    var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible'");
-                    if (!visible) return;
-                }
-                catch { }
+                var visible = await JSRuntime.InvokeAsync<bool>("eval", "document.visibilityState === 'visible' && document.hasFocus()");
+                if (!visible) return;
+            }
+            catch { }
+            // Don't poll if any dialog is open (check for modal overlay in DOM)
+            try
+            {
+                var hasModal = await JSRuntime.InvokeAsync<bool>("eval", "!!document.querySelector('.quiz-modal-overlay')");
+                if (hasModal) return;
+            }
+            catch { }
+            try
+            {
                 var updated = await LiveGameService.GetLiveGameAsync(GameId, ct);
                 await InvokeAsync(() =>
                 {
+                    // Preserve local isBusy state — don't overwrite while operation in progress
+                    if (isBusy) return;
                     view = updated;
                     StateHasChanged();
                 });
@@ -135,12 +154,17 @@ else
                 .WithUrl(Navigation.ToAbsoluteUri("/hubs/game"))
                 .WithAutomaticReconnect()
                 .Build();
+            hubConnection.On<string>("GameStarted", async _ => await ReloadAsync());
+            hubConnection.On<string>("RoundStarted", async _ => await ReloadAsync());
+            hubConnection.On<string>("RoundCompleted", async _ => await ReloadAsync());
+            hubConnection.On<string>("LeaderboardUpdated", async _ => await ReloadAsync());
+            hubConnection.On<string>("GameFinished", async _ => await ReloadAsync());
             hubConnection.On<string>("GamePaused", async _ => await ReloadAsync());
             hubConnection.On<string>("GameResumed", async _ => await ReloadAsync());
             hubConnection.On<string>("ScoreUpdated", async _ => await ReloadAsync());
             hubConnection.On<string>("QuestionAvailable", async _ => await ReloadAsync());
             await hubConnection.StartAsync();
-            await hubConnection.InvokeAsync("AddToGroup", $"game-{GameId}");
+            await hubConnection.InvokeAsync("JoinGameGroup", GameId);
         }
         catch { /* fallback to polling */ }
     }
@@ -157,7 +181,11 @@ else
                 "Pause" => await OperationsService.PauseAsync(GameId, args.RowVersion, idempotencyKey),
                 "Resume" => await OperationsService.ResumeAsync(GameId, args.RowVersion, idempotencyKey),
                 "Cancel" => await OperationsService.CancelAsync(GameId, args.RowVersion, idempotencyKey, args.Reason),
-                "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey),
+                "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey, args.Reason ?? "Force finished by manager"),
+                "StartRound" => await OperationsService.StartRoundAsync(GameId, args.RowVersion, idempotencyKey),
+                "CompleteRound" => view?.CurrentRoundId is Guid rid
+                    ? await OperationsService.CompleteRoundAsync(GameId, rid, args.RowVersion, idempotencyKey)
+                    : view,
                 _ => view
             };
         }

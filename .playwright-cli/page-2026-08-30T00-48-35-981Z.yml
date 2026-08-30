@@ -1,0 +1,1 @@
+- generic [active] [ref=e1]: error:server_error error_description:The remote authorization server is currently unavailable or returned an invalid configuration. error_uri:https://documentation.openiddict.com/errors/ID2170

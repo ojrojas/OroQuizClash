@@ -60,6 +60,6 @@ export class GameDetailComponent implements OnInit {
   }
 
   close() {
-    this.router.navigate(['/lobby']);
+    this.router.navigate(['/player/lobby']);
   }
 }

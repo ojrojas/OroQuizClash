@@ -1,10 +1,11 @@
 import { inject } from '@angular/core';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { PlayerGameStore } from '../../stores/player-game.store';
+import { firstValueFrom } from 'rxjs';
 
-export function assertPlayerIdentity(store: PlayerGameStore): boolean {
+export async function assertPlayerIdentity(store: InstanceType<typeof PlayerGameStore>): Promise<boolean> {
   const oidc = inject(OidcSecurityService);
-  const payload = oidc.getPayloadFromIdToken() as any;
+  const payload = (await firstValueFrom(oidc.getPayloadFromIdToken())) as any;
   const sub = payload?.sub;
   const playerId = store.player()?.playerId;
   if (sub && playerId && sub !== playerId) {
