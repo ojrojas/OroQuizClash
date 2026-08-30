@@ -366,9 +366,46 @@ El juego pasa de `READY` → `WAITING_FOR_PLAYERS`. Los jugadores pueden unirse 
 POST /api/games/{id}/start
 ```
 
-El juego pasa a `RUNNING`. Las rondas comienzan automáticamente.
+El juego pasa a `IN_PROGRESS`. **Las rondas NO comienzan automáticamente** — el manager debe iniciar cada ronda manualmente desde el Live Game Dashboard.
 
-### 5.6 Finalizar Juego
+### 5.6 Live Game Dashboard (Panel en Vivo)
+
+Después de iniciar un juego, el manager es redirigido automáticamente a `/admin/live/{gameId}`. Este panel muestra en tiempo real:
+
+| Elemento | Descripción |
+|----------|-------------|
+| **Status** | Estado actual del juego (Running, Paused, etc.) |
+| **Current Round** | "Round 1 / 8" — ronda actual / total |
+| **Current Question** | Texto de la pregunta + 4 opciones |
+| **Players** | Jugadores conectados, respondidos, esperando |
+| **Scores** | Leaderboard en tiempo real |
+| **Timer** | Cuenta regresiva de la ronda |
+
+**Operaciones disponibles:**
+
+| Botón | Acción | Requisitos |
+|-------|--------|------------|
+| **Start Round** | Inicia la siguiente ronda, selecciona y presenta una pregunta | Estado: Running sin ronda activa |
+| **Complete Round** | Finaliza la ronda actual, asegura puntos | Estado: Running con ronda activa |
+| **Pause** | Pausa el juego, congela timer | Estado: Running |
+| **Resume** | Reanuda el juego | Estado: Paused |
+| **Cancel** | Cancela el juego (terminal) | Estado: Running o Paused |
+| **Force Finish** | Finaliza forzadamente (requiere reason) | Estado: Running o Paused |
+
+### 5.7 Flujo Completo del Manager
+
+```
+1. Crear juego → DRAFT
+2. Open Lobby → WAITING_FOR_PLAYERS (jugadores se unen)
+3. Start Game → IN_PROGRESS (redirige a Live Dashboard)
+4. Start Round → ROUND_IN_PROGRESS (aparece pregunta)
+   → Jugadores responden
+5. Complete Round → ROUND_COMPLETED (asegura puntos)
+6. Repetir pasos 4-5 hasta completar todas las rondas
+7. Finish Game → FINISHED (muestra resultados)
+```
+
+### 5.8 Finalizar Juego
 
 ```bash
 POST /api/games/{id}/finish
@@ -453,16 +490,19 @@ Al finalizar el juego, se muestra una de 4 pantallas:
 |--------|----------|-------------|------|
 | `GET` | `/api/games` | Listar juegos (paginado, filtro status) | Bearer |
 | `GET` | `/api/games/{id}` | Detalle de juego | Bearer |
+| `GET` | `/api/games/{id}/live` | Live Game Dashboard (estado, pregunta actual, scores) | Bearer + ADMIN/GAME_MANAGER |
 | `POST` | `/api/games` | Crear juego | Bearer + ADMIN/GAME_MANAGER |
 | `POST` | `/api/games/{id}/players` | Unirse a juego | Bearer |
 | `GET` | `/api/games/{id}/players/me` | Estado del jugador en el juego | Bearer |
 | `POST` | `/api/games/{id}/answers` | Enviar respuesta | Bearer |
 | `POST` | `/api/games/{id}/withdraw` | Retirarse del juego | Bearer |
 | `GET` | `/api/games/{id}/leaderboard` | Leaderboard del juego | Bearer |
-| `GET` | `/api/games/{id}/players` | Lista de jugadores del juego | Bearer |
-| `GET` | `/api/games/{id}/rounds/current` | Ronda actual | Bearer |
 | `POST` | `/api/games/{id}/start` | Iniciar juego | Bearer + ADMIN/GAME_MANAGER |
+| `POST` | `/api/games/{id}/rounds/start` | Iniciar siguiente ronda | Bearer + ADMIN/GAME_MANAGER |
+| `POST` | `/api/games/{id}/rounds/{roundId}/complete` | Finalizar ronda actual | Bearer + ADMIN/GAME_MANAGER |
 | `POST` | `/api/games/{id}/finish` | Finalizar juego | Bearer + ADMIN/GAME_MANAGER |
+| `POST` | `/api/games/{id}/cancel` | Cancelar juego | Bearer + ADMIN/GAME_MANAGER |
+| `POST` | `/api/games/{id}/force-finish` | Forzar finalización (requiere reason) | Bearer + ADMIN/GAME_MANAGER |
 | `GET` | `/api/categories` | Listar categorías | Bearer |
 | `POST` | `/api/categories` | Crear categoría | Bearer + ADMIN |
 | `GET` | `/api/questions` | Listar preguntas | Bearer |
@@ -591,6 +631,24 @@ Player hydrates via GET /players/me
 
 **Solución:** Completar el cambio de contraseña en la página de OroIdentityServer.
 
+### 9.6 Preguntas no aparecen para jugadores
+
+**Causa:** El manager inició el juego pero no inició la ronda.
+
+**Solución:** El manager debe ir a `/admin/live/{gameId}` y hacer click en "Start Round". Las rondas NO comienzan automáticamente al iniciar el juego.
+
+### 9.7 "EXPIRED" / "Tiempo agotado" al responder
+
+**Causa:** El tiempo límite de la pregunta expiró antes de enviar la respuesta.
+
+**Solución:** El jugador debe responder dentro del tiempo límite (default 30s). El timer se muestra en la pantalla de juego.
+
+### 9.8 Force Finish retorna 400
+
+**Causa:** El endpoint requiere un `reason` (3-500 caracteres).
+
+**Solución:** Ingresar un motivo en el campo de texto antes de confirmar.
+
 ---
 
 ## 10. Desarrollo
@@ -622,4 +680,4 @@ dotnet run --project src/Admin/QuizArena.Admin  # https://localhost:7172
 ---
 
 *Manual generado desde `specs/001-036/` y `draft/oroidentityserver-specification.md`.*
-*Última actualización: 2026-08-30*
+*Última actualización: 2026-08-30 — Corregido flujo de rondas (Start Round manual), agregado Live Game Dashboard, agregados endpoints de rondas, agregados troubleshooting 9.6-9.8.*
