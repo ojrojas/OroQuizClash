@@ -96,7 +96,7 @@ export const AnswerInteractionStore = signalStore(
             error: (err: any) => {
               const problem: ProblemDetails = err;
               const code = (problem as any)?.code ?? problem?.title;
-              if (code === 'AnswerWindowExpired' || problem?.status === 400 && code === 'AnswerWindowExpired') {
+              if (code === 'AnswerWindowExpired' || code === 'AnswerTimeout' || (problem?.status === 400 && (code === 'AnswerWindowExpired' || code === 'AnswerTimeout'))) {
                 patchState(store, { phase: 'timeout' as const, isEvaluating: false, canSelect: false, errorDetail: null, correlationId: problem?.correlationId ?? null });
               } else if (problem?.status === 409 || code === 'QuestionAlreadyAnswered') {
                 // saturate to locked/evaluating based on state; keep locked

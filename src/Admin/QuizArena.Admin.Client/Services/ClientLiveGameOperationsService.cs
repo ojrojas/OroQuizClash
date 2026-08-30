@@ -14,8 +14,8 @@ public sealed class ClientLiveGameOperationsService(HttpClient http) : ILiveGame
     public async Task<LiveGameView> CancelAsync(Guid gameId, string rowVersion, string idempotencyKey, string? reason, CancellationToken ct = default)
         => await SendAsync(gameId, "cancel", rowVersion, idempotencyKey, reason, ct);
 
-    public async Task<LiveGameView> ForceFinishAsync(Guid gameId, string rowVersion, string idempotencyKey, CancellationToken ct = default)
-        => await SendAsync(gameId, "force-finish", rowVersion, idempotencyKey, null, ct);
+    public async Task<LiveGameView> ForceFinishAsync(Guid gameId, string rowVersion, string idempotencyKey, string? reason = null, CancellationToken ct = default)
+        => await SendAsync(gameId, "force-finish", rowVersion, idempotencyKey, reason, ct);
 
     public async Task<LiveGameView> StartRoundAsync(Guid gameId, string rowVersion, string idempotencyKey, CancellationToken ct = default)
     {

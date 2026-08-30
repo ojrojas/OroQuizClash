@@ -181,7 +181,7 @@ else
                 "Pause" => await OperationsService.PauseAsync(GameId, args.RowVersion, idempotencyKey),
                 "Resume" => await OperationsService.ResumeAsync(GameId, args.RowVersion, idempotencyKey),
                 "Cancel" => await OperationsService.CancelAsync(GameId, args.RowVersion, idempotencyKey, args.Reason),
-                "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey),
+                "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey, args.Reason ?? "Force finished by manager"),
                 "StartRound" => await OperationsService.StartRoundAsync(GameId, args.RowVersion, idempotencyKey),
                 "CompleteRound" => view?.CurrentRoundId is Guid rid
                     ? await OperationsService.CompleteRoundAsync(GameId, rid, args.RowVersion, idempotencyKey)

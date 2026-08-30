@@ -53,24 +53,23 @@ export class LeaderboardComponent {
   playersRemaining = computed(() => this.players().filter((p: any) => p.status === 'ACTIVE' || p.isActive).length);
 
   hydrate(gameId: string) {
-    this.api.getPlayers(gameId).subscribe((res: any) => {
-      const list = res.players ?? res.items ?? [];
-      this.players.set(list);
-    });
-    this.api.getLeaderboard(gameId).subscribe((res: any) => {
-      const entries = res.entries ?? res.Players ?? [];
-      this.leaderboard.set(entries.map((e: any) => ({
-        playerId: e.playerId ?? e.PlayerId,
-        displayName: e.displayName ?? e.DisplayName ?? 'Player',
-        totalPoints: e.totalPoints ?? e.Points ?? 0,
-        level: e.level ?? e.CurrentLevel ?? 'Basic',
-      })));
-    });
-    this.api.getCurrentRound(gameId).subscribe((res: any) => {
-      const rn = res.roundNumber ?? res.RoundNumber ?? this.currentRoundNumber();
-      const max = res.maxRounds ?? 10;
-      this.currentRoundNumber.set(rn);
-      this.maxRounds.set(max);
+    this.api.getLeaderboard(gameId).subscribe({
+      next: (res: any) => {
+        const entries = res.entries ?? res.Players ?? [];
+        this.leaderboard.set(entries.map((e: any) => ({
+          playerId: e.playerId ?? e.PlayerId,
+          displayName: e.displayName ?? e.DisplayName ?? 'Player',
+          totalPoints: e.totalPoints ?? e.Points ?? 0,
+          level: e.level ?? e.CurrentLevel ?? 'Basic',
+          status: e.status ?? e.Status ?? 'ACTIVE',
+        })));
+        this.players.set(entries.map((e: any) => ({
+          playerId: e.playerId ?? e.PlayerId,
+          displayName: e.displayName ?? e.DisplayName ?? 'Player',
+          status: e.status ?? e.Status ?? 'ACTIVE',
+        })));
+      },
+      error: () => {}
     });
   }
 }
