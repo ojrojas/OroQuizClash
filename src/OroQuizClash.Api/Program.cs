@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Threading.RateLimiting;
 
 using BuildingBlocks.CQRS.Behaviors;
@@ -89,16 +90,53 @@ if (!string.IsNullOrEmpty(certDir) && Directory.Exists(certDir))
     {
         try
         {
-            var cert = X509CertificateLoader.LoadPkcs12FromFile(pfx, string.Empty, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
+            var cert = X509CertificateLoader.LoadPkcs12FromFile(pfx, null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet);
             if (cert.GetRSAPrivateKey() is not null)
                 tokenDecryptionKeys.Add(new X509SecurityKey(cert));
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore certs that cannot be loaded (e.g. unrelated or locked files).
+            Console.WriteLine($"[Startup] Failed to load cert {pfx}: {ex.Message}");
+        }
+    }
+    Console.WriteLine($"[Startup] Loaded {tokenDecryptionKeys.Count} token decryption keys from {certDir}");
+    foreach (var key in tokenDecryptionKeys)
+    {
+        var x509Key = key as X509SecurityKey;
+        Console.WriteLine($"[Startup] Key: Thumbprint={x509Key?.Certificate?.Thumbprint} HasPrivateKey={x509Key?.Certificate?.HasPrivateKey}");
+    }
+
+    // Keep only the encryption certificate (not signing) for JWE decryption.
+    // Signing cert is for JWS verification via jwks_uri, not for decryption.
+    // Filter: remove any key whose cert FriendlyName contains "Signing" or whose
+    // thumbprint doesn't match the encryption cert.
+    if (tokenDecryptionKeys.Count > 1)
+    {
+        var encryptionThumbprint = tokenDecryptionKeys
+            .OfType<X509SecurityKey>()
+            .FirstOrDefault(k => k.Certificate?.FriendlyName?.Contains("Encryption", StringComparison.OrdinalIgnoreCase) == true
+                              || k.Certificate?.SubjectName?.Name?.Contains("Encryption", StringComparison.OrdinalIgnoreCase) == true)
+            ?.Certificate?.Thumbprint;
+
+        if (encryptionThumbprint != null)
+        {
+            tokenDecryptionKeys.RemoveAll(k =>
+            {
+                var x509 = k as X509SecurityKey;
+                return x509?.Certificate?.Thumbprint != encryptionThumbprint;
+            });
+            Console.WriteLine($"[Startup] After filtering: {tokenDecryptionKeys.Count} decryption key(s) (kept encryption cert {encryptionThumbprint})");
         }
     }
 }
+
+builder.Services.AddHttpClient("IdentityServer", (sp, client) =>
+{
+    client.BaseAddress = new Uri(authority);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -212,6 +250,103 @@ app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapEndpoints();
 app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
+
+// ---------------------------------------------------------------------------
+// Admin Players endpoint — queries IdentityServer for users by role
+// GET /api/players?role=Player&page=1&pageSize=20&search=&tenantId=
+// ---------------------------------------------------------------------------
+{
+    var identityAuthority = authority;
+
+    app.MapGet("/api/players", async (
+        string? role,
+        string? search,
+        int? page,
+        int? pageSize,
+        string? tenantId,
+        IHttpClientFactory httpClientFactory,
+        CancellationToken ct) =>
+    {
+        var client = httpClientFactory.CreateClient("IdentityServer");
+        var effectiveRole = string.IsNullOrWhiteSpace(role) ? "Player" : role;
+        var url = $"{identityAuthority.TrimEnd('/')}/api/users/{effectiveRole}/by-role";
+
+        var queryParts = new List<string>();
+        if (!string.IsNullOrEmpty(tenantId)) queryParts.Add($"tenantId={Uri.EscapeDataString(tenantId)}");
+        if (queryParts.Count > 0) url += "?" + string.Join("&", queryParts);
+
+        var response = await client.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return Results.StatusCode((int)response.StatusCode);
+        }
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var users = System.Text.Json.JsonSerializer.Deserialize<List<JsonElement>>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+
+        // Filter by search if provided
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            users = users.Where(u =>
+            {
+                var username = u.TryGetProperty("username", out var un) ? un.GetString() ?? "" : "";
+                var email = u.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "";
+                var name = u.TryGetProperty("name", out var nm) ? nm.GetString() ?? "" : "";
+                var s = search.ToLowerInvariant();
+                return username.Contains(s) || email.Contains(s) || name.Contains(s);
+            }).ToList();
+        }
+
+        var totalCount = users.Count;
+        var ps = pageSize ?? 20;
+        var p = page ?? 1;
+        var items = users.Skip((p - 1) * ps).Take(ps).Select(u => new
+        {
+            playerId = u.TryGetProperty("id", out var id) ? id.GetString() ?? "" : "",
+            displayName = u.TryGetProperty("name", out var nm2) ? nm2.GetString() ?? "" : "",
+            email = u.TryGetProperty("email", out var em2) ? em2.GetString() ?? "" : "",
+            tenantId = u.TryGetProperty("tenantId", out var tid) ? tid.GetString() : null,
+            createdAt = u.TryGetProperty("createdAt", out var ca) ? ca.GetString() : null,
+            lastActiveAt = u.TryGetProperty("lastActiveAt", out var la) ? la.GetString() : null,
+            state = u.TryGetProperty("isDeleted", out var del) && del.GetBoolean() ? "Deleted" : "Active",
+        }).ToList();
+
+        return Results.Ok(new { items, totalCount, page = p, pageSize = ps });
+    }).RequireAuthorization();
+}
+
+// GET /api/players/{playerId} — single player detail from IdentityServer
+{
+    var identityAuthority = authority;
+
+    app.MapGet("/api/players/{playerId:guid}", async (
+        Guid playerId,
+        IHttpClientFactory httpClientFactory,
+        CancellationToken ct) =>
+    {
+        var client = httpClientFactory.CreateClient("IdentityServer");
+        var url = $"{identityAuthority.TrimEnd('/')}/api/users/{playerId}";
+        var response = await client.GetAsync(url, ct);
+        if (!response.IsSuccessStatusCode) return Results.StatusCode((int)response.StatusCode);
+
+        var json = await response.Content.ReadAsStringAsync(ct);
+        var user = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return Results.Ok(new
+        {
+            playerId = playerId.ToString(),
+            displayName = user.TryGetProperty("name", out var nm) ? nm.GetString() ?? "" : "",
+            email = user.TryGetProperty("email", out var em) ? em.GetString() ?? "" : "",
+            tenantId = user.TryGetProperty("tenantId", out var tid) ? tid.GetString() : null,
+            createdAt = user.TryGetProperty("createdAt", out var ca) ? ca.GetString() : null,
+            lastActiveAt = user.TryGetProperty("lastActiveAt", out var la) ? la.GetString() : null,
+            state = user.TryGetProperty("isDeleted", out var del) && del.GetBoolean() ? "Deleted" : "Active",
+            scoreSummary = (object?)null,
+            totalParticipations = 0,
+            rowVersion = "",
+        });
+    }).RequireAuthorization();
+}
 
 app.Run();
 

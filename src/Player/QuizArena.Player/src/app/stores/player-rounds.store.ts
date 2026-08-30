@@ -72,25 +72,23 @@ export const PlayerRoundsStore = signalStore(
         patchState(store, { gameId, status: 'loading' as const, correlationId: safeUUID() });
       }),
       switchMap((gameId: string) => (store as any)._api.getMyState(gameId).pipe(
-        // no explicit correlation header here; interceptor adds it
         tapResponse({
           next: (state: any) => {
             const game: any = state.game;
             const gs: any = state.gameSession;
             const secured: any = state.securedPoints;
             const rounds: any[] = state.rounds ?? (state.round ? [state.round] : []);
-            // maxRounds from Configuration (object) or maxPlayers fallback
             const cfg: any = game?.configuration ?? game?.Configuration ?? {};
             const maxRounds: number = cfg.maxRounds ?? cfg.MaxRounds ?? game?.maxRounds ?? 10;
             const current: number | null = gs?.currentRoundNumber ?? gs?.CurrentRoundNumber ?? null;
             const pointsPerRound: number | undefined = cfg.pointsPerRound ?? cfg.PointsPerRound;
-            // rewardRules from cfg.rewardRules if exists
-            const rawRules: any[] = cfg.rewardRules ?? cfg.RewardRules ?? [];
-            const rewardRules: RewardRule[] = rawRules.map((r: any) => ({
-              rewardId: r.rewardId ?? r.RewardId,
-              roundThreshold: r.roundThreshold ?? r.RoundThreshold ?? 0,
-              name: r.name ?? r.Name ?? '',
-              pointsRequired: r.pointsRequired ?? r.PointsRequired ?? r.points ?? 0,
+            const rawRulesInput: any = cfg.rewardRules ?? cfg.RewardRules ?? cfg.reward ?? cfg.Reward ?? [];
+            const rawArray: any[] = Array.isArray(rawRulesInput) ? rawRulesInput : (rawRulesInput && typeof rawRulesInput === 'object' && rawRulesInput.type ? [rawRulesInput] : []);
+            const rewardRules: RewardRule[] = rawArray.map((r: any) => ({
+              rewardId: r.rewardId ?? r.RewardId ?? r.id ?? '',
+              roundThreshold: r.roundThreshold ?? r.RoundThreshold ?? r.threshold ?? r.Threshold ?? 0,
+              name: r.name ?? r.Name ?? r.type ?? r.Type ?? '',
+              pointsRequired: r.pointsRequired ?? r.PointsRequired ?? r.points ?? r.threshold ?? r.Threshold ?? 0,
             })).filter((r: RewardRule) => r.roundThreshold > 0);
 
             const securedPoints: SecuredPoints | null = secured ? {
@@ -101,7 +99,6 @@ export const PlayerRoundsStore = signalStore(
               policy: secured.policy ?? secured.Policy ?? 'KEEP_SECURED_SCORE',
             } : null;
 
-            // isTerminal from status
             const statusDto: any = state.status;
             const isTerminal = (statusDto?.isTerminal ?? statusDto?.IsTerminal ?? (gs?.status === 'WITHDRAWN' || gs?.status === 'ELIMINATED')) as boolean;
 
@@ -116,30 +113,21 @@ export const PlayerRoundsStore = signalStore(
             const previous = store.currentRoundNumber();
             const ladder = buildLadder(maxRounds, roundLites, rewardRules, securedPoints, current, pointsPerRound);
 
-            // determine status
             let ladderStatus: LadderState['status'] = 'ready';
             if (current == null) ladderStatus = 'empty';
             else if (isTerminal) ladderStatus = 'terminal';
             else ladderStatus = 'ready';
 
-            // handle animating round with jump detection
             let animating: number | null = null;
             if (previous != null && current != null && previous !== current) {
               if (Math.abs(current - previous) > 1) {
-                // reconnect jump: direct, no intermediate anim but still show current as animating briefly
                 animating = current;
               } else if (current > previous) {
                 animating = current;
               } else {
-                // rollback correction
                 animating = current;
               }
-              // auto clear after 350ms
               setTimeout(() => patchState(store, { _animatingRound: null }), 350);
-              if (animating != null) {
-                // set immediately, will be cleared
-                // patch will be done below with animating
-              }
             }
 
             patchState(store, {
@@ -153,10 +141,6 @@ export const PlayerRoundsStore = signalStore(
               _animatingRound: animating,
               errorDetail: undefined,
             });
-            // if animating was set, ensure timeout clears
-            if (animating != null) {
-              // already scheduled
-            }
           },
           error: (err: unknown) => {
             const e = err as { detail?: string; title?: string; correlationId?: string; traceId?: string; message?: string; error?: { detail?: string; title?: string; correlationId?: string; traceId?: string } };
@@ -172,6 +156,16 @@ export const PlayerRoundsStore = signalStore(
       (store as any).hydrateLadder(gameId);
     },
 
+    clearError() {
+      patchState(store, { status: store.currentRoundNumber() == null ? 'empty' as const : 'ready' as const, errorDetail: undefined });
+    },
+
+    _setState(patch: Partial<LadderState>) {
+      patchState(store, patch as any);
+    }
+  })),
+
+  withMethods((store) => ({
     bindRealtimeLadder(gameId: string) {
       const prev = (store as unknown as { _ladderSub?: Subscription })._ladderSub;
       if (prev) try { prev.unsubscribe(); } catch {}
@@ -179,21 +173,13 @@ export const PlayerRoundsStore = signalStore(
         .pipe(debounceTime(100))
         .subscribe((evt: unknown) => {
           const t = (evt as { type?: string })?.type;
-          if (['RoundCompleted', 'QuestionAvailable', 'ScoreUpdated', 'GameFinished', 'RoundStarted', 'Reconnected'].includes(t as string)) {
-            (store as unknown as { hydrateLadder: (id: string)=>void }).hydrateLadder(gameId);
+          if (['GameStarted', 'PlayerJoined', 'RoundStarted', 'QuestionAvailable', 'QuestionPresented', 'PlayerAnswered', 'ScoreUpdated', 'LeaderboardUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn', 'PlayerStatusChanged', 'Reconnected'].includes(t as string)) {
+            // Use hydrateFor which delegates to hydrateLadder safely after store is fully built
+            try { (store as unknown as { hydrateFor: (id: string)=>void }).hydrateFor(gameId); } catch {}
           }
         });
       (store as unknown as { _ladderSub: Subscription })._ladderSub = sub;
       return sub;
     },
-
-    clearError() {
-      patchState(store, { status: store.currentRoundNumber() == null ? 'empty' as const : 'ready' as const, errorDetail: undefined });
-    },
-
-    // for tests to set state directly
-    _setState(patch: Partial<LadderState>) {
-      patchState(store, patch as any);
-    }
   }))
 );

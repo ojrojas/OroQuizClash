@@ -1,0 +1,25 @@
+- generic [ref=f10e3]:
+  - banner [ref=f10e4]:
+    - heading "QuizArena Player" [level=1] [ref=f10e5]
+    - navigation "Autenticación" [ref=f10e6]:
+      - generic [ref=f10e7]: ()
+      - button "Cerrar sesión" [ref=f10e8] [cursor=pointer]
+  - main [ref=f10e9]:
+    - generic [ref=f10e11]:
+      - status [ref=f10e117]: "Estado terminal: WITHDRAWN - ROUND_COMPLETED"
+      - group "Puntuaciones" [ref=f10e120]:
+        - status "Current Points 27 puntos" [ref=f10e121]:
+          - generic [ref=f10e122]: Current Points
+          - generic [ref=f10e123]: 27 pts
+        - status "Secured Points 27 checkpoint ronda 2" [ref=f10e124]:
+          - generic [ref=f10e125]: Secured Points
+          - generic [ref=f10e126]: 27 pts · checkpoint 2 · checkpoint 2asegurado
+        - 'status "Potential Points Próximo: 30 pts" [ref=f10e127]':
+          - generic [ref=f10e128]: Potential Points
+          - generic [ref=f10e129]: "Próximo: 30 pts"
+        - status "Round Points 0 en juego" [ref=f10e130]:
+          - generic [ref=f10e131]: Round Points
+          - generic [ref=f10e132]: 0 pts en juego
+        - status "Total Points 27 puntos" [ref=f10e133]:
+          - generic [ref=f10e134]: Total Points
+          - generic [ref=f10e135]: 27 pts

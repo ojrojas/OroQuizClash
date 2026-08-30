@@ -51,6 +51,11 @@
                         <td class="row-actions">
                             <QuizButton Variant="ghost" Size="sm" Icon="eye"
                                         OnClick="() => GoToDetail(game.Id)">Details</QuizButton>
+                            @if (game.Status == GameStatusView.Active)
+                            {
+                                <QuizButton Variant="primary" Size="sm" Icon="play"
+                                            OnClick="() => GoToLive(game.Id)">Live</QuizButton>
+                            }
                             @if (game.Status is GameStatusView.Configuring or GameStatusView.Lobby)
                             {
                                 <QuizButton Variant="secondary" Size="sm" OnClick="() => StartAsync(game)">Start</QuizButton>
@@ -202,7 +207,7 @@
         {
             await GamesService.StartGameAsync(game.Id);
             Toasts.Success("Game started", game.Name);
-            await LoadAsync();
+            Navigation.NavigateTo($"/admin/live/{game.Id}");
         }
         catch (ApiErrorException ex)
         {
@@ -274,6 +279,7 @@
     }
 
     private void GoToDetail(Guid id) => Navigation.NavigateTo($"/admin/games/{id}");
+    private void GoToLive(Guid id) => Navigation.NavigateTo($"/admin/live/{id}");
     private void GoToConfiguration() => Navigation.NavigateTo("/admin/games/configuration");
 
     private static string StatusVariant(GameStatusView status) => status switch

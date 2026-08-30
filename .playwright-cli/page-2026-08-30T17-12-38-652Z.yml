@@ -1,0 +1,139 @@
+- generic [ref=f5e2]:
+  - link "Skip to main content" [ref=f5e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f5e4]:
+    - generic [ref=f5e5]:
+      - generic [ref=f5e6]: QA
+      - generic [ref=f5e7]: QuizArena
+    - list [ref=f5e8]:
+      - listitem [ref=f5e9]:
+        - link "Dashboard" [ref=f5e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f5e16]:
+        - link "Games" [ref=f5e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f5e22]:
+        - link "Game Configuration" [ref=f5e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f5e25]:
+        - link "Categories" [ref=f5e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f5e29]:
+        - link "Question Bank" [ref=f5e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f5e34]:
+        - link "Players" [ref=f5e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f5e41]:
+        - link "Live Games" [ref=f5e42] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f5e49]:
+        - link "Reports" [ref=f5e50] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f5e53]:
+      - generic [ref=f5e54]: GAME MANAGER
+      - generic [ref=f5e55]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f5e56]:
+    - banner [ref=f5e57]:
+      - button "Toggle navigation" [ref=f5e58] [cursor=pointer]
+      - generic [ref=f5e60]: QuizArena Admin
+      - generic [ref=f5e61]:
+        - generic [ref=f5e62]: Manager1 Manager1
+        - button "Logout" [ref=f5e64] [cursor=pointer]
+    - main [ref=f5e69]:
+      - heading "Dashboard operacional" [level=1] [ref=f5e70]
+      - generic [ref=f5e71]:
+        - button "Actualizar" [ref=f5e72] [cursor=pointer]
+        - generic [ref=f5e74]: "Última actualización: 12:12:38 UTC"
+        - generic [ref=f5e75]:
+          - 'checkbox "Auto-refresh: OFF" [ref=f5e76]'
+          - text: "Auto-refresh: OFF"
+      - grid "Métricas del dashboard" [ref=f5e77]:
+        - status [ref=f5e78]:
+          - link "Juegos activos 1 Juegos activos" [ref=f5e79] [cursor=pointer]:
+            - /url: /admin/games?status=Active
+            - generic [ref=f5e81]:
+              - generic "Juegos activos 1" [ref=f5e82]: "1"
+              - generic [ref=f5e83]: Juegos activos
+        - status [ref=f5e84]:
+          - link "Juegos programados 8 Juegos programados" [ref=f5e85] [cursor=pointer]:
+            - /url: /admin/games?status=Scheduled
+            - generic [ref=f5e87]:
+              - generic "Juegos programados 8" [ref=f5e88]: "8"
+              - generic [ref=f5e89]: Juegos programados
+        - status [ref=f5e90]:
+          - link "Juegos finalizados 0 Juegos finalizados" [ref=f5e91] [cursor=pointer]:
+            - /url: /admin/games?status=Finished
+            - generic [ref=f5e93]:
+              - generic "Juegos finalizados 0" [ref=f5e94]: "0"
+              - generic [ref=f5e95]: Juegos finalizados
+        - status [ref=f5e96]:
+          - 'link "Jugadores conectados 2 Jugadores conectadosAproximación: backend no expone presencia online separada; se usa conteo de participantes. Aproximación: participantes en juegos" [ref=f5e97] [cursor=pointer]':
+            - /url: /admin/players?view=online
+            - generic [ref=f5e99]:
+              - generic "Jugadores conectados 2" [ref=f5e100]: "2"
+              - generic [ref=f5e101]:
+                - text: Jugadores conectados ⓘ
+                - generic [ref=f5e102]: "Aproximación: participantes en juegos"
+        - status [ref=f5e103]:
+          - link "Jugadores activos 0 Jugadores activos PLAYING en IN_PROGRESS" [ref=f5e104] [cursor=pointer]:
+            - /url: /admin/players?view=active
+            - generic [ref=f5e106]:
+              - generic "Jugadores activos 0" [ref=f5e107]: "0"
+              - generic [ref=f5e108]:
+                - text: Jugadores activos
+                - generic [ref=f5e109]: PLAYING en IN_PROGRESS
+        - status [ref=f5e110]:
+          - link "Preguntas disponibles 0 Preguntas disponibles" [ref=f5e111] [cursor=pointer]:
+            - /url: /admin/questions?status=Active
+            - generic [ref=f5e113]:
+              - generic "Preguntas disponibles 0" [ref=f5e114]: "0"
+              - generic [ref=f5e115]: Preguntas disponibles
+        - status [ref=f5e116]:
+          - link "Categorías 10 Categorías" [ref=f5e117] [cursor=pointer]:
+            - /url: /admin/categories?status=Active
+            - generic [ref=f5e119]:
+              - generic "Categorías 10" [ref=f5e120]: "10"
+              - generic [ref=f5e121]: Categorías
+        - status [ref=f5e122]:
+          - link "Premios 0 Premios" [ref=f5e123] [cursor=pointer]:
+            - /url: /admin/rewards?status=Active
+            - generic [ref=f5e125]:
+              - generic "Premios 0" [ref=f5e126]: "0"
+              - generic [ref=f5e127]: Premios
+        - status [ref=f5e128]:
+          - generic [ref=f5e130]:
+            - generic "No se pudo cargar el indicador. Reintente." [ref=f5e131]: Canjes
+            - generic [ref=f5e132]: No se pudo cargar el indicador. Reintente.
+            - text: Reintentar
+        - status [ref=f5e133]:
+          - link "Estadísticas generales 10 Estadísticas generales" [ref=f5e134] [cursor=pointer]:
+            - /url: /admin/reports?focus=general
+            - generic [ref=f5e136]:
+              - generic "Estadísticas generales 10" [ref=f5e137]: "10"
+              - generic [ref=f5e138]: Estadísticas generales
+      - region "Accesos rápidos" [ref=f5e139]:
+        - heading "Accesos rápidos" [level=2] [ref=f5e140]
+        - navigation "Accesos rápidos" [ref=f5e141]:
+          - button "Crear juego" [ref=f5e142]:
+            - generic [ref=f5e145]: Crear un nuevo juego
+          - button "Configurar juego" [ref=f5e146]:
+            - generic [ref=f5e149]: Configurar juego existente
+          - button "Gestionar preguntas" [ref=f5e150]:
+            - generic [ref=f5e155]: Banco de preguntas
+          - button "Ver juegos activos" [ref=f5e156]:
+            - generic [ref=f5e164]: Juegos en curso
+          - button "Ver jugadores" [ref=f5e165]:
+            - generic [ref=f5e172]: Listado de jugadores
+          - button "Consultar reportes" [ref=f5e173]:
+            - generic [ref=f5e177]: Reportes y estadísticas
+          - 'generic "Requiere rol: Admin, RewardManager" [ref=f5e178]':
+            - generic [ref=f5e184]: Gestionar premios
+            - generic [ref=f5e185]: Catálogo y canjes
+      - generic [ref=f5e186]:
+        - heading "Estadísticas generales" [level=3] [ref=f5e187]
+        - generic [ref=f5e188]:
+          - generic [ref=f5e189]: "Total juegos: 10"
+          - generic [ref=f5e190]: "Participaciones: 10"
+          - generic [ref=f5e191]: "Promedio preguntas/categoría: 0"
+  - region "Notifications"

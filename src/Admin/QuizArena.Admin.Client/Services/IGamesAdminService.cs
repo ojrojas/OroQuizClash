@@ -14,5 +14,7 @@ public interface IGamesAdminService
     Task ForceFinishGameAsync(Guid gameId, string reason, CancellationToken ct = default);
     Task OpenLobbyAsync(Guid gameId, CancellationToken ct = default);
     Task MarkReadyAsync(Guid gameId, CancellationToken ct = default);
+    Task StartRoundAsync(Guid gameId, CancellationToken ct = default);
+    Task CompleteRoundAsync(Guid gameId, Guid roundId, CancellationToken ct = default);
     Task<IReadOnlyList<LeaderboardEntry>> GetLeaderboardAsync(Guid gameId, CancellationToken ct = default);
 }

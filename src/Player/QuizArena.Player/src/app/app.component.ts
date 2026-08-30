@@ -60,6 +60,25 @@ export class AppComponent implements OnInit {
   authority = 'https://localhost:5086';
 
   ngOnInit(): void {
+    // No ejecutar checkAuth doble en callback — el CallbackComponent ya lo hace y consumiría el code dos veces (400)
+    if (window.location.pathname.includes('/auth/callback') || window.location.pathname.includes('/auth/logout-callback')) {
+      this.isCheckingAuth = false;
+      // Aun así suscribirse a isAuthenticated$ para reflejar estado si ya hay sesión
+      this.oidc.isAuthenticated$.subscribe(({ isAuthenticated }) => {
+        this.isAuthenticated = isAuthenticated;
+        if (!isAuthenticated) {
+          this.userName = '';
+          this.userEmail = '';
+        }
+      });
+      this.oidc.userData$.subscribe((userData: any) => {
+        if (userData) {
+          this.userName = userData?.name ?? userData?.preferred_username ?? '';
+          this.userEmail = userData?.email ?? '';
+        }
+      });
+      return;
+    }
     // Timeout de seguridad: si checkAuth no responde (CORS/cert), libera la UI a los 3s
     const fallback = setTimeout(() => {
       if (this.isCheckingAuth) {

@@ -1,0 +1,89 @@
+- generic [ref=f2e3]:
+  - banner [ref=f2e4]:
+    - heading "QuizArena Player" [level=1] [ref=f2e5]
+    - navigation "Autenticación" [ref=f2e6]:
+      - generic [ref=f2e13]: ()
+      - button "Cerrar sesión" [ref=f2e14] [cursor=pointer]
+  - main [ref=f2e8]:
+    - generic [ref=f2e16]:
+      - generic [ref=f2e669]:
+        - generic [ref=f2e670]:
+          - generic [ref=f2e671]: "Current Round: Ronda 5/8"
+          - generic [ref=f2e672]: "Current Level: 40 (5)"
+          - generic [ref=f2e673]: "Player Status: ACTIVE"
+        - generic [ref=f2e675]:
+          - list "Jugadores"
+          - status "Players Remaining 0" [ref=f2e676]: "Players Remaining: 0"
+          - list "Leaderboard"
+          - status "Current Round 1 de 10" [ref=f2e677]: Ronda 1/10
+        - timer [ref=f2e679]: 11sRUNNING
+      - complementary [ref=f2e680]:
+        - region "Progresión de rondas" [ref=f2e682]:
+          - list "Progresión de rondas" [ref=f2e683]:
+            - listitem "Ronda 1 de 8, nivel Basic, recompensa 10 pts" [ref=f2e684]:
+              - generic [ref=f2e685]: Round 1
+              - generic [ref=f2e686]: Basic
+              - generic [ref=f2e687]: · 1
+              - generic "Próxima recompensa" [ref=f2e688]: 10 pts · próximo
+            - listitem "Ronda 2 de 8, nivel Elementary, recompensa 20 pts" [ref=f2e689]:
+              - generic [ref=f2e690]: Round 2
+              - generic [ref=f2e691]: Elementary
+              - generic [ref=f2e692]: · 2
+            - listitem "Ronda 3 de 8, nivel Intermediate, recompensa 30 pts" [ref=f2e693]:
+              - generic [ref=f2e694]: Round 3
+              - generic [ref=f2e695]: Intermediate
+              - generic [ref=f2e696]: · 3
+            - listitem "Ronda 4 de 8, nivel Advanced, recompensa 40 pts" [ref=f2e697]:
+              - generic [ref=f2e698]: Round 4
+              - generic [ref=f2e699]: Advanced
+              - generic [ref=f2e700]: · 4
+            - listitem "Ronda 5 de 8, nivel Expert, recompensa 50 pts" [ref=f2e701]:
+              - generic [ref=f2e702]: Round 5
+              - generic [ref=f2e703]: Expert
+              - generic [ref=f2e704]: · 5
+            - listitem "Ronda 6 de 8, nivel Basic, recompensa 60 pts" [ref=f2e705]:
+              - generic [ref=f2e706]: Round 6
+              - generic [ref=f2e707]: Basic
+              - generic [ref=f2e708]: · 1
+            - listitem "Ronda 7 de 8, nivel Elementary, recompensa 70 pts" [ref=f2e709]:
+              - generic [ref=f2e710]: Round 7
+              - generic [ref=f2e711]: Elementary
+              - generic [ref=f2e712]: · 2
+            - listitem "Ronda 8 de 8, nivel Intermediate, recompensa 80 pts, recompensa final" [ref=f2e713]:
+              - generic [ref=f2e714]: Round 8
+              - generic [ref=f2e715]: Intermediate
+              - generic [ref=f2e716]: · 3
+              - generic "Recompensa final" [ref=f2e717]: Final 80 pts
+          - generic [ref=f2e721]: Sin monto asegurado
+      - main [ref=f2e722]:
+        - heading "¿Trabajo = ?" [level=2] [ref=f2e723]
+        - generic [ref=f2e725]:
+          - heading "¿Trabajo = ?" [level=2] [ref=f2e726]
+          - radiogroup "Opciones de respuesta" [ref=f2e727]:
+            - radio "F/d" [disabled] [ref=f2e728] [cursor=pointer]:
+              - generic [ref=f2e730]: ✗
+            - radio "F·t" [disabled] [ref=f2e731] [cursor=pointer]
+            - radio "F·d·cosθ" [disabled] [ref=f2e733] [cursor=pointer]
+            - radio "m·a" [disabled] [ref=f2e735] [cursor=pointer]
+          - status [ref=f2e737]: Incorrecto — la correcta era
+          - button "Confirmar respuesta" [disabled] [ref=f2e738]: Confirmar
+        - generic [ref=f2e739]: "Potential Reward: Próximo: 60 pts"
+      - generic [ref=f2e740]:
+        - group "Puntuaciones" [ref=f2e743]:
+          - status "Current Points 40 puntos" [ref=f2e744]:
+            - generic [ref=f2e745]: Current Points
+            - generic [ref=f2e746]: 40 pts
+          - status "Secured Points 40 checkpoint ronda 5" [ref=f2e747]:
+            - generic [ref=f2e748]: Secured Points
+            - generic [ref=f2e749]: 40 pts · checkpoint 5 · checkpoint 5asegurado
+          - 'status "Potential Points Próximo: 60 pts" [ref=f2e750]':
+            - generic [ref=f2e751]: Potential Points
+            - generic [ref=f2e752]: "Próximo: 60 pts"
+          - status "Round Points 0 en juego" [ref=f2e753]:
+            - generic [ref=f2e754]: Round Points
+            - generic [ref=f2e755]: 0 pts en juego
+          - status "Total Points 40 puntos" [ref=f2e756]:
+            - generic [ref=f2e757]: Total Points
+            - generic [ref=f2e758]: 40 pts
+        - generic [ref=f2e759]: "Secured Points: 40 checkpoint ronda 5"
+        - button "Retirarse" [ref=f2e760]: Withdrawal Action

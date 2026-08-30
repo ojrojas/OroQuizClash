@@ -171,10 +171,24 @@ public class DashboardServiceCore(
         return finished + cancelled;
     }
 
-    private Task<int> FetchConnectedPlayersAsync(CancellationToken ct)
+    private async Task<int> FetchConnectedPlayersAsync(CancellationToken ct)
     {
-        // No dedicated endpoint; approximate with 0 and document via tooltip. Keep non-blocking.
-        return Task.FromResult(0);
+        // Approximate via participants in active games (live). Sum PlayerCount from IN_PROGRESS + ROUND_IN_PROGRESS.
+        // GameStatusView.Active maps via FromApi to both IN_PROGRESS/ROUND_IN_PROGRESS/ROUND_COMPLETED, but ToApiQuery only sends IN_PROGRESS.
+        // To avoid missing ROUND_IN_PROGRESS, we fetch unfiltered and filter client-side for Active.
+        try
+        {
+            var all = await games.GetGamesAsync(new GameFilter(PageSize: 100), ct);
+            var activePlayers = all.Items.Where(g => g.Status == GameStatusView.Active).Sum(g => g.PlayerCount);
+            if (activePlayers > 0) return activePlayers;
+            // Fallback: also check Lobby games that have players (still connected while waiting)
+            var lobbyPlayers = all.Items.Where(g => g.Status == GameStatusView.Lobby).Sum(g => g.PlayerCount);
+            return activePlayers + lobbyPlayers;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     private Task<int> FetchActivePlayersAsync(CancellationToken ct)

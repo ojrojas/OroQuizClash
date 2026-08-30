@@ -18,6 +18,33 @@ public sealed class ServerLiveGameOperationsService(HttpClient http) : ILiveGame
     public async Task<LiveGameView> ForceFinishAsync(Guid gameId, string rowVersion, string idempotencyKey, CancellationToken ct = default)
         => await SendAsync(gameId, "force-finish", rowVersion, idempotencyKey, null, ct);
 
+    public async Task<LiveGameView> StartRoundAsync(Guid gameId, string rowVersion, string idempotencyKey, CancellationToken ct = default)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/api/games/{gameId}/rounds/start");
+        req.Headers.TryAddWithoutValidation("If-Match", $"W/\"{rowVersion}\"");
+        req.Headers.TryAddWithoutValidation("X-Idempotency-Key", idempotencyKey);
+        var response = await http.SendAsync(req, ct);
+        response.EnsureSuccessStatusCode();
+        var liveReq = new HttpRequestMessage(HttpMethod.Get, $"/api/games/{gameId}/live");
+        var liveResp = await http.SendAsync(liveReq, ct);
+        return await liveResp.ReadAsAsync<LiveGameView>(ct);
+    }
+
+    public async Task<LiveGameView> CompleteRoundAsync(Guid gameId, Guid roundId, string rowVersion, string idempotencyKey, CancellationToken ct = default)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/api/games/{gameId}/rounds/{roundId}/complete")
+        {
+            Content = JsonContent.Create(new { rowVersion, idempotencyKey })
+        };
+        req.Headers.TryAddWithoutValidation("If-Match", $"W/\"{rowVersion}\"");
+        req.Headers.TryAddWithoutValidation("X-Idempotency-Key", idempotencyKey);
+        var response = await http.SendAsync(req, ct);
+        response.EnsureSuccessStatusCode();
+        var liveReq = new HttpRequestMessage(HttpMethod.Get, $"/api/games/{gameId}/live");
+        var liveResp = await http.SendAsync(liveReq, ct);
+        return await liveResp.ReadAsAsync<LiveGameView>(ct);
+    }
+
     private async Task<LiveGameView> SendAsync(Guid gameId, string action, string rowVersion, string idempotencyKey, string? reason, CancellationToken ct)
     {
         var req = new HttpRequestMessage(HttpMethod.Post, $"/api/games/{gameId}/{action}")

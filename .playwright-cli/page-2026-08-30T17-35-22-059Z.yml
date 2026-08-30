@@ -1,0 +1,77 @@
+- generic [ref=f3e3]:
+  - banner [ref=f3e4]:
+    - heading "QuizArena Player" [level=1] [ref=f3e5]
+    - navigation "Autenticación" [ref=f3e6]:
+      - generic [ref=f3e7]: ()
+      - button "Cerrar sesión" [ref=f3e8] [cursor=pointer]
+  - main [ref=f3e9]:
+    - generic [ref=f3e173]:
+      - generic [ref=f3e255]:
+        - generic [ref=f3e256]:
+          - generic [ref=f3e257]: "Current Round: Ronda 1/5"
+          - generic [ref=f3e258]: "Current Level: 0 (3)"
+          - generic [ref=f3e259]: "Player Status: ACTIVE"
+        - generic [ref=f3e261]:
+          - list "Jugadores"
+          - status "Players Remaining 0" [ref=f3e262]: "Players Remaining: 0"
+          - list "Leaderboard"
+          - status "Current Round 1 de 10" [ref=f3e263]: Ronda 1/10
+        - timer [ref=f3e265]: 3sRUNNING
+      - complementary [ref=f3e266]:
+        - region "Progresión de rondas" [ref=f3e268]:
+          - list "Progresión de rondas" [ref=f3e269]:
+            - listitem "Ronda 1 de 5, nivel Basic, recompensa 10 pts" [ref=f3e270]:
+              - generic [ref=f3e271]: Round 1
+              - generic [ref=f3e272]: Basic
+              - generic [ref=f3e273]: · 1
+              - generic "Próxima recompensa" [ref=f3e274]: 10 pts · próximo
+            - listitem "Ronda 2 de 5, nivel Elementary, recompensa 20 pts" [ref=f3e275]:
+              - generic [ref=f3e276]: Round 2
+              - generic [ref=f3e277]: Elementary
+              - generic [ref=f3e278]: · 2
+            - listitem "Ronda 3 de 5, nivel Intermediate, recompensa 30 pts" [ref=f3e279]:
+              - generic [ref=f3e280]: Round 3
+              - generic [ref=f3e281]: Intermediate
+              - generic [ref=f3e282]: · 3
+            - listitem "Ronda 4 de 5, nivel Advanced, recompensa 40 pts" [ref=f3e283]:
+              - generic [ref=f3e284]: Round 4
+              - generic [ref=f3e285]: Advanced
+              - generic [ref=f3e286]: · 4
+            - listitem "Ronda 5 de 5, nivel Expert, recompensa 50 pts, recompensa final" [ref=f3e287]:
+              - generic [ref=f3e288]: Round 5
+              - generic [ref=f3e289]: Expert
+              - generic [ref=f3e290]: · 5
+              - generic "Recompensa final" [ref=f3e291]: Final 50 pts
+          - generic [ref=f3e295]: Sin monto asegurado
+      - main [ref=f3e296]:
+        - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f3e297]
+        - generic [ref=f3e299]:
+          - heading "¿Cuál es la función de los lisosomas?" [level=2] [ref=f3e300]
+          - radiogroup "Opciones de respuesta" [ref=f3e301]:
+            - radio "Fotosíntesis" [disabled] [ref=f3e302] [cursor=pointer]
+            - radio "Digestión celular" [checked] [disabled] [ref=f3e304] [cursor=pointer]:
+              - generic [ref=f3e306]: ✓
+            - radio "Respiración" [disabled] [ref=f3e307] [cursor=pointer]
+            - radio "Transporte" [disabled] [ref=f3e309] [cursor=pointer]
+          - status [ref=f3e311]: ¡Correcto! + pts
+          - button "Confirmar respuesta" [disabled] [ref=f3e312]: Confirmar
+        - generic [ref=f3e313]: "Potential Reward: Próximo: 20 pts"
+      - generic [ref=f3e314]:
+        - group "Puntuaciones" [ref=f3e317]:
+          - status "Current Points 0 puntos" [ref=f3e318]:
+            - generic [ref=f3e319]: Current Points
+            - generic [ref=f3e320]: 0 pts
+          - status "Secured Points 0" [ref=f3e321]:
+            - generic [ref=f3e322]: Secured Points
+            - generic [ref=f3e323]: 0 pts
+          - 'status "Potential Points Próximo: 20 pts" [ref=f3e324]':
+            - generic [ref=f3e325]: Potential Points
+            - generic [ref=f3e326]: "Próximo: 20 pts"
+          - status "Round Points 0 en juego" [ref=f3e327]:
+            - generic [ref=f3e328]: Round Points
+            - generic [ref=f3e329]: 0 pts en juego
+          - status "Total Points 0 puntos" [ref=f3e330]:
+            - generic [ref=f3e331]: Total Points
+            - generic [ref=f3e332]: 0 pts
+        - generic [ref=f3e333]: "Secured Points: 0"
+        - button "Retirarse" [ref=f3e334]: Withdrawal Action

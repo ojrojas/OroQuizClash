@@ -57,6 +57,7 @@ else if (game is not null)
                 }
                 @if (game.Status == GameStatusView.Active)
                 {
+                    <QuizButton Variant="primary" OnClick="GoToLive">Live</QuizButton>
                     <QuizButton Variant="secondary" OnClick="FinishAsync">Finish</QuizButton>
                     <QuizButton Variant="destructive" OnClick="OpenForceFinish">Force finish</QuizButton>
                 }
@@ -139,6 +140,7 @@ else if (game is not null)
     }
 
     private void GoBack() => Navigation.NavigateTo("/admin/games");
+    private void GoToLive() => Navigation.NavigateTo($"/admin/live/{Id}");
 
     private async Task MarkReadyAsync()
     {
@@ -152,7 +154,7 @@ else if (game is not null)
     }
     private async Task StartAsync()
     {
-        try { await GamesService.StartGameAsync(Id); Toasts.Success("Started"); await LoadAsync(); }
+        try { await GamesService.StartGameAsync(Id); Toasts.Success("Started"); Navigation.NavigateTo($"/admin/live/{Id}"); }
         catch (ApiErrorException ex) { Toasts.Error("Failed", ex.ErrorView.Detail ?? ex.ErrorView.Title); }
     }
     private async Task FinishAsync()

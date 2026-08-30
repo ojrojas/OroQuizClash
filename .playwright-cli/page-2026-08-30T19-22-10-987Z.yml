@@ -1,0 +1,153 @@
+- generic [ref=f1e2]:
+  - link "Skip to main content" [ref=f1e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: QA
+      - generic [ref=f1e7]: QuizArena
+    - list [ref=f1e8]:
+      - listitem [ref=f1e9]:
+        - link "Dashboard" [ref=f1e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f1e16]:
+        - link "Games" [ref=f1e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f1e22]:
+        - link "Game Configuration" [ref=f1e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f1e25]:
+        - link "Categories" [ref=f1e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f1e29]:
+        - link "Question Bank" [ref=f1e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f1e34]:
+        - link "Players" [ref=f1e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f1e41]:
+        - link "Rewards" [ref=f1e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f1e48]:
+        - link "Live Games" [ref=f1e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f1e56]:
+        - link "Reports" [ref=f1e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f1e60]:
+        - link "Audit" [ref=f1e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f1e65]:
+      - generic [ref=f1e66]: Administrator
+      - generic [ref=f1e67]: ADMIN
+      - generic [ref=f1e68]: GAME MANAGER
+      - generic [ref=f1e69]: REWARD MANAGER
+      - generic [ref=f1e70]: PLAYER
+      - generic [ref=f1e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f1e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f1e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f1e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f1e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f1e76]:
+    - banner [ref=f1e77]:
+      - button "Toggle navigation" [ref=f1e78] [cursor=pointer]
+      - generic [ref=f1e80]: QuizArena Admin
+      - generic [ref=f1e81]:
+        - generic [ref=f1e82]: Admin Administrator
+        - button "Logout" [ref=f1e84] [cursor=pointer]
+    - main [ref=f1e89]:
+      - heading "Dashboard operacional" [level=1] [ref=f1e90]
+      - generic [ref=f1e91]:
+        - button "Actualizar" [ref=f1e92] [cursor=pointer]
+        - generic [ref=f1e94]: "Última actualización: 14:22:10 UTC"
+        - generic [ref=f1e95]:
+          - 'checkbox "Auto-refresh: OFF" [ref=f1e96]'
+          - text: "Auto-refresh: OFF"
+      - grid "Métricas del dashboard" [ref=f1e97]:
+        - status [ref=f1e98]:
+          - link "Juegos activos 2 Juegos activos" [ref=f1e99] [cursor=pointer]:
+            - /url: /admin/games?status=Active
+            - generic [ref=f1e101]:
+              - generic "Juegos activos 2" [ref=f1e102]: "2"
+              - generic [ref=f1e103]: Juegos activos
+        - status [ref=f1e104]:
+          - link "Juegos programados 6 Juegos programados" [ref=f1e105] [cursor=pointer]:
+            - /url: /admin/games?status=Scheduled
+            - generic [ref=f1e107]:
+              - generic "Juegos programados 6" [ref=f1e108]: "6"
+              - generic [ref=f1e109]: Juegos programados
+        - status [ref=f1e110]:
+          - link "Juegos finalizados 1 Juegos finalizados" [ref=f1e111] [cursor=pointer]:
+            - /url: /admin/games?status=Finished
+            - generic [ref=f1e113]:
+              - generic "Juegos finalizados 1" [ref=f1e114]: "1"
+              - generic [ref=f1e115]: Juegos finalizados
+        - status [ref=f1e116]:
+          - 'link "Jugadores conectados 4 Jugadores conectadosAproximación: backend no expone presencia online separada; se usa conteo de participantes. Aproximación: participantes en juegos" [ref=f1e117] [cursor=pointer]':
+            - /url: /admin/players?view=online
+            - generic [ref=f1e119]:
+              - generic "Jugadores conectados 4" [ref=f1e120]: "4"
+              - generic [ref=f1e121]:
+                - text: Jugadores conectados ⓘ
+                - generic [ref=f1e122]: "Aproximación: participantes en juegos"
+        - status [ref=f1e123]:
+          - link "Jugadores activos 0 Jugadores activos PLAYING en IN_PROGRESS" [ref=f1e124] [cursor=pointer]:
+            - /url: /admin/players?view=active
+            - generic [ref=f1e126]:
+              - generic "Jugadores activos 0" [ref=f1e127]: "0"
+              - generic [ref=f1e128]:
+                - text: Jugadores activos
+                - generic [ref=f1e129]: PLAYING en IN_PROGRESS
+        - status [ref=f1e130]:
+          - link "Preguntas disponibles 0 Preguntas disponibles" [ref=f1e131] [cursor=pointer]:
+            - /url: /admin/questions?status=Active
+            - generic [ref=f1e133]:
+              - generic "Preguntas disponibles 0" [ref=f1e134]: "0"
+              - generic [ref=f1e135]: Preguntas disponibles
+        - status [ref=f1e136]:
+          - link "Categorías 10 Categorías" [ref=f1e137] [cursor=pointer]:
+            - /url: /admin/categories?status=Active
+            - generic [ref=f1e139]:
+              - generic "Categorías 10" [ref=f1e140]: "10"
+              - generic [ref=f1e141]: Categorías
+        - status [ref=f1e142]:
+          - link "Premios 0 Premios" [ref=f1e143] [cursor=pointer]:
+            - /url: /admin/rewards?status=Active
+            - generic [ref=f1e145]:
+              - generic "Premios 0" [ref=f1e146]: "0"
+              - generic [ref=f1e147]: Premios
+        - status [ref=f1e148]:
+          - link "Canjes 0 Canjes" [ref=f1e149] [cursor=pointer]:
+            - /url: /admin/rewards?status=Pending
+            - generic [ref=f1e151]:
+              - generic "Canjes 0" [ref=f1e152]: "0"
+              - generic [ref=f1e153]: Canjes
+        - status [ref=f1e154]:
+          - link "Estadísticas generales 13 Estadísticas generales" [ref=f1e155] [cursor=pointer]:
+            - /url: /admin/reports?focus=general
+            - generic [ref=f1e157]:
+              - generic "Estadísticas generales 13" [ref=f1e158]: "13"
+              - generic [ref=f1e159]: Estadísticas generales
+      - region "Accesos rápidos" [ref=f1e160]:
+        - heading "Accesos rápidos" [level=2] [ref=f1e161]
+        - navigation "Accesos rápidos" [ref=f1e162]:
+          - button "Crear juego" [ref=f1e163]:
+            - generic [ref=f1e166]: Crear un nuevo juego
+          - button "Configurar juego" [ref=f1e167]:
+            - generic [ref=f1e170]: Configurar juego existente
+          - button "Gestionar preguntas" [ref=f1e171]:
+            - generic [ref=f1e176]: Banco de preguntas
+          - button "Ver juegos activos" [ref=f1e177]:
+            - generic [ref=f1e185]: Juegos en curso
+          - button "Ver jugadores" [ref=f1e186]:
+            - generic [ref=f1e193]: Listado de jugadores
+          - button "Gestionar premios" [ref=f1e194]:
+            - generic [ref=f1e201]: Catálogo y canjes
+          - button "Consultar reportes" [ref=f1e202]:
+            - generic [ref=f1e206]: Reportes y estadísticas
+      - generic [ref=f1e207]:
+        - heading "Estadísticas generales" [level=3] [ref=f1e208]
+        - generic [ref=f1e209]:
+          - generic [ref=f1e210]: "Total juegos: 13"
+          - generic [ref=f1e211]: "Participaciones: 13"
+          - generic [ref=f1e212]: "Promedio preguntas/categoría: 0"
+  - region "Notifications"

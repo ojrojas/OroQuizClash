@@ -30,7 +30,7 @@ else if (view is not null)
         <LiveScoresTable Scores="@view.Scores" IsLoading="@scoresLoading" IsError="@scoresError" ErrorMessage="@scoresErrorMessage" OnRetry="ReloadAsync" />
     </div>
 
-    <LiveOperationsBar State="@view.Status" RowVersion="@view.RowVersion" IsBusy="@isBusy" OnOperation="HandleOperation" />
+    <LiveOperationsBar State="@view.Status" RowVersion="@view.RowVersion" IsBusy="@isBusy" CurrentRoundId="@view.CurrentRoundId" HasActiveRound="@(view.CurrentRoundId.HasValue)" OnOperation="HandleOperation" />
 
     @if (sessionExpired)
     {
@@ -154,12 +154,17 @@ else
                 .WithUrl(Navigation.ToAbsoluteUri("/hubs/game"))
                 .WithAutomaticReconnect()
                 .Build();
+            hubConnection.On<string>("GameStarted", async _ => await ReloadAsync());
+            hubConnection.On<string>("RoundStarted", async _ => await ReloadAsync());
+            hubConnection.On<string>("RoundCompleted", async _ => await ReloadAsync());
+            hubConnection.On<string>("LeaderboardUpdated", async _ => await ReloadAsync());
+            hubConnection.On<string>("GameFinished", async _ => await ReloadAsync());
             hubConnection.On<string>("GamePaused", async _ => await ReloadAsync());
             hubConnection.On<string>("GameResumed", async _ => await ReloadAsync());
             hubConnection.On<string>("ScoreUpdated", async _ => await ReloadAsync());
             hubConnection.On<string>("QuestionAvailable", async _ => await ReloadAsync());
             await hubConnection.StartAsync();
-            await hubConnection.InvokeAsync("AddToGroup", $"game-{GameId}");
+            await hubConnection.InvokeAsync("JoinGameGroup", GameId);
         }
         catch { /* fallback to polling */ }
     }
@@ -177,6 +182,10 @@ else
                 "Resume" => await OperationsService.ResumeAsync(GameId, args.RowVersion, idempotencyKey),
                 "Cancel" => await OperationsService.CancelAsync(GameId, args.RowVersion, idempotencyKey, args.Reason),
                 "ForceFinish" => await OperationsService.ForceFinishAsync(GameId, args.RowVersion, idempotencyKey),
+                "StartRound" => await OperationsService.StartRoundAsync(GameId, args.RowVersion, idempotencyKey),
+                "CompleteRound" => view?.CurrentRoundId is Guid rid
+                    ? await OperationsService.CompleteRoundAsync(GameId, rid, args.RowVersion, idempotencyKey)
+                    : view,
                 _ => view
             };
         }

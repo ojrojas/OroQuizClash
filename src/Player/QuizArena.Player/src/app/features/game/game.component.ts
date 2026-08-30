@@ -125,16 +125,21 @@ export class GameComponent implements OnInit, OnDestroy {
     this.store.hydrateFor(this.gameId);
     this.store.startTimerTick();
     this.store.bindRealtime(this.gameId, () => firstValueFrom(this.oidc.getAccessToken()));
-    this.roundsStore.hydrateLadder(this.gameId);
-    this.roundsStore.bindRealtimeLadder(this.gameId);
+    try {
+      const rs: any = this.roundsStore as any;
+      if (typeof rs.hydrateLadder === 'function') rs.hydrateLadder(this.gameId);
+      else if (typeof rs.hydrateFor === 'function') rs.hydrateFor(this.gameId);
+      else if (typeof rs.hydrate === 'function') rs.hydrate(this.gameId);
+    } catch (e) { console.warn('roundsStore hydrate failed', e); }
+    try { this.roundsStore.bindRealtimeLadder(this.gameId); } catch (e) { console.warn('bindRealtimeLadder failed', e); }
     this.answerStore.hydrateAnswer(this.gameId);
     (this.store as unknown as { _realtime: { events$: import('rxjs').Observable<{type:string}> } })._realtime.events$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((evt) => {
-        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'Reconnected', 'RoundStarted'].includes(evt.type)) {
+        if (['GameStarted', 'PlayerJoined', 'QuestionAvailable', 'QuestionPresented', 'ScoreUpdated', 'LeaderboardUpdated', 'PlayerAnswered', 'RoundCompleted', 'Reconnected', 'RoundStarted', 'PlayerStatusChanged'].includes(evt.type)) {
           this.answerStore.hydrateAnswer(this.gameId);
         }
-        if (['ScoreUpdated', 'RoundCompleted', 'PlayerWithdrawn', 'GameFinished'].includes(evt.type)) {
+        if (['ScoreUpdated', 'LeaderboardUpdated', 'RoundCompleted', 'PlayerWithdrawn', 'PlayerStatusChanged', 'GameFinished'].includes(evt.type)) {
           this.leaderboardComp?.hydrate(this.gameId);
         }
       });
@@ -150,7 +155,11 @@ export class GameComponent implements OnInit, OnDestroy {
   hydrate() {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.store.hydrateFor(gameId);
-    this.roundsStore.hydrateLadder(gameId);
+    try {
+      const rs: any = this.roundsStore as any;
+      if (typeof rs.hydrateLadder === 'function') rs.hydrateLadder(gameId);
+      else if (typeof rs.hydrateFor === 'function') rs.hydrateFor(gameId);
+    } catch {}
     this.answerStore.hydrateAnswer(gameId);
     this.leaderboardComp?.hydrate(gameId);
   }

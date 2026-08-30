@@ -129,6 +129,19 @@ public class GamesAdminServiceCore(HttpClient http, string prefix) : IGamesAdmin
     public Task MarkReadyAsync(Guid gameId, CancellationToken ct = default) =>
         PostEmptyAsync($"{prefix}/games/{gameId}/ready", ct);
 
+    public Task StartRoundAsync(Guid gameId, CancellationToken ct = default) =>
+        PostEmptyAsync($"{prefix}/games/{gameId}/rounds/start", ct);
+
+    public async Task CompleteRoundAsync(Guid gameId, Guid roundId, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"{prefix}/games/{gameId}/rounds/{roundId}/complete")
+        {
+            Content = JsonContent.Create(new { })
+        };
+        using var response = await http.SendAsync(request, ct);
+        await response.ThrowIfApiErrorAsync(ct);
+    }
+
     public async Task<IReadOnlyList<LeaderboardEntry>> GetLeaderboardAsync(Guid gameId, CancellationToken ct = default)
     {
         var leaderboard = await http.GetFromJsonAsync<ApiLeaderboard>($"{prefix}/games/{gameId}/leaderboard", ct);

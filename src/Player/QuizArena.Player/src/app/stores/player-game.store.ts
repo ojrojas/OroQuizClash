@@ -64,7 +64,7 @@ export const PlayerGameStore = signalStore(
     remainingSeconds: computed(() => Math.max(0, Math.floor((new Date(timer().expiresAt).getTime() - _now()) / 1000))),
     isExpired: computed(() => timer().state === 'EXPIRED' || (timer().state === 'RUNNING' && new Date(timer().expiresAt).getTime() <= _now())),
     isTerminal: computed(() => status().isTerminal),
-    canAnswer: computed(() => status().canAnswer && round()?.status === 'IN_PROGRESS' && answer()?.state === 'PENDING'),
+    canAnswer: computed(() => status().canAnswer && (round()?.status === 'IN_PROGRESS' || round()?.status === 'ROUND_IN_PROGRESS') && (answer()?.state === 'PENDING' || answer()?.state === 'NOT_ANSWERED' || !answer()?.state)),
     displayScore: computed(() => `${status().isTerminal ? 'Final' : ''} ${status().gameStatus}`),
     potentialReward: computed(() => {
       const g = game() as any;
@@ -168,7 +168,7 @@ export const PlayerGameStore = signalStore(
       store._realtime.connect(gameId, accessTokenFactory);
       store._realtimeSub = store._realtime.events$.subscribe((evt) => {
         const type = (evt as { type: string }).type;
-        if (['QuestionAvailable', 'ScoreUpdated', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn', 'RoundStarted'].includes(type)) {
+        if (['GameStarted', 'PlayerJoined', 'RoundStarted', 'QuestionAvailable', 'QuestionPresented', 'ScoreUpdated', 'LeaderboardUpdated', 'PlayerAnswered', 'RoundCompleted', 'GameFinished', 'PlayerWithdrawn', 'PlayerStatusChanged'].includes(type)) {
           if (type === 'ScoreUpdated') { patchState(store, { _isPulse: true } as any); setTimeout(() => patchState(store, { _isPulse: false } as any), 600); }
           const payload = (evt as any).payload;
           if (payload?.serverNow) patchState(store, { _now: new Date(payload.serverNow).getTime() } as any);

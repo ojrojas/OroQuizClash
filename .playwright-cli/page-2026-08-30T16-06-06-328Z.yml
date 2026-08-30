@@ -1,0 +1,93 @@
+- generic [ref=f3e3]:
+  - banner [ref=f3e4]:
+    - heading "QuizArena Player" [level=1] [ref=f3e5]
+    - navigation "Autenticación" [ref=f3e6]:
+      - generic [ref=f3e7]: ()
+      - button "Cerrar sesión" [ref=f3e8] [cursor=pointer]
+  - main [ref=f3e9]:
+    - generic [ref=f3e11]:
+      - generic [ref=f3e309]:
+        - generic [ref=f3e310]:
+          - generic [ref=f3e311]: "Current Round: Ronda 4/8"
+          - generic [ref=f3e312]: "Current Level: 20 (5)"
+          - generic [ref=f3e313]: "Player Status: ACTIVE"
+        - generic [ref=f3e315]:
+          - list "Jugadores"
+          - status "Players Remaining 0" [ref=f3e316]: "Players Remaining: 0"
+          - list "Leaderboard"
+          - status "Current Round 1 de 10" [ref=f3e317]: Ronda 1/10
+        - timer [ref=f3e319]: 11sRUNNING
+      - complementary [ref=f3e320]:
+        - region "Progresión de rondas" [ref=f3e322]:
+          - list "Progresión de rondas" [ref=f3e323]:
+            - listitem "Ronda 1 de 8, nivel Basic, recompensa 10 pts, asegurado" [ref=f3e324]:
+              - generic [ref=f3e325]: Round 1
+              - generic [ref=f3e326]: Basic
+              - generic [ref=f3e327]: · 1
+              - generic [ref=f3e328]: ✓
+            - listitem "Ronda 2 de 8, nivel Elementary, recompensa 20 pts, asegurado" [ref=f3e329]:
+              - generic [ref=f3e330]: Round 2
+              - generic [ref=f3e331]: Elementary
+              - generic [ref=f3e332]: · 2
+              - generic [ref=f3e333]: ✓
+            - listitem "Ronda 3 de 8, nivel 5, recompensa 30 pts, asegurado, nivel actual" [ref=f3e334]:
+              - generic [ref=f3e335]: Round 3
+              - generic [ref=f3e336]: "5"
+              - generic "Recompensa actual" [ref=f3e337]: 30 pts
+              - generic "Asegurado" [ref=f3e338]: Asegurado 10 pts
+            - listitem "Ronda 4 de 8, nivel Advanced, recompensa 40 pts" [ref=f3e341]:
+              - generic [ref=f3e342]: Round 4
+              - generic [ref=f3e343]: Advanced
+              - generic [ref=f3e344]: · 4
+              - generic "Próxima recompensa" [ref=f3e345]: 40 pts · próximo
+            - listitem "Ronda 5 de 8, nivel Expert, recompensa 50 pts" [ref=f3e346]:
+              - generic [ref=f3e347]: Round 5
+              - generic [ref=f3e348]: Expert
+              - generic [ref=f3e349]: · 5
+            - listitem "Ronda 6 de 8, nivel Basic, recompensa 60 pts" [ref=f3e350]:
+              - generic [ref=f3e351]: Round 6
+              - generic [ref=f3e352]: Basic
+              - generic [ref=f3e353]: · 1
+            - listitem "Ronda 7 de 8, nivel Elementary, recompensa 70 pts" [ref=f3e354]:
+              - generic [ref=f3e355]: Round 7
+              - generic [ref=f3e356]: Elementary
+              - generic [ref=f3e357]: · 2
+            - listitem "Ronda 8 de 8, nivel Intermediate, recompensa 80 pts, recompensa final" [ref=f3e358]:
+              - generic [ref=f3e359]: Round 8
+              - generic [ref=f3e360]: Intermediate
+              - generic [ref=f3e361]: · 3
+              - generic "Recompensa final" [ref=f3e362]: Final 80 pts
+          - generic [ref=f3e365]: Ronda actual 3 de 8, nivel 5
+          - generic [ref=f3e366]: "Asegurado: 10 pts en ronda 3"
+      - main [ref=f3e367]:
+        - heading "¿Qué es la presión?" [level=2] [ref=f3e368]
+        - generic [ref=f3e370]:
+          - heading "¿Qué es la presión?" [level=2] [ref=f3e371]
+          - radiogroup "Opciones de respuesta" [ref=f3e372]:
+            - radio "Fuerza por volumen" [disabled] [ref=f3e373] [cursor=pointer]:
+              - generic [ref=f3e375]: ✗
+            - radio "Fuerza por área" [disabled] [ref=f3e376] [cursor=pointer]
+            - radio "Masa por volumen" [disabled] [ref=f3e378] [cursor=pointer]
+            - radio "Energía por tiempo" [disabled] [ref=f3e380] [cursor=pointer]
+          - status [ref=f3e382]: Incorrecto — la correcta era
+          - button "Confirmar respuesta" [disabled] [ref=f3e383]: Confirmar
+        - generic [ref=f3e384]: "Potential Reward: Próximo: 50 pts"
+      - generic [ref=f3e385]:
+        - group "Puntuaciones" [ref=f3e388]:
+          - status "Current Points 20 puntos" [ref=f3e389]:
+            - generic [ref=f3e390]: Current Points
+            - generic [ref=f3e391]: 20 pts
+          - status "Secured Points 20 checkpoint ronda 4" [ref=f3e392]:
+            - generic [ref=f3e393]: Secured Points
+            - generic [ref=f3e394]: 20 pts · checkpoint 4 · checkpoint 4asegurado
+          - 'status "Potential Points Próximo: 50 pts" [ref=f3e395]':
+            - generic [ref=f3e396]: Potential Points
+            - generic [ref=f3e397]: "Próximo: 50 pts"
+          - status "Round Points 0 en juego" [ref=f3e398]:
+            - generic [ref=f3e399]: Round Points
+            - generic [ref=f3e400]: 0 pts en juego
+          - status "Total Points 20 puntos" [ref=f3e401]:
+            - generic [ref=f3e402]: Total Points
+            - generic [ref=f3e403]: 20 pts
+        - generic [ref=f3e404]: "Secured Points: 20 checkpoint ronda 4"
+        - button "Retirarse" [ref=f3e405]: Withdrawal Action

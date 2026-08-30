@@ -1,0 +1,70 @@
+- generic [ref=f4e2]:
+  - link "Skip to main content" [ref=f4e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f4e4]:
+    - generic [ref=f4e5]:
+      - generic [ref=f4e6]: QA
+      - generic [ref=f4e7]: QuizArena
+    - list [ref=f4e8]:
+      - listitem [ref=f4e9]:
+        - link "Dashboard" [ref=f4e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f4e16]:
+        - link "Games" [ref=f4e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f4e22]:
+        - link "Game Configuration" [ref=f4e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f4e25]:
+        - link "Categories" [ref=f4e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f4e29]:
+        - link "Question Bank" [ref=f4e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f4e34]:
+        - link "Players" [ref=f4e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f4e41]:
+        - link "Live Games" [ref=f4e42] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f4e49]:
+        - link "Reports" [ref=f4e50] [cursor=pointer]:
+          - /url: /admin/reports
+    - generic "Assigned roles" [ref=f4e53]:
+      - generic [ref=f4e54]: GAME MANAGER
+      - generic [ref=f4e55]: "{\"value\":\"GAME MANAGER\"}"
+  - generic [ref=f4e56]:
+    - banner [ref=f4e57]:
+      - button "Toggle navigation" [ref=f4e58] [cursor=pointer]
+      - generic [ref=f4e60]: QuizArena Admin
+      - generic [ref=f4e61]:
+        - generic [ref=f4e62]: Manager1 Manager1
+        - button "Logout" [ref=f4e64] [cursor=pointer]
+    - main [ref=f4e69]:
+      - heading "Live games" [level=1] [ref=f4e70]
+      - table [ref=f4e74]:
+        - caption [ref=f4e75]: Live games
+        - rowgroup [ref=f4e76]:
+          - row [ref=f4e77]:
+            - columnheader "Game" [ref=f4e78]
+            - columnheader "Players" [ref=f4e79]
+            - columnheader "Rounds" [ref=f4e80]
+            - columnheader "Status" [ref=f4e81]
+            - columnheader [ref=f4e82]
+        - rowgroup [ref=f4e83]:
+          - row [ref=f4e84]:
+            - cell "Torneo Ciencias de la Tierra - Secundaria 09" [ref=f4e85]
+            - cell "0" [ref=f4e86]
+            - cell "0" [ref=f4e87]
+            - cell "Active Disconnected" [ref=f4e88]:
+              - generic [ref=f4e89]: Active
+              - generic [ref=f4e91]: Disconnected
+            - cell [ref=f4e93]:
+              - button "Subscribe" [ref=f4e94] [cursor=pointer]
+              - button "Stop game" [ref=f4e96] [cursor=pointer]
+  - region "Notifications" [ref=f4e98]:
+    - status [ref=f4e99]:
+      - generic [ref=f4e102]:
+        - strong [ref=f4e103]: Game started
+        - paragraph [ref=f4e104]: Torneo Ciencias de la Tierra - Secundaria 09
+      - button "Dismiss notification" [ref=f4e105] [cursor=pointer]

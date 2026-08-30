@@ -1,0 +1,110 @@
+- generic [ref=f2e2]:
+  - link "Skip to main content" [ref=f2e3] [cursor=pointer]:
+    - /url: "#main-content"
+  - navigation "Main navigation" [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]: QA
+      - generic [ref=f2e7]: QuizArena
+    - list [ref=f2e8]:
+      - listitem [ref=f2e9]:
+        - link "Dashboard" [ref=f2e10] [cursor=pointer]:
+          - /url: /admin/dashboard
+      - listitem [ref=f2e16]:
+        - link "Games" [ref=f2e17] [cursor=pointer]:
+          - /url: /admin/games
+      - listitem [ref=f2e22]:
+        - link "Game Configuration" [ref=f2e23] [cursor=pointer]:
+          - /url: /admin/games/configuration
+      - listitem [ref=f2e25]:
+        - link "Categories" [ref=f2e26] [cursor=pointer]:
+          - /url: /admin/categories
+      - listitem [ref=f2e29]:
+        - link "Question Bank" [ref=f2e30] [cursor=pointer]:
+          - /url: /admin/questions
+      - listitem [ref=f2e34]:
+        - link "Players" [ref=f2e35] [cursor=pointer]:
+          - /url: /admin/players
+      - listitem [ref=f2e41]:
+        - link "Rewards" [ref=f2e42] [cursor=pointer]:
+          - /url: /admin/rewards
+      - listitem [ref=f2e48]:
+        - link "Live Games" [ref=f2e49] [cursor=pointer]:
+          - /url: /admin/live
+      - listitem [ref=f2e56]:
+        - link "Reports" [ref=f2e57] [cursor=pointer]:
+          - /url: /admin/reports
+      - listitem [ref=f2e60]:
+        - link "Audit" [ref=f2e61] [cursor=pointer]:
+          - /url: /admin/audit
+    - generic "Assigned roles" [ref=f2e65]:
+      - generic [ref=f2e66]: Administrator
+      - generic [ref=f2e67]: ADMIN
+      - generic [ref=f2e68]: GAME MANAGER
+      - generic [ref=f2e69]: REWARD MANAGER
+      - generic [ref=f2e70]: PLAYER
+      - generic [ref=f2e71]: "{\"value\":\"Administrator\"}"
+      - generic [ref=f2e72]: "{\"value\":\"ADMIN\"}"
+      - generic [ref=f2e73]: "{\"value\":\"GAME MANAGER\"}"
+      - generic [ref=f2e74]: "{\"value\":\"REWARD MANAGER\"}"
+      - generic [ref=f2e75]: "{\"value\":\"PLAYER\"}"
+  - generic [ref=f2e76]:
+    - banner [ref=f2e77]:
+      - button "Toggle navigation" [ref=f2e78] [cursor=pointer]
+      - generic [ref=f2e80]: QuizArena Admin
+      - generic [ref=f2e81]:
+        - generic [ref=f2e82]: Admin Administrator
+        - button "Logout" [ref=f2e84] [cursor=pointer]
+    - main [ref=f2e89]:
+      - banner [ref=f2e90]:
+        - generic [ref=f2e91]: Running
+        - text: Round 1 / 8 Level 2
+        - generic "Game Timer" [ref=f2e93]: 0 s
+      - generic [ref=f2e94]:
+        - generic [ref=f2e95]:
+          - heading "Current Question" [level=2] [ref=f2e97]
+          - generic [ref=f2e98]:
+            - paragraph [ref=f2e99]: ¿Qué crea un imán?
+            - list [ref=f2e100]:
+              - listitem [ref=f2e101]: "A: Campo magnético"
+              - listitem [ref=f2e102]: "B: Campo eléctrico solo"
+              - listitem [ref=f2e103]: "C: Gravedad"
+              - listitem [ref=f2e104]: "D: Luz"
+        - region "Players" [ref=f2e105]:
+          - generic [ref=f2e106]:
+            - heading "Players" [level=2] [ref=f2e108]
+            - generic [ref=f2e109]:
+              - grid [ref=f2e110]:
+                - gridcell "Players" [ref=f2e111]: 0Players
+                - gridcell "Players Connected" [ref=f2e112]: 0Connected
+                - gridcell "Players Answered" [ref=f2e113]: 0Answered
+                - gridcell "Players Waiting" [ref=f2e114]: 0Waiting
+              - status [ref=f2e115]:
+                - heading "No players" [level=3] [ref=f2e119]
+                - paragraph [ref=f2e120]: No jugadores conectados
+        - generic [ref=f2e121]:
+          - heading "Scores" [level=2] [ref=f2e123]
+          - table [ref=f2e125]:
+            - rowgroup [ref=f2e126]:
+              - row [ref=f2e127]:
+                - columnheader "Player" [ref=f2e128]
+                - columnheader "Score" [ref=f2e129]
+                - columnheader "Secured" [ref=f2e130]
+                - columnheader "Level" [ref=f2e131]
+            - rowgroup [ref=f2e132]:
+              - row [ref=f2e133]:
+                - cell "Player 01a05067" [ref=f2e134]
+                - cell "0" [ref=f2e135]
+                - cell "0" [ref=f2e136]
+                - cell "2" [ref=f2e137]
+              - row [ref=f2e138]:
+                - cell "Player 01a05068" [ref=f2e139]
+                - cell "0" [ref=f2e140]
+                - cell "0" [ref=f2e141]
+                - cell "2" [ref=f2e142]
+      - toolbar "Operaciones de juego" [ref=f2e143]:
+        - button "Complete Round" [ref=f2e144] [cursor=pointer]
+        - button "Pause" [ref=f2e146] [cursor=pointer]
+        - button "Resume" [disabled] [ref=f2e148]
+        - button "Cancel" [ref=f2e150] [cursor=pointer]
+        - button "Force Finish" [ref=f2e152] [cursor=pointer]
+  - region "Notifications"
