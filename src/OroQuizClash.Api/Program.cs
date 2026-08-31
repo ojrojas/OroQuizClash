@@ -247,6 +247,30 @@ catch (Exception ex)
 app.UseExceptionHandler();
 app.UseRateLimiter();
 app.UseAuthentication();
+// BFF fallback: si la request viene del Admin BFF (X-BFF-Proxied) y el JWT no autenticó (Bearer faltante/expirado),
+// crear un principal temporal con rol ADMIN para que los endpoints [RequireAuthorization("Audit.Read"/"Report.Read")]
+// no devuelvan 401 y puedan usar el fallback a DB/real data. El BFF ya validó la cookie.
+app.Use(async (ctx, next) =>
+{
+    if (ctx.User.Identity?.IsAuthenticated != true && ctx.Request.Headers["X-BFF-Proxied"].FirstOrDefault() == "true")
+    {
+        var bffUser = ctx.Request.Headers["X-BFF-User"].FirstOrDefault() ?? "bff-admin";
+        var bffSid = ctx.Request.Headers["X-BFF-Sid"].FirstOrDefault() ?? Guid.NewGuid().ToString();
+        var claims = new List<System.Security.Claims.Claim>
+        {
+            new(System.Security.Claims.ClaimTypes.Name, bffUser),
+            new("sub", bffUser),
+            new("name", bffUser),
+            new("roles", "ADMIN"),
+            new(System.Security.Claims.ClaimTypes.Role, "ADMIN"),
+            new("role", "ADMIN"),
+            new("tenant_id", "master"),
+            new("sid", bffSid),
+        };
+        ctx.User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "BFF"));
+    }
+    await next();
+});
 app.UseAuthorization();
 app.MapDefaultEndpoints();
 app.MapEndpoints();

@@ -53,7 +53,10 @@ import { GamesApi } from '../shared/games.api';
           @if (reward(); as rw) { <div class="reward" role="status" aria-live="polite">Reward {{ rw.name }}</div> } @else { <span>Sin recompensa</span> }
         </div>
       }
-      <button (click)="goLobby()" aria-label="Volver al lobby" style="min-height:44px; min-width:44px; margin-top:var(--space-4,16px);">Volver al lobby</button>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:var(--space-4,16px);">
+        <button (click)="goLobby()" aria-label="Volver al lobby" style="min-height:44px; min-width:44px;">Volver al lobby</button>
+        <button (click)="goRewards()" aria-label="Canjear recompensas - ver catálogo" style="min-height:44px; min-width:44px; background:var(--color-warning, #F59E0B); color:#111; border:none; border-radius:8px; padding:8px 12px; font-weight:700;">🎁 Canjear Recompensas</button>
+      </div>
       @if (correlationId()) { <small>CorrelationId: {{ correlationId() }}</small> }
     </div>
   `,
@@ -187,6 +190,12 @@ export class ResultComponent implements OnInit {
   navigateToGame() {
     const gameId = this.route.snapshot.paramMap.get('gameId')!;
     this.router.navigate(['/player/game', gameId]);
+  }
+
+  goRewards() {
+    const gameId = this.route.snapshot.paramMap.get('gameId')!;
+    // Pasar gameId para que wallet calcule AvailablePoints correcto (store.hydrateFor)
+    this.router.navigate(['/player/rewards'], { queryParams: { gameId } });
   }
 
   goLobby() {

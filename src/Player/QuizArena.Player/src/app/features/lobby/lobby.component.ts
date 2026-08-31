@@ -15,6 +15,10 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
   providers: [LobbyStore],
   template: `
     <div class="lobby" data-theme="player" style="padding:16px;">
+      <div style="background:var(--color-warning, #F59E0B); color:#111; padding:10px 14px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+        <span>🎁 ¿Tienes puntos? Canjéalos por recompensas</span>
+        <button (click)="goRewards()" style="min-height:44px; min-width:44px; background:#111; color:white; border:none; border-radius:6px; padding:8px 12px; cursor:pointer;" aria-label="Ir a recompensas">Ver Recompensas →</button>
+      </div>
       <header style="display:flex; justify-content:space-between; align-items:center;">
         <h2>Available Games</h2>
         <div style="display:flex; gap:8px;">
@@ -163,6 +167,10 @@ export class LobbyComponent implements OnInit {
 
   view(gameId: string) {
     this.router.navigate(['/player/lobby', gameId]);
+  }
+
+  goRewards() {
+    this.router.navigate(['/player/rewards']);
   }
 
   leave() {

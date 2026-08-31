@@ -7,25 +7,62 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 
+using OroQuizClash.Domain.Categories;
 using OroQuizClash.Domain.Games;
 using OroQuizClash.Domain.Shared.Errors;
 using OroQuizClash.Infrastructure.Specifications;
 
 namespace OroQuizClash.Application.Features.Games;
 
-public sealed record GetGameQuery(Guid GameId) : IQuery<Result<GameResponse>>;
+public sealed record GetGameQuery(Guid GameId) : IQuery<Result<GameDetailResponse>>;
 
-public sealed class GetGameHandler(IRepository<Game, GameId> repository) : IQueryHandler<GetGameQuery, Result<GameResponse>>
+public sealed record PlayerBriefResponse(Guid UserId, string DisplayName, string Status, int CurrentPoints, DateTimeOffset JoinedAt);
+public sealed record GameDetailResponse(
+    Guid Id, string Name, string Status, Guid CategoryId, string CategoryName,
+    int MinRounds, int MaxRounds,
+    int InitialDifficulty, string DifficultyStrategy,
+    int TimeLimitPerQuestionSeconds, int PointsPerRound,
+    string ScoringSystem, string LossPolicy, string WithdrawalPolicy, string ConsolationPolicy,
+    int MinPlayers, int MaxPlayers,
+    int PlayerCount, int RoundCount,
+    IReadOnlyList<PlayerBriefResponse> Players,
+    string Prize,
+    string RowVersion,
+    DateTimeOffset CreatedAt, DateTimeOffset? ReadyAt, DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt)
 {
-    public async Task<Result<GameResponse>> HandleAsync(GetGameQuery query, CancellationToken ct)
+    // Compatibilidad con GameResponse para deserialización del frontend que espera campos planos
+    public int PlayersCurrent => Players.Count;
+    public int PlayersMax => MaxPlayers;
+}
+
+public sealed class GetGameHandler(
+    IRepository<Game, GameId> repository,
+    IRepository<Category, CategoryId> categoryRepository) : IQueryHandler<GetGameQuery, Result<GameDetailResponse>>
+{
+    public async Task<Result<GameDetailResponse>> HandleAsync(GetGameQuery query, CancellationToken ct)
     {
         var spec = new GameByIdSpecification(new GameId(query.GameId));
         var game = await repository.FirstOrDefaultAsync(spec, ct);
-        if (game is null) return Result.Failure<GameResponse>(GameErrors.GameNotFound);
-        return Result.Success(new GameResponse(
-            game.Id.Value, game.Name, game.Status.Name, game.Configuration.CategoryId.Value,
+        if (game is null) return Result.Failure<GameDetailResponse>(GameErrors.GameNotFound);
+        string categoryName = "—";
+        try
+        {
+            var cat = await categoryRepository.GetByIdAsync(game.Configuration.CategoryId, ct);
+            if (cat != null) categoryName = cat.Name;
+        }
+        catch { }
+        var players = game.Players.Select(p => new PlayerBriefResponse(
+            p.UserId, p.DisplayName ?? $"Player {p.UserId.ToString()[..8]}", p.ParticipationStatus.Name, p.Score.CurrentPoints, p.JoinedAt)).ToList();
+        return Result.Success(new GameDetailResponse(
+            game.Id.Value, game.Name, game.Status.Name, game.Configuration.CategoryId.Value, categoryName,
             game.Configuration.MinRounds, game.Configuration.MaxRounds,
+            game.Configuration.InitialDifficulty, game.Configuration.DifficultyStrategy.Name,
+            game.Configuration.TimeLimitPerQuestionSeconds, game.Configuration.PointsPerRound,
+            game.Configuration.ScoringSystem.Name, game.Configuration.LossPolicy.Name, game.Configuration.WithdrawalPolicy.Name, game.Configuration.ConsolationPolicy.Name,
+            game.Configuration.MinPlayers, game.Configuration.MaxPlayers,
             game.Players.Count, game.Rounds.Count,
+            players,
+            game.Configuration.RewardRules?.Type ?? "—",
             game.RowVersion != null && game.RowVersion.Length > 0 ? Convert.ToBase64String(game.RowVersion) : string.Empty,
             game.CreatedAt, game.ReadyAt, game.StartedAt, game.FinishedAt));
     }
