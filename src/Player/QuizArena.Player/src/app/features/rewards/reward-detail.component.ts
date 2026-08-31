@@ -10,6 +10,7 @@ import { ErrorStateComponent } from '../../shared/ui/error-state.component';
   selector: 'app-reward-detail',
   standalone: true,
   imports: [CommonModule, LoadingSkeletonComponent, ErrorStateComponent],
+  providers: [PlayerRewardsStore],
   template: `
     <div class="detail" data-theme="player">
       @if (store.isHydrating()) {

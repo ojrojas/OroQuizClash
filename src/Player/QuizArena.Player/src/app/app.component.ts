@@ -1,23 +1,28 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { OidcSecurityService } from 'angular-auth-oidc-client';
 import { AuthService } from './core/auth/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div data-theme="player" class="app-shell">
       <header class="app-header">
         <h1>QuizArena Player</h1>
+        <nav class="main-nav" aria-label="Navegación principal" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+          <a routerLink="/player/lobby" routerLinkActive="active" aria-label="Ir al Lobby" style="color:white; text-decoration:none; padding:0.4rem 0.6rem; border-radius:6px; min-height:44px; display:inline-flex; align-items:center;" [style.background]="isActive('/player/lobby') ? 'rgba(255,255,255,0.2)' : 'transparent'">Lobby</a>
+          <a routerLink="/player/rewards" routerLinkActive="active" aria-label="Ver recompensas y canjear" style="color:white; text-decoration:none; padding:0.4rem 0.6rem; border-radius:6px; min-height:44px; display:inline-flex; align-items:center; background:var(--color-warning, #F59E0B); color:#111;" title="Canjear recompensas">🎁 Recompensas</a>
+          <a routerLink="/player/rewards/history" routerLinkActive="active" aria-label="Historial de canjes" style="color:white; text-decoration:none; padding:0.4rem 0.6rem; border-radius:6px; min-height:44px; display:inline-flex; align-items:center;" [style.background]="isActive('/player/rewards/history') ? 'rgba(255,255,255,0.2)' : 'transparent'">Historial</a>
+        </nav>
         <nav class="auth-nav" aria-label="Autenticación">
           @if (isAuthenticated) {
-            <span class="user-info" aria-live="polite">
-              {{ userName }} ({{ userEmail }})
+            <span class="user-info" aria-live="polite" title="{{ userName }} {{ userEmail }}">
+              {{ userName }}@if (userEmail) { <small style="opacity:0.8;">({{ userEmail }})</small> }
             </span>
-            <button type="button" (click)="logout()" class="btn btn-secondary" aria-label="Cerrar sesión" style="min-height:44px; min-width:44px;">
+            <button type="button" (click)="logout()" class="btn btn-secondary" aria-label="Cerrar sesión - limpia App, Api e IdentityServer" title="Cierra sesión en App, Api e IdentityServer" style="min-height:44px; min-width:44px;">
               Cerrar sesión
             </button>
           } @else {
@@ -40,7 +45,8 @@ import { AuthService } from './core/auth/auth.service';
   `,
   styles: [`
     .app-shell { min-height: 100vh; display:flex; flex-direction:column; background: var(--color-background, #0F172A); color: var(--color-foreground, #F8FAFC); }
-    .app-header { padding: var(--space-4, 1rem); background: var(--color-primary, #2563EB); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+    .app-header { padding: var(--space-4, 1rem); background: var(--color-primary, #2563EB); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; }
+    .main-nav a.active, .main-nav a:hover { background: rgba(255,255,255,0.15) !important; }
     .auth-nav { display:flex; align-items:center; gap:0.75rem; }
     .user-info { font-size:0.9rem; opacity:0.9; color: white; }
     .btn { padding:0.5rem 1rem; border-radius:var(--radius-md,8px); border:none; cursor:pointer; font-weight:600; }
@@ -59,6 +65,32 @@ export class AppComponent implements OnInit {
   userEmail = '';
   authority = 'https://localhost:5086';
 
+  private mapUserInfo(userData: any) {
+    if (!userData) return;
+    const d = userData;
+    const emailRaw = (d.email && String(d.email).trim()) || (d.upn && String(d.upn).trim()) || '';
+    // OroIdentityServer puede devolver name vacío: hacer fallback amplio, usando prefijo de email como nombre si existe
+    let name =
+      (d.name && String(d.name).trim()) ||
+      (d.preferred_username && String(d.preferred_username).trim()) ||
+      (d.username && String(d.username).trim()) ||
+      (d.nickname && String(d.nickname).trim()) ||
+      (d.given_name && String(d.given_name).trim()) ||
+      (d.upn && String(d.upn).trim()) ||
+      (d.unique_name && String(d.unique_name).trim()) ||
+      '';
+    if (!name && emailRaw) {
+      // Usar prefijo de email como nombre (ej. player1@example.com -> player1)
+      name = emailRaw.split('@')[0];
+    }
+    if (!name) {
+      name = d.sub ? `Jugador ${String(d.sub).slice(0, 8)}` : 'Jugador';
+    }
+    this.userName = name;
+    this.userEmail = emailRaw;
+    console.log('[Auth] mapUserInfo', { name, email: emailRaw, raw: d });
+  }
+
   ngOnInit(): void {
     // No ejecutar checkAuth doble en callback — el CallbackComponent ya lo hace y consumiría el code dos veces (400)
     if (window.location.pathname.includes('/auth/callback') || window.location.pathname.includes('/auth/logout-callback')) {
@@ -72,10 +104,7 @@ export class AppComponent implements OnInit {
         }
       });
       this.oidc.userData$.subscribe((userData: any) => {
-        if (userData) {
-          this.userName = userData?.name ?? userData?.preferred_username ?? '';
-          this.userEmail = userData?.email ?? '';
-        }
+        if (userData) this.mapUserInfo(userData);
       });
       return;
     }
@@ -93,11 +122,7 @@ export class AppComponent implements OnInit {
         this.isAuthenticated = isAuthenticated;
         this.isCheckingAuth = false;
         console.log('[Auth] checkAuth', isAuthenticated, userData);
-        if (isAuthenticated && userData) {
-          const payload: any = userData;
-          this.userName = payload?.name ?? payload?.preferred_username ?? '';
-          this.userEmail = payload?.email ?? '';
-        }
+        if (isAuthenticated && userData) this.mapUserInfo(userData);
       },
       error: (err) => {
         clearTimeout(fallback);
@@ -115,21 +140,20 @@ export class AppComponent implements OnInit {
     });
 
     this.oidc.userData$.subscribe((userData: any) => {
-      if (userData) {
-        this.userName = userData?.name ?? userData?.preferred_username ?? '';
-        this.userEmail = userData?.email ?? '';
-      } else {
+      if (userData) this.mapUserInfo(userData);
+      else if (!this.isAuthenticated) {
         this.userName = '';
         this.userEmail = '';
       }
     });
   }
 
+  isActive(path: string): boolean {
+    try { return window.location.pathname.startsWith(path); } catch { return false; }
+  }
   login(): void { this.auth.login(); }
   logout(): void {
-    // Feedback inmediato: deshabilitar requiere que isAuthenticated se actualice;
-    // mientras tanto dar log en consola y delegar a AuthService que hace fallback local si el IdP falla
-    console.log('[Auth] logout clicked');
+    console.log('[Auth] logout clicked -> App + Api + IdentityServer');
     this.auth.logout();
   }
 }

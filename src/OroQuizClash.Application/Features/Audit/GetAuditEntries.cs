@@ -68,7 +68,13 @@ public sealed class GetAuditEntriesHandler(
             if (next.Count > 0) total = query.Page * query.PageSize + 1;
         }
 
-        var responses = items.Select(e => new AuditEntryResponse(e.Id, e.Timestamp, e.ActorId, e.ActorRoles, e.Action, e.Permission, e.Resource, e.ResourceId, e.GameId, e.PlayerId, e.CorrelationId, e.TenantId, e.Result, e.Reason, e.Details, e.Data ?? e.Details)).ToList();
+        var responses = items.Select(e =>
+        {
+            var ts = e.Timestamp == default ? DateTimeOffset.UtcNow : e.Timestamp;
+            // Fallback para entradas antiguas con 01/01/0001 (seed o bug previo)
+            if (ts.Year == 1) ts = DateTimeOffset.UtcNow;
+            return new AuditEntryResponse(e.Id, ts, e.ActorId, e.ActorRoles, e.Action, e.Permission, e.Resource, e.ResourceId, e.GameId, e.PlayerId, e.CorrelationId, e.TenantId, e.Result, e.Reason, e.Details, e.Data ?? e.Details);
+        }).ToList();
         return Result.Success(new GetAuditEntriesResponse(responses, query.Page, query.PageSize, total));
     }
 }

@@ -163,9 +163,27 @@ public static class OidcBffEndpointExtensions
 
             // EduCoreWeb adaptation: emit roles in all 3 claim types so server + client policies match
             // regardless of downstream evaluation (HasClaim roles/role vs IsInRole/ClaimTypes.Role)
+            static string NormRole(string raw)
+            {
+                raw = raw.Trim();
+                if (raw.StartsWith("{", StringComparison.Ordinal))
+                {
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(raw);
+                        if (doc.RootElement.TryGetProperty("value", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String)
+                            return v.GetString() ?? raw;
+                        if (doc.RootElement.TryGetProperty("Value", out var v2) && v2.ValueKind == System.Text.Json.JsonValueKind.String)
+                            return v2.GetString() ?? raw;
+                    }
+                    catch { }
+                }
+                return raw;
+            }
+
             var roleValues = result.Principal.Claims
                 .Where(claim => claim.Type is "role" or "roles" or ClaimTypes.Role)
-                .Select(c => c.Value)
+                .Select(c => NormRole(c.Value))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 

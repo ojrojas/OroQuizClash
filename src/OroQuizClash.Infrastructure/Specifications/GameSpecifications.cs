@@ -12,9 +12,10 @@ public sealed class GameByIdSpecification : Specification<Game>
     public GameByIdSpecification(GameId id)
     {
         Where(g => g.Id == id);
-        // Include Players and Rounds for lifecycle operations
+        // Include Players and Rounds for lifecycle operations - AsNoTracking para lectura rápida (View Game Information)
         AddInclude(g => g.Players);
         AddInclude(g => g.Rounds);
+        ApplyAsNoTracking();
     }
 
     public GameByIdSpecification(Guid id) : this(new GameId(id)) { }
@@ -32,8 +33,10 @@ public sealed class GameFilterSpecification : Specification<Game>
         bool paginate = true)
     {
         // Include Players and Rounds for counts (fix: previously missing, causing PlayerCount 0 in list APIs)
+        // AsNoTracking para lobby rápido
         AddInclude(g => g.Players);
         AddInclude(g => g.Rounds);
+        ApplyAsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(status))
         {

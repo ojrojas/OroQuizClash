@@ -69,9 +69,27 @@ public sealed record AdminUserState(
             return Anonymous;
         }
 
-        var roles = user.FindAll("roles").Select(c => c.Value)
-            .Concat(user.FindAll("role").Select(c => c.Value))
-            .Concat(user.FindAll(ClaimTypes.Role).Select(c => c.Value))
+        static string NormalizeRole(string raw)
+        {
+            raw = raw.Trim();
+            if (raw.StartsWith("{", StringComparison.Ordinal))
+            {
+                try
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(raw);
+                    if (doc.RootElement.TryGetProperty("value", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return v.GetString() ?? raw;
+                    if (doc.RootElement.TryGetProperty("Value", out var v2) && v2.ValueKind == System.Text.Json.JsonValueKind.String)
+                        return v2.GetString() ?? raw;
+                }
+                catch { }
+            }
+            return raw;
+        }
+
+        var roles = user.FindAll("roles").Select(c => NormalizeRole(c.Value))
+            .Concat(user.FindAll("role").Select(c => NormalizeRole(c.Value)))
+            .Concat(user.FindAll(ClaimTypes.Role).Select(c => NormalizeRole(c.Value)))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 

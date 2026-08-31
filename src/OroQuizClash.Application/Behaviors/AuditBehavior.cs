@@ -33,7 +33,9 @@ public sealed class AuditBehavior<TRequest, TResponse>(
         {
             var httpContext = httpContextAccessor.HttpContext;
             var user = httpContext?.User;
-            var actorId = user?.FindFirst("sub")?.Value ?? user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
+            var sub = user?.FindFirst("sub")?.Value ?? user?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous";
+            var displayName = user?.FindFirst("name")?.Value ?? user?.FindFirst("preferred_username")?.Value ?? user?.FindFirst("username")?.Value ?? user?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? user?.Identity?.Name ?? string.Empty;
+            var actorId = string.IsNullOrWhiteSpace(displayName) || displayName == sub ? sub : $"{displayName} ({sub})";
             var actorRoles = string.Join(",", user?.FindAll("roles").Select(c => c.Value).Concat(user?.FindAll("role").Select(c => c.Value) ?? []) ?? []);
             var correlationId = httpContext?.Request.Headers["X-Correlation-ID"].FirstOrDefault()
                 ?? Activity.Current?.Id
@@ -104,7 +106,8 @@ public sealed class AuditBehavior<TRequest, TResponse>(
 
     private static string? ExtractResourceId(TRequest request)
     {
-        var prop = request.GetType().GetProperty("Id") ?? request.GetType().GetProperty("GameId") ?? request.GetType().GetProperty("ResourceId");
+        var t = request.GetType();
+        var prop = t.GetProperty("Id") ?? t.GetProperty("GameId") ?? t.GetProperty("RewardId") ?? t.GetProperty("CategoryId") ?? t.GetProperty("QuestionId") ?? t.GetProperty("PlayerId") ?? t.GetProperty("ResourceId") ?? t.GetProperty("UserId");
         var val = prop?.GetValue(request);
         return val switch
         {
@@ -116,17 +119,40 @@ public sealed class AuditBehavior<TRequest, TResponse>(
 
     private static Guid? ExtractGameId(TRequest request)
     {
-        var prop = request.GetType().GetProperty("GameId");
-        if (prop?.GetValue(request) is Guid g && g != Guid.Empty) return g;
-        if (prop?.GetValue(request) is string s && Guid.TryParse(s, out var gg)) return gg;
+        var t = request.GetType();
+        // Probar GameId, Id (cuando el comando es FinishGameCommand(Id) o similar), y también buscar en Response si es necesario
+        foreach (var name in new[] { "GameId", "Id", "id" })
+        {
+            var prop = t.GetProperty(name);
+            if (prop == null) continue;
+            var val = prop.GetValue(request);
+            if (val is Guid g && g != Guid.Empty) return g;
+            if (val is string s && Guid.TryParse(s, out var gg) && gg != Guid.Empty) return gg;
+            // Algunos records usan GameId como GameId typed value object (GameId struct)
+            if (val != null)
+            {
+                var str = val.ToString();
+                if (!string.IsNullOrWhiteSpace(str) && Guid.TryParse(str, out var gg2) && gg2 != Guid.Empty) return gg2;
+                // Intentar propiedad .Value si es ValueObject
+                var valueProp = val.GetType().GetProperty("Value");
+                if (valueProp?.GetValue(val) is Guid vg && vg != Guid.Empty) return vg;
+            }
+        }
         return null;
     }
 
     private static Guid? ExtractPlayerId(TRequest request, string actorId)
     {
-        var prop = request.GetType().GetProperty("PlayerId");
-        if (prop?.GetValue(request) is Guid g && g != Guid.Empty) return g;
-        if (Guid.TryParse(actorId, out var actorGuid)) return actorGuid;
+        var t = request.GetType();
+        foreach (var name in new[] { "PlayerId", "UserId", "ActorId", "Id" })
+        {
+            var prop = t.GetProperty(name);
+            if (prop == null) continue;
+            var val = prop.GetValue(request);
+            if (val is Guid g && g != Guid.Empty) return g;
+            if (val is string s && Guid.TryParse(s, out var gg) && gg != Guid.Empty) return gg;
+        }
+        if (Guid.TryParse(actorId, out var actorGuid) && actorGuid != Guid.Empty) return actorGuid;
         return null;
     }
 

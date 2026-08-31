@@ -11,6 +11,7 @@ import { ConsolationBadgeComponent } from './consolation-badge.component';
   selector: 'app-redemption-history',
   standalone: true,
   imports: [CommonModule, EmptyStateComponent, LoadingSkeletonComponent, ErrorStateComponent, ConsolationBadgeComponent],
+  providers: [PlayerRewardsStore],
   template: `
     <div class="history" data-theme="player" role="region" aria-label="Historial de canjes">
       <h2>Redemption History</h2>

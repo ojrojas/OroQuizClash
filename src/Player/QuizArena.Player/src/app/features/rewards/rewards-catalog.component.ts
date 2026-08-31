@@ -11,6 +11,7 @@ import { deriveRewardStatus, formatRemaining } from './rewards-display.model';
   selector: 'app-rewards-catalog',
   standalone: true,
   imports: [CommonModule, LoadingSkeletonComponent, EmptyStateComponent, ErrorStateComponent],
+  providers: [PlayerRewardsStore],
   template: `
     <div class="rewards" data-theme="player">
       <header class="wallet" role="status" aria-live="polite" [attr.aria-label]="'Available Points ' + (store.wallet().availablePoints ?? 0)">
