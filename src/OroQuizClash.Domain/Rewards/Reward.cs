@@ -22,7 +22,7 @@ public sealed class Reward : AggregateRoot<RewardId>
 
     public static Result<Reward> Create(
         string name,
-        string description,
+        string? description,
         int pointsRequired,
         int stock,
         DateTimeOffset? expirationDate = null)
@@ -40,7 +40,7 @@ public sealed class Reward : AggregateRoot<RewardId>
         {
             Id = RewardId.New(),
             Name = name.Trim(),
-            Description = description.Trim(),
+            Description = (description ?? string.Empty).Trim(),
             PointsRequired = pointsRequired,
             Stock = stock,
             Status = RewardStatus.Active,
@@ -62,7 +62,7 @@ public sealed class Reward : AggregateRoot<RewardId>
         }
 
         if (description is not null)
-            Description = description.Trim();
+            Description = (description ?? string.Empty).Trim();
 
         if (pointsRequired is not null)
         {

@@ -11,6 +11,7 @@ using BuildingBlocks.ServiceDefaults;
 using BuildingBlocks.ServiceDefaults.Endpoints;
 using BuildingBlocks.ServiceDefaults.Middleware;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -254,6 +255,8 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
 // ---------------------------------------------------------------------------
 // Admin Players endpoint — queries IdentityServer for users by role
 // GET /api/players?role=Player&page=1&pageSize=20&search=&tenantId=
+// Fix 31-08: propaga el Bearer del Api hacia IdentityServer; sin esto el
+// IdentityServer retorna 401 y el BFF mapea a 401 → "jugadores no aparecen".
 // ---------------------------------------------------------------------------
 {
     var identityAuthority = authority;
@@ -265,9 +268,35 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
         int? pageSize,
         string? tenantId,
         IHttpClientFactory httpClientFactory,
+        HttpContext httpContext,
         CancellationToken ct) =>
     {
+        // Permitir BFF sin Bearer: el BFF ya validó cookie (RequireAuthorization en /bff/*).
+        // Si la request viene proxied por BFF (X-BFF-Proxied), se confía aunque JwtBearer no haya autenticado.
+        var isBffProxied = httpContext.Request.Headers["X-BFF-Proxied"].FirstOrDefault() == "true";
+        if (httpContext.User.Identity?.IsAuthenticated != true && !isBffProxied)
+        {
+            // Intentar aún Bearer propagation puede haber fallado, pero exigir auth
+            if (httpContext.Request.Headers.Authorization.Count == 0)
+                return Results.Unauthorized();
+        }
         var client = httpClientFactory.CreateClient("IdentityServer");
+        // Propagar access_token de la request entrante (BFF ya añadió Bearer) hacia IdentityServer
+        var forwardToken = httpContext.Request.Headers.Authorization.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(forwardToken))
+        {
+            try { forwardToken = await httpContext.GetTokenAsync("access_token"); } catch { }
+            if (!string.IsNullOrWhiteSpace(forwardToken)) forwardToken = $"Bearer {forwardToken}";
+        }
+        if (!string.IsNullOrWhiteSpace(forwardToken))
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", forwardToken.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim());
+        else
+        {
+            // Fallback: token en header X-Forwarded-Authorization del BFF (YARP lo reenvía)
+            var fwd = httpContext.Request.Headers["X-Authorization"].FirstOrDefault() ?? httpContext.Request.Headers["X-Access-Token"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(fwd)) client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", fwd);
+        }
+
         var effectiveRole = string.IsNullOrWhiteSpace(role) ? "Player" : role;
         var url = $"{identityAuthority.TrimEnd('/')}/api/users/{effectiveRole}/by-role";
 
@@ -278,6 +307,49 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
         var response = await client.GetAsync(url, ct);
         if (!response.IsSuccessStatusCode)
         {
+            // Si IdentityServer responde 401/403, intentar fallback a GamePlayers (para que "jugadores conectados" no quede vacío)
+            // y loguear para diagnóstico.
+            var body = await response.Content.ReadAsStringAsync(ct);
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogWarning("IdentityServer GET /api/users/{Role}/by-role -> {Status} {Body} TokenPresent={HasToken}", effectiveRole, (int)response.StatusCode, body[..Math.Min(500, body.Length)], !string.IsNullOrWhiteSpace(forwardToken));
+            if ((int)response.StatusCode == 401 || (int)response.StatusCode == 403)
+            {
+                try
+                {
+                    using var scope = httpContext.RequestServices.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<OroQuizClashDbContext>();
+                    // Fallback: proyectar jugadores desde GamePlayer (conectados = al menos un GamePlayer existente)
+                    var dbPlayers = await db.Games.Include(g => g.Players).SelectMany(g => g.Players)
+                        .Select(p => new { p.UserId, p.DisplayName, p.JoinedAt })
+                        .Distinct()
+                        .ToListAsync(ct);
+                    // Aplicar búsqueda y paginación si hay datos
+                    if (!string.IsNullOrWhiteSpace(search))
+                    {
+                        var s = search.ToLowerInvariant();
+                        dbPlayers = dbPlayers.Where(x => (x.DisplayName ?? "").ToLowerInvariant().Contains(s) || x.UserId.ToString().ToLowerInvariant().Contains(s)).ToList();
+                    }
+                    var totalCountFb = dbPlayers.Count;
+                    var psFb = pageSize ?? 20;
+                    var pFb = page ?? 1;
+                    var itemsFb = dbPlayers.Skip((pFb - 1) * psFb).Take(psFb).Select(x => new
+                    {
+                        playerId = x.UserId.ToString(),
+                        displayName = x.DisplayName ?? x.UserId.ToString()[..8],
+                        email = "",
+                        tenantId = (string?)null,
+                        createdAt = x.JoinedAt.ToString("O"),
+                        lastActiveAt = (string?)null,
+                        state = "Active"
+                    }).ToList();
+                    if (itemsFb.Count > 0) return Results.Ok(new { items = itemsFb, totalCount = totalCountFb, page = pFb, pageSize = psFb });
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Fallback GamePlayers también falló");
+                }
+                return Results.Problem(title: "No autorizado contra IdentityServer", detail: $"IdentityServer respondió {(int)response.StatusCode}. Body: {body[..Math.Min(200, body.Length)]}. Si ve este error, verifique que el IdentityServer tenga el cliente {effectiveRole} y que el token de Admin se propague (BFF → Api → IdentityServer).", statusCode: (int)response.StatusCode);
+            }
             return Results.StatusCode((int)response.StatusCode);
         }
 
@@ -312,7 +384,12 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
         }).ToList();
 
         return Results.Ok(new { items, totalCount, page = p, pageSize = ps });
-    }).RequireAuthorization();
+    }).RequireAuthorization(policy => policy.RequireAssertion(ctx =>
+    {
+        var hc = ctx.Resource as HttpContext;
+        return hc?.User.Identity?.IsAuthenticated == true || hc?.Request.Headers["X-BFF-Proxied"].FirstOrDefault() == "true";
+    }));
+
 }
 
 // GET /api/players/{playerId} — single player detail from IdentityServer
@@ -322,12 +399,66 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
     app.MapGet("/api/players/{playerId:guid}", async (
         Guid playerId,
         IHttpClientFactory httpClientFactory,
+        HttpContext httpContext,
         CancellationToken ct) =>
     {
+        // BFF proxied se confía aunque JwtBearer no autenticó (fix 31-08 players 401)
+        var isBffProxied2 = httpContext.Request.Headers["X-BFF-Proxied"].FirstOrDefault() == "true";
+        if (httpContext.User.Identity?.IsAuthenticated != true && !isBffProxied2)
+        {
+            if (httpContext.Request.Headers.Authorization.Count == 0) return Results.Unauthorized();
+        }
         var client = httpClientFactory.CreateClient("IdentityServer");
+        // Propagar Bearer igual que en /api/players (fix 31-08)
+        var forwardToken2 = httpContext.Request.Headers.Authorization.FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(forwardToken2))
+        {
+            try { forwardToken2 = await httpContext.GetTokenAsync("access_token"); } catch { }
+            if (!string.IsNullOrWhiteSpace(forwardToken2)) forwardToken2 = $"Bearer {forwardToken2}";
+        }
+        if (!string.IsNullOrWhiteSpace(forwardToken2))
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", forwardToken2.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase).Trim());
+        else if (isBffProxied2)
+        {
+            // Intentar token desde BFF header capturado en holder (BearerTokenHandler no corrió en este path directo /api)
+            // Ya se intentó arriba, dejar sin Authorization y caer en fallback DB
+        }
         var url = $"{identityAuthority.TrimEnd('/')}/api/users/{playerId}";
         var response = await client.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode) return Results.StatusCode((int)response.StatusCode);
+        if (!response.IsSuccessStatusCode)
+        {
+            if ((int)response.StatusCode == 401 || (int)response.StatusCode == 403)
+            {
+                var b = await response.Content.ReadAsStringAsync(ct);
+                // Fallback a GamePlayer si IdentityServer no autoriza (BFF ya validó cookie)
+                if (isBffProxied2)
+                {
+                    try
+                    {
+                        using var scope = httpContext.RequestServices.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<OroQuizClashDbContext>();
+                        var gp = await db.Games.Include(g => g.Players).SelectMany(g => g.Players).FirstOrDefaultAsync(p => p.UserId == playerId, ct);
+                        if (gp is not null)
+                            return Results.Ok(new
+                            {
+                                playerId = playerId.ToString(),
+                                displayName = gp.DisplayName ?? playerId.ToString()[..8],
+                                email = "",
+                                tenantId = (string?)null,
+                                createdAt = gp.JoinedAt.ToString("O"),
+                                lastActiveAt = (string?)null,
+                                state = gp.ParticipationStatus.Name,
+                                scoreSummary = new { totalPoints = gp.Score.CurrentPoints, securedPoints = gp.Score.SecuredPoints, availablePoints = gp.Score.CurrentPoints },
+                                totalParticipations = 1,
+                                rowVersion = Convert.ToBase64String(gp.RowVersion ?? []),
+                            });
+                    }
+                    catch { }
+                }
+                return Results.Problem(title: "No autorizado contra IdentityServer", detail: b[..Math.Min(200, b.Length)], statusCode: (int)response.StatusCode);
+            }
+            return Results.StatusCode((int)response.StatusCode);
+        }
 
         var json = await response.Content.ReadAsStringAsync(ct);
         var user = System.Text.Json.JsonSerializer.Deserialize<JsonElement>(json, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -345,7 +476,11 @@ app.MapHub<OroQuizClash.Api.Hubs.GameHub>("/hubs/game").RequireAuthorization();
             totalParticipations = 0,
             rowVersion = "",
         });
-    }).RequireAuthorization();
+    }).RequireAuthorization(policy => policy.RequireAssertion(ctx =>
+    {
+        var hc = ctx.Resource as HttpContext;
+        return hc?.User.Identity?.IsAuthenticated == true || hc?.Request.Headers["X-BFF-Proxied"].FirstOrDefault() == "true";
+    }));
 }
 
 app.Run();

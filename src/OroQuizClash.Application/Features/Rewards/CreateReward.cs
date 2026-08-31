@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using BuildingBlocks.CQRS.Abstractions;
 using BuildingBlocks.CQRS.Validation;
 using BuildingBlocks.Kernel.Domain.Repositories;
@@ -72,16 +74,31 @@ public sealed class CreateRewardEndpoint : IEndpoint
             ISender sender,
             CancellationToken ct) =>
         {
-            var command = new CreateRewardCommand(body.Name, body.Description, body.PointsRequired, body.Stock, body.ExpirationDate);
+            // Compatibilidad V2 (QuizArena.Admin.Client): la UI envía `Cost`/`Type`/`AvailableFrom`/`AvailableTo`
+            // mientras el contrato legado usa `PointsRequired`/`ExpirationDate`. Se fusionan ambos.
+            var pointsRequired = body.Cost ?? body.PointsRequired ?? 0;
+            var expirationDate = body.AvailableTo ?? body.ExpirationDate ?? body.AvailableFrom;
+            var description = body.Description ?? string.Empty;
+            var command = new CreateRewardCommand(body.Name, description, pointsRequired, body.Stock, expirationDate);
             var result = await sender.SendAsync(command, ct);
             return result.ToHttpResult();
         }).RequireAuthorization("AdminOrRewardManager");
     }
 }
 
+/// <summary>
+/// DTO de creación compatible con ambos contratos:
+/// - Legado: { name, description, pointsRequired, stock, expirationDate }
+/// - V2 Admin (RewardForm): { name, description?, type, cost, stock, availableFrom, availableTo }
+/// La deserialización es case-insensitive; campos desconocidos se ignoran.
+/// </summary>
 public sealed record CreateRewardRequest(
     string Name,
-    string Description,
-    int PointsRequired,
+    string? Description,
+    int? PointsRequired,
     int Stock,
-    DateTimeOffset? ExpirationDate);
+    DateTimeOffset? ExpirationDate,
+    [property: JsonPropertyName("cost")] int? Cost = null,
+    [property: JsonPropertyName("type")] string? Type = null,
+    [property: JsonPropertyName("availableFrom")] DateTimeOffset? AvailableFrom = null,
+    [property: JsonPropertyName("availableTo")] DateTimeOffset? AvailableTo = null);
