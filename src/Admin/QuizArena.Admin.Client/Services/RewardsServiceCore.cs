@@ -137,8 +137,30 @@ public class RewardsServiceCore(HttpClient http, string prefix) : IRewardsServic
     {
         var request = new ApiV2CreateRequest(form.Name.Trim(), form.Description, RewardsModels.RewardTypeMap.ToApi(form.Type), form.Cost, form.Stock, form.AvailableFrom, form.AvailableTo);
         var response = await http.PostAsJsonAsync($"{prefix}/rewards", request, ct);
-        var item = await response.ReadAsAsync<ApiV2RewardItem>(ct);
-        return MapV2Detail(item);
+        await response.ThrowIfApiErrorAsync(ct);
+        var json = await response.Content.ReadAsStringAsync(ct);
+        // Intenta V2 primero; si el Api aún responde con shape legado (CreateRewardResponse) se hace fallback
+        // para evitar la excepción que ve el usuario en la pantalla de creación.
+        try
+        {
+            var v2 = System.Text.Json.JsonSerializer.Deserialize<ApiV2RewardItem>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+            if (v2 is not null && !string.IsNullOrEmpty(v2.RowVersion))
+                return MapV2Detail(v2);
+        }
+        catch { }
+        try
+        {
+            var legacy = System.Text.Json.JsonSerializer.Deserialize<ApiRewardItem>(json, new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+            if (legacy is not null)
+                return new RewardsModels.RewardDetail(legacy.Id, legacy.Name, legacy.Description, form.Type, form.Cost, legacy.Stock, form.AvailableFrom, legacy.ExpirationDate ?? form.AvailableTo, RewardsModels.RewardStateMap.FromApi(legacy.Status), true, "legacy", []);
+        }
+        catch { }
+        // Último recurso: buscar en catálogo por nombre
+        var legacyList = await http.GetFromJsonAsync<ApiRewardsResponse>($"{prefix}/rewards?includeUnavailable=true", ct);
+        var match = legacyList?.Rewards.FirstOrDefault(r => r.Name.Equals(form.Name.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (match is not null)
+            return new RewardsModels.RewardDetail(match.Id, match.Name, match.Description, form.Type, form.Cost, match.Stock, form.AvailableFrom, form.AvailableTo ?? match.ExpirationDate, RewardsModels.RewardStateMap.FromApi(match.Status), true, "legacy", []);
+        throw new ApiErrorException(ApiErrorView.Unknown);
     }
 
     public async Task<RewardsModels.RewardDetail> UpdateRewardAsync(Guid id, RewardsModels.UpdateRewardRequest request, CancellationToken ct = default)

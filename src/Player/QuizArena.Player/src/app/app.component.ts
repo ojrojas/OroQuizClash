@@ -126,5 +126,10 @@ export class AppComponent implements OnInit {
   }
 
   login(): void { this.auth.login(); }
-  logout(): void { this.auth.logout(); }
+  logout(): void {
+    // Feedback inmediato: deshabilitar requiere que isAuthenticated se actualice;
+    // mientras tanto dar log en consola y delegar a AuthService que hace fallback local si el IdP falla
+    console.log('[Auth] logout clicked');
+    this.auth.logout();
+  }
 }

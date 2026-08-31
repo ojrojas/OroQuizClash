@@ -55,6 +55,12 @@ public static class OidcBffEndpointExtensions
                     catch { }
                 }
 
+                // BFF ya validó cookie (RequireAuthorization), marcar que la request viene autenticada vía BFF
+                // aunque el Bearer falte; el Api puede hacer fallback a DB sin devolver 401 hard.
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-BFF-Proxied", "true");
+                transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-BFF-User", http.User.Identity?.Name ?? "unknown");
+                if (!string.IsNullOrEmpty(sid)) transformContext.ProxyRequest.Headers.TryAddWithoutValidation("X-BFF-Sid", sid);
+
                 if (!string.IsNullOrEmpty(accessToken))
                 {
                     transformContext.ProxyRequest.Headers.Authorization = new("Bearer", accessToken);
@@ -62,7 +68,7 @@ public static class OidcBffEndpointExtensions
                 else
                 {
                     var logger = http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("QuizArena.Admin.BffForwarder");
-                    logger.LogWarning("BFF forwarder: no access_token for {Path} user={User} sid={Sid}", http.Request.Path, http.User.Identity?.Name ?? "anon", http.User.FindFirstValue(TokenStorageClaim) ?? "none");
+                    logger.LogWarning("BFF forwarder: no access_token for {Path} user={User} sid={Sid} — se reenvía sin Bearer, el Api hará fallback a GamePlayers", http.Request.Path, http.User.Identity?.Name ?? "anon", http.User.FindFirstValue(TokenStorageClaim) ?? "none");
                 }
             });
         }).RequireAuthorization();
